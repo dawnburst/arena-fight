@@ -1,0 +1,18 @@
+{
+  "name": "arena-fight",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Top-down arena shooter inspired by Onslaught! Arena. Phase 1 prototype.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
