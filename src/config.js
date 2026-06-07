@@ -54,6 +54,19 @@ export const CFG = {
     width: 800,
     height: 600,
   },
+  coin: {
+    radius: 4,
+    color: 0xffd54f,
+    dropSpeed: 60,
+    magnetRadius: 150,
+    magnetAccel: 800,
+    maxSpeed: 600,
+  },
+  store: {
+    waveClearBase: 25,
+    waveClearPerWave: 10,
+    coinDropPerKillBase: 1,
+  },
   bonus: {
     spawnDelayMinMs: 60000,
     spawnDelayMaxMs: 120000,

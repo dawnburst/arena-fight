@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { CFG } from './config.js';
 import GameScene from './scenes/GameScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import StoreScene from './scenes/StoreScene.js';
+import LoadoutScene from './scenes/LoadoutScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -15,7 +17,7 @@ const config = {
       debug: false,
     },
   },
-  scene: [GameScene, GameOverScene],
+  scene: [GameScene, GameOverScene, StoreScene, LoadoutScene],
 };
 
 new Phaser.Game(config);
