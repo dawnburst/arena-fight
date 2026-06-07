@@ -3,5 +3,10 @@ dist/
 .DS_Store
 *.log
 .vite/
-.claude/
 verify_game.mjs
+
+# Claude Code local state — keep skills + project settings committed
+.claude/projects/
+.claude/cache/
+.claude/local/
+.claude/settings.local.json
