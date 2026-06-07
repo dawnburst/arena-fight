@@ -1,0 +1,76 @@
+<h2>Game Over action buttons</h2>
+<p class="subtitle">Three visual directions for replacing the text-only prompts. Click one if you prefer it.</p>
+
+<div class="cards">
+  <div class="card" data-choice="large-icon-buttons" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#171717;border-radius:8px;padding:24px;min-height:220px;display:flex;align-items:center;justify-content:center;">
+        <div style="width:520px;height:220px;background:#1a1a1a;position:relative;font-family:ui-monospace,Menlo,Consolas,monospace;color:white;">
+          <div style="position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:34px;color:#e53935;">GAME OVER</div>
+          <div style="position:absolute;left:50%;top:78px;transform:translateX(-50%);font-size:14px;color:#ddd;text-align:center;line-height:1.7;">
+            Wave reached: 4<br>Score: 9100<br><span style="color:#ffd54f;">Coins earned: +198</span>
+          </div>
+          <div style="position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:16px;">
+            <div style="width:120px;height:76px;border:2px solid #ffd54f;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#24201a;">
+              <div style="font-size:30px;line-height:1;">⌂</div><div style="font-size:12px;margin-top:6px;">STORE</div>
+            </div>
+            <div style="width:120px;height:76px;border:2px solid #4fc3f7;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#19242a;">
+              <div style="font-size:30px;line-height:1;">◇</div><div style="font-size:12px;margin-top:6px;">LOADOUT</div>
+            </div>
+            <div style="width:120px;height:76px;border:2px solid #69f0ae;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#18251d;">
+              <div style="font-size:30px;line-height:1;">↻</div><div style="font-size:12px;margin-top:6px;">RETRY</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Large icon buttons</h3>
+      <p>Recommended: three clear image-like buttons in the same place as the current prompts. Arrow keys move the highlight, Enter activates, and mouse click works.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="compact-icon-row" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#171717;border-radius:8px;padding:24px;min-height:220px;display:flex;align-items:center;justify-content:center;">
+        <div style="width:520px;height:220px;background:#1a1a1a;position:relative;font-family:ui-monospace,Menlo,Consolas,monospace;color:white;">
+          <div style="position:absolute;left:50%;top:18px;transform:translateX(-50%);font-size:34px;color:#e53935;">GAME OVER</div>
+          <div style="position:absolute;left:50%;top:82px;transform:translateX(-50%);font-size:14px;color:#ddd;text-align:center;line-height:1.7;">
+            Wave reached: 4<br>Score: 9100<br><span style="color:#ffd54f;">Coins earned: +198</span>
+          </div>
+          <div style="position:absolute;left:50%;bottom:30px;transform:translateX(-50%);display:flex;gap:24px;align-items:center;">
+            <div style="width:72px;height:72px;border:2px solid #ffd54f;border-radius:50%;display:grid;place-items:center;background:#24201a;font-size:30px;">⌂</div>
+            <div style="width:72px;height:72px;border:2px solid #4fc3f7;border-radius:50%;display:grid;place-items:center;background:#19242a;font-size:30px;">◇</div>
+            <div style="width:72px;height:72px;border:2px solid #69f0ae;border-radius:50%;display:grid;place-items:center;background:#18251d;font-size:30px;">↻</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Compact icon row</h3>
+      <p>More image-forward and less text. Faster to scan once learned, but less explicit for first-time players.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="vertical-menu" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#171717;border-radius:8px;padding:24px;min-height:220px;display:flex;align-items:center;justify-content:center;">
+        <div style="width:520px;height:220px;background:#1a1a1a;position:relative;font-family:ui-monospace,Menlo,Consolas,monospace;color:white;">
+          <div style="position:absolute;left:64px;top:24px;font-size:32px;color:#e53935;">GAME OVER</div>
+          <div style="position:absolute;left:68px;top:82px;font-size:14px;color:#ddd;line-height:1.7;">
+            Wave reached: 4<br>Score: 9100<br><span style="color:#ffd54f;">Coins earned: +198</span>
+          </div>
+          <div style="position:absolute;right:54px;top:34px;display:flex;flex-direction:column;gap:12px;">
+            <div style="width:170px;height:44px;border:2px solid #ffd54f;border-radius:8px;display:flex;gap:14px;align-items:center;padding:0 14px;background:#24201a;"><span style="font-size:24px;">⌂</span><span>STORE</span></div>
+            <div style="width:170px;height:44px;border:2px solid #4fc3f7;border-radius:8px;display:flex;gap:14px;align-items:center;padding:0 14px;background:#19242a;"><span style="font-size:24px;">◇</span><span>LOADOUT</span></div>
+            <div style="width:170px;height:44px;border:2px solid #69f0ae;border-radius:8px;display:flex;gap:14px;align-items:center;padding:0 14px;background:#18251d;"><span style="font-size:24px;">↻</span><span>RETRY</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Vertical menu</h3>
+      <p>Strong keyboard-menu feel and works well if more game-over actions are added later. It changes the current centered layout more noticeably.</p>
+    </div>
+  </div>
+</div>
