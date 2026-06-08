@@ -6,6 +6,7 @@ const DEFAULTS = () => ({
   ownedWeapons: ['pistol'],
   ownedMods: [],
   loadout: { weapon: 'pistol', mods: [null, null] },
+  settings: { backgroundId: 'meadow' },
   stats: { runsPlayed: 0, bestWave: 0, bestScore: 0, totalCoinsEarned: 0 },
 });
 
@@ -25,6 +26,7 @@ function read() {
       ...base,
       ...parsed,
       loadout: { ...base.loadout, ...(parsed.loadout || {}) },
+      settings: { ...base.settings, ...(parsed.settings || {}) },
       stats: { ...base.stats, ...(parsed.stats || {}) },
       ownedWeapons: Array.isArray(parsed.ownedWeapons) ? parsed.ownedWeapons : base.ownedWeapons,
       ownedMods: Array.isArray(parsed.ownedMods) ? parsed.ownedMods : base.ownedMods,
@@ -74,6 +76,12 @@ export const Save = {
   },
   setLoadout(weapon, mods) {
     return this.set((s) => ({ ...s, loadout: { weapon, mods: [...mods] } }));
+  },
+  setBackground(backgroundId) {
+    return this.set((s) => ({
+      ...s,
+      settings: { ...(s.settings || {}), backgroundId },
+    }));
   },
   recordRun({ wave, score, coinsEarned }) {
     return this.set((s) => ({

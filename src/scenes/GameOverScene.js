@@ -85,6 +85,14 @@ export default class GameOverScene extends Phaser.Scene {
         action: () => this.scene.start('GameScene'),
         icon: (graphics) => this.drawRetryIcon(graphics),
       },
+      {
+        label: 'MENU',
+        shortcut: 'm',
+        borderColor: 0xce93d8,
+        bgColor: 0x211827,
+        action: () => this.scene.start('MainMenuScene'),
+        icon: (graphics) => this.drawMenuIcon(graphics),
+      },
     ];
 
     this.createActionMenu(style);
@@ -99,7 +107,7 @@ export default class GameOverScene extends Phaser.Scene {
 
   onKey(event) {
     const k = event.key?.toLowerCase();
-    const handledKeys = ['r', 's', 'l', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'enter', ' '];
+    const handledKeys = ['r', 's', 'l', 'm', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'enter', ' '];
     if (handledKeys.includes(k) || event.code === 'Space') {
       event.preventDefault();
     }
@@ -110,6 +118,8 @@ export default class GameOverScene extends Phaser.Scene {
       this.activateAction(0);
     } else if (k === 'l') {
       this.activateAction(1);
+    } else if (k === 'm') {
+      this.activateAction(3);
     } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
       this.selectAction(this.actionIndex - 1);
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
@@ -237,5 +247,14 @@ export default class GameOverScene extends Phaser.Scene {
     graphics.lineStyle(3, 0xffffff, 1);
     graphics.lineBetween(-10, -12, -10, -4);
     graphics.lineBetween(-10, -12, -3, -12);
+  }
+
+  drawMenuIcon(graphics) {
+    graphics.lineStyle(3, 0xffffff, 1);
+    graphics.strokeRoundedRect(-12, -12, 24, 24, 3);
+    graphics.lineStyle(2, 0xce93d8, 1);
+    graphics.lineBetween(-6, -5, 6, -5);
+    graphics.lineBetween(-6, 0, 6, 0);
+    graphics.lineBetween(-6, 5, 6, 5);
   }
 }

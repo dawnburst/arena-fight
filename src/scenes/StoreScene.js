@@ -98,7 +98,8 @@ export default class StoreScene extends Phaser.Scene {
       return;
     }
     if (event.key === 'b' || event.key === 'B' || event.key === 'Escape') {
-      this.scene.start('GameOverScene', this.scene.settings.data || {});
+      const data = this.scene.settings.data || {};
+      this.scene.start(data.returnScene || 'GameOverScene', data);
       return;
     }
     if (event.key === 'r' || event.key === 'R') {
