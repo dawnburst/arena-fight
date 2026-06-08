@@ -2,12 +2,18 @@ import Phaser from 'phaser';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
 import { getWeapon, buildRuntimeStats } from '../catalog.js';
+import { ARENA_BACKGROUNDS, backgroundKey, backgroundPath, resolveBackground } from '../backgrounds.js';
 
 const PLAYER_DIRECTIONS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 const PLAYER_POSES = ['idle', 'walk1', 'walk2', 'dash', 'hit', 'death'];
 const PLAYER_BODY_SCALE = 0.78;
-const PLAYER_WEAPON_SCALE = 0.46;
+const PLAYER_WEAPON_SCALE = 0.34;
+const PLAYER_WEAPON_OFFSET = 8;
+const PLAYER_BULLET_OFFSET = 28;
 const PLAYER_HITBOX = { width: 18, height: 26, offsetX: 23, offsetY: 28 };
+const ENEMY_MONSTER_FRAME = { width: 64, height: 64 };
+const ENEMY_MONSTER_SCALE = 0.58;
+const DASHER_MONSTER_SCALE = 0.64;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -26,12 +32,26 @@ export default class GameScene extends Phaser.Scene {
     if (!this.textures.exists('player-rifle')) {
       this.load.image('player-rifle', '/assets/player/rifle.png');
     }
+    for (const background of ARENA_BACKGROUNDS) {
+      const key = backgroundKey(background.id);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, backgroundPath(background));
+      }
+    }
+    if (!this.textures.exists('enemy-monster-walk')) {
+      this.load.spritesheet('enemy-monster-walk', '/assets/enemies/monster/walk.png', {
+        frameWidth: ENEMY_MONSTER_FRAME.width,
+        frameHeight: ENEMY_MONSTER_FRAME.height,
+      });
+    }
   }
 
   create() {
     this.physics.world.setBounds(0, 0, CFG.arena.width, CFG.arena.height);
 
     const save = Save.get();
+    const selectedBackground = resolveBackground(save.settings?.backgroundId);
+    this.add.image(0, 0, backgroundKey(selectedBackground.id)).setOrigin(0).setDepth(-20);
     const loadoutMods = (save.loadout?.mods || []).filter(Boolean);
     this.weaponDef = getWeapon(save.loadout?.weapon || 'pistol');
     this.modStats = buildRuntimeStats(loadoutMods);
@@ -140,6 +160,7 @@ export default class GameScene extends Phaser.Scene {
       this,
     );
 
+    this.createEnemyAnimations();
     this.createHUD();
 
     this.input.keyboard.on('keydown', this.onKeyDown, this);
@@ -162,7 +183,7 @@ export default class GameScene extends Phaser.Scene {
     sprite.body.setOffset(PLAYER_HITBOX.offsetX, PLAYER_HITBOX.offsetY);
 
     const barrel = this.add.image(cx, cy, 'player-rifle');
-    barrel.setOrigin(0.2, 0.5);
+    barrel.setOrigin(0.28, 0.54);
     barrel.setScale(PLAYER_WEAPON_SCALE);
     barrel.setDepth(6);
 
@@ -172,6 +193,16 @@ export default class GameScene extends Phaser.Scene {
 
   playerFrameKey(direction, pose) {
     return `player-${direction}-${pose}`;
+  }
+
+  createEnemyAnimations() {
+    if (this.anims.exists('enemy-monster-walk')) return;
+    this.anims.create({
+      key: 'enemy-monster-walk',
+      frames: this.anims.generateFrameNumbers('enemy-monster-walk', { start: 0, end: 3 }),
+      frameRate: 7,
+      repeat: -1,
+    });
   }
 
   createHUD() {
@@ -334,26 +365,31 @@ export default class GameScene extends Phaser.Scene {
   updateCoins(time, delta) {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
-    const accel = CFG.coin.magnetAccel;
-    const radius = this.runtime.magnetRadius;
-    const radiusSq = radius * radius;
+    const magnetRadius = this.runtime.magnetRadius;
+    const gravityRadius = magnetRadius * CFG.coin.gravityRadiusMult;
+    const magnetRadiusSq = magnetRadius * magnetRadius;
+    const gravityRadiusSq = gravityRadius * gravityRadius;
     const maxSpeed = CFG.coin.maxSpeed;
-    const dt = delta / 1000;
     this.coins.getChildren().forEach((coin) => {
       const dx = px - coin.x;
       const dy = py - coin.y;
       const distSq = dx * dx + dy * dy;
-      if (distSq <= radiusSq) {
+      if (distSq <= gravityRadiusSq) {
         const dist = Math.sqrt(distSq) || 1;
-        const ax = (dx / dist) * accel * dt;
-        const ay = (dy / dist) * accel * dt;
-        let vx = coin.body.velocity.x + ax;
-        let vy = coin.body.velocity.y + ay;
+        const inMagnetRange = distSq <= magnetRadiusSq;
+        const pullSpeed = inMagnetRange ? CFG.coin.magnetSpeed : CFG.coin.gravitySpeed;
+        const turn = inMagnetRange ? CFG.coin.magnetTurn : CFG.coin.gravityTurn;
+        let vx = coin.body.velocity.x * CFG.coin.drag;
+        let vy = coin.body.velocity.y * CFG.coin.drag;
+        const targetVx = (dx / dist) * pullSpeed;
+        const targetVy = (dy / dist) * pullSpeed;
+        vx += (targetVx - vx) * turn;
+        vy += (targetVy - vy) * turn;
         const sp = Math.hypot(vx, vy);
         if (sp > maxSpeed) { vx = (vx / sp) * maxSpeed; vy = (vy / sp) * maxSpeed; }
         coin.body.setVelocity(vx, vy);
       } else {
-        coin.body.setVelocity(coin.body.velocity.x * 0.96, coin.body.velocity.y * 0.96);
+        coin.body.setVelocity(coin.body.velocity.x * CFG.coin.drag, coin.body.velocity.y * CFG.coin.drag);
       }
     });
   }
@@ -363,8 +399,8 @@ export default class GameScene extends Phaser.Scene {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
     this.aimAngle = Math.atan2(ptr.worldY - py, ptr.worldX - px);
-    this.player.barrel.x = px + Math.cos(this.aimAngle) * 2;
-    this.player.barrel.y = py + Math.sin(this.aimAngle) * 2 + 1;
+    this.player.barrel.x = px + Math.cos(this.aimAngle) * PLAYER_WEAPON_OFFSET;
+    this.player.barrel.y = py + Math.sin(this.aimAngle) * PLAYER_WEAPON_OFFSET + 1;
     this.player.barrel.rotation = this.aimAngle;
     this.player.barrel.setFlipY(Math.cos(this.aimAngle) < 0);
   }
@@ -513,8 +549,8 @@ export default class GameScene extends Phaser.Scene {
     const color = mods.aoeRadius ? 0xff7043 : CFG.bullet.color;
 
     this.player.shootUntil = time + 90;
-    const spawnX = px + Math.cos(angle) * 26;
-    const spawnY = py + Math.sin(angle) * 26;
+    const spawnX = px + Math.cos(angle) * PLAYER_BULLET_OFFSET;
+    const spawnY = py + Math.sin(angle) * PLAYER_BULLET_OFFSET;
 
     const bullet = this.add.circle(spawnX, spawnY, radius, color);
     this.physics.add.existing(bullet);
@@ -569,26 +605,39 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createSwarmer(x, y) {
-    const enemy = this.add.circle(x, y, CFG.enemy.radius, CFG.enemy.color);
+    const enemy = this.add.sprite(x, y, 'enemy-monster-walk', 0);
     this.physics.add.existing(enemy);
     this.enemies.add(enemy);
     enemy.body.setCircle(CFG.enemy.radius);
-    enemy.body.setOffset(-CFG.enemy.radius, -CFG.enemy.radius);
+    enemy.body.setOffset(
+      ENEMY_MONSTER_FRAME.width / 2 - CFG.enemy.radius,
+      ENEMY_MONSTER_FRAME.height / 2 - CFG.enemy.radius + 6,
+    );
+    enemy.setScale(ENEMY_MONSTER_SCALE);
+    enemy.setDepth(4);
+    enemy.play('enemy-monster-walk');
     enemy.speed = this.enemySpeedThisWave;
     enemy.hp = CFG.enemy.hp;
     enemy.type = 'swarmer';
   }
 
   createDasher(x, y) {
-    const enemy = this.add.circle(x, y, CFG.dasher.radius, CFG.dasher.color);
+    const enemy = this.add.sprite(x, y, 'enemy-monster-walk', 0);
     this.physics.add.existing(enemy);
     this.enemies.add(enemy);
     enemy.body.setCircle(CFG.dasher.radius);
-    enemy.body.setOffset(-CFG.dasher.radius, -CFG.dasher.radius);
+    enemy.body.setOffset(
+      ENEMY_MONSTER_FRAME.width / 2 - CFG.dasher.radius,
+      ENEMY_MONSTER_FRAME.height / 2 - CFG.dasher.radius + 6,
+    );
+    enemy.setScale(DASHER_MONSTER_SCALE);
+    enemy.setDepth(4);
+    enemy.setTint(CFG.dasher.color);
+    enemy.play('enemy-monster-walk');
     enemy.speed = this.enemySpeedThisWave * CFG.dasher.walkSpeedFactor;
     enemy.hp = CFG.dasher.hp;
     enemy.type = 'dasher';
-    enemy.baseColor = CFG.dasher.color;
+    enemy.baseTint = CFG.dasher.color;
     enemy.windupEndsAt = 0;
     enemy.dashEndsAt = 0;
     enemy.nextDashAt = this.time.now + Phaser.Math.Between(
@@ -602,6 +651,7 @@ export default class GameScene extends Phaser.Scene {
     const py = this.player.sprite.y;
     const now = this.time.now;
     this.enemies.getChildren().forEach((enemy) => {
+      enemy.setFlipX(px < enemy.x);
       if (enemy.type === 'dasher') {
         this.updateDasher(enemy, px, py, now);
       } else {
@@ -627,10 +677,10 @@ export default class GameScene extends Phaser.Scene {
     if (enemy.windupEndsAt > 0) {
       enemy.body.setVelocity(0, 0);
       const flashOn = Math.floor((enemy.windupEndsAt - now) / CFG.dasher.windupFlashMs) % 2 === 0;
-      enemy.setFillStyle(flashOn ? 0xffffff : enemy.baseColor);
+      enemy.setTint(flashOn ? 0xffffff : enemy.baseTint);
       if (now >= enemy.windupEndsAt) {
         enemy.windupEndsAt = 0;
-        enemy.setFillStyle(enemy.baseColor);
+        enemy.setTint(enemy.baseTint);
         const dx = px - enemy.x;
         const dy = py - enemy.y;
         const len = Math.hypot(dx, dy) || 1;
