@@ -222,6 +222,16 @@ export const CFG = {
     waveClearPerWave: 10,
     coinDropPerKillBase: 1,
   },
+  gift: {
+    spawnDelayMinMs: 45000,
+    spawnDelayMaxMs: 90000,
+    lifetimeMs: 6000,
+    warnLastMs: 1500,
+    radius: 13,
+    color: 0xff80ab,
+    edgePadding: 60,
+    durationMs: 30000,
+  },
   shieldBonus: {
     spawnDelayMinMs: 60000,
     spawnDelayMaxMs: 120000,

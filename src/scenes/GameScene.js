@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
-import { getWeapon, buildRuntimeStats } from '../catalog.js';
+import { getWeapon, buildRuntimeStats, MODS } from '../catalog.js';
 import { ARENA_BACKGROUNDS, backgroundKey, backgroundPath, resolveBackground } from '../backgrounds.js';
 import { ENEMY_SPRITES } from '../enemies.js';
 import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
@@ -63,7 +63,6 @@ export default class GameScene extends Phaser.Scene {
     const save = Save.get();
     const selectedBackground = resolveBackground(save.settings?.backgroundId);
     this.add.image(0, 0, backgroundKey(selectedBackground.id)).setOrigin(0).setDepth(-20);
-    const loadoutMods = (save.loadout?.mods || []).filter(Boolean);
     const weaponIds = save.loadout?.weapons || [save.loadout?.weapon || 'pistol', null];
     this.weapons = [
       getWeapon(weaponIds[0] || 'pistol'),
@@ -71,21 +70,11 @@ export default class GameScene extends Phaser.Scene {
     ];
     this.activeWeaponIndex = 0;
     this.weaponDef = this.weapons[0];
-    this.modStats = buildRuntimeStats(loadoutMods);
 
-    this.runtime = {
-      maxHp: Math.max(1, CFG.player.hp + this.modStats.maxHpDelta),
-      playerSpeed: CFG.player.speed * this.modStats.moveSpeedMult,
-      dashSpeed: CFG.player.dashSpeed * this.modStats.dashSpeedMult,
-      dashCooldownMs: CFG.player.dashCooldownMs * this.modStats.dashCooldownMult,
-      bulletSpeed: CFG.bullet.speed * this.modStats.bulletSpeedMult,
-      bulletLifetimeMs: CFG.bullet.lifetimeMs * this.modStats.bulletLifetimeMult,
-      fireRateMult: this.modStats.fireRateMult,
-      coinDropMult: this.modStats.coinDropMult,
-      magnetRadius: CFG.coin.magnetRadius * this.modStats.magnetRangeMult,
-      comboResetMs: CFG.combo.resetMs + this.modStats.comboResetMsDelta,
-      luckyChance: this.modStats.luckyChance,
-    };
+    this.tempMod = null;
+    this.tempModEndsAt = 0;
+    this.tempPhoenixActive = false;
+    this.computeRuntime();
     this.phoenixCharges = this.modStats.phoenixCharges;
 
     this.score = 0;
@@ -113,6 +102,11 @@ export default class GameScene extends Phaser.Scene {
     this.shieldDespawnEvent = null;
     this.shieldWarnEvent = null;
     this.shieldPickupOverlap = null;
+
+    this.giftPickup = null;
+    this.giftDespawnEvent = null;
+    this.giftWarnEvent = null;
+    this.giftPickupOverlap = null;
 
     this.cheatPromptActive = false;
     this.cheatBuffer = '';
@@ -200,6 +194,30 @@ export default class GameScene extends Phaser.Scene {
 
     this.startNextWave();
     this.scheduleNextShieldBonus();
+    this.scheduleNextGift();
+  }
+
+  // Builds this.modStats and this.runtime from the equipped mods, optionally
+  // including a temporary gifted mod. phoenixCharges is managed separately so
+  // recomputing mid-run never resets a used revive.
+  computeRuntime(extraModId = null) {
+    const loadoutMods = (Save.get().loadout?.mods || []).filter(Boolean);
+    const ids = extraModId ? [...loadoutMods, extraModId] : loadoutMods;
+    const m = buildRuntimeStats(ids);
+    this.modStats = m;
+    this.runtime = {
+      maxHp: Math.max(1, CFG.player.hp + m.maxHpDelta),
+      playerSpeed: CFG.player.speed * m.moveSpeedMult,
+      dashSpeed: CFG.player.dashSpeed * m.dashSpeedMult,
+      dashCooldownMs: CFG.player.dashCooldownMs * m.dashCooldownMult,
+      bulletSpeed: CFG.bullet.speed * m.bulletSpeedMult,
+      bulletLifetimeMs: CFG.bullet.lifetimeMs * m.bulletLifetimeMult,
+      fireRateMult: m.fireRateMult,
+      coinDropMult: m.coinDropMult,
+      magnetRadius: CFG.coin.magnetRadius * m.magnetRangeMult,
+      comboResetMs: CFG.combo.resetMs + m.comboResetMsDelta,
+      luckyChance: m.luckyChance,
+    };
   }
 
   spawnPlayer() {
@@ -335,6 +353,15 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setVisible(false);
 
+    this.giftHud = this.add
+      .text(CFG.arena.width / 2, 58, '', {
+        ...style,
+        fontSize: '14px',
+        color: '#ff80ab',
+      })
+      .setOrigin(0.5, 0)
+      .setVisible(false);
+
     this.cheatBg = this.add
       .rectangle(
         CFG.arena.width / 2,
@@ -403,6 +430,7 @@ export default class GameScene extends Phaser.Scene {
     this.despawnExpiredBullets(time);
     this.maybeDecayCombo(time);
     this.updateShield(time);
+    this.updateTempMod(time);
     this.maybeStartNextWave();
     this.updateHUD(time);
   }
@@ -1671,6 +1699,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.barrel.setVisible(false);
     this.physics.pause();
     if (this.shieldPickup) this.despawnShieldBonus();
+    if (this.giftPickup) this.despawnGift();
     if (this.shieldActive) this.endShield();
     const saved = Save.recordRun({
       wave: this.wave,
@@ -1925,6 +1954,146 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  scheduleNextGift() {
+    if (this.gameOver) return;
+    const delay = Phaser.Math.Between(CFG.gift.spawnDelayMinMs, CFG.gift.spawnDelayMaxMs);
+    this.time.delayedCall(delay, () => this.spawnGift());
+  }
+
+  spawnGift() {
+    if (this.gameOver) return;
+    if (this.giftPickup) return;
+
+    const pad = CFG.gift.edgePadding;
+    const x = Phaser.Math.Between(pad, CFG.arena.width - pad);
+    const y = Phaser.Math.Between(pad, CFG.arena.height - pad);
+    const size = CFG.gift.radius * 2;
+
+    const box = this.add.rectangle(x, y, size, size, CFG.gift.color);
+    box.setStrokeStyle(3, 0xffffff, 0.9);
+    this.physics.add.existing(box);
+    box.body.setImmovable(true);
+    // Ribbon cross (visual only) kept in sync via the shared pulse tween.
+    const ribbonV = this.add.rectangle(x, y, 4, size, 0xffd54f, 0.95);
+    const ribbonH = this.add.rectangle(x, y, size, 4, 0xffd54f, 0.95);
+    box.ribbons = [ribbonV, ribbonH];
+
+    box.pulseTween = this.tweens.add({
+      targets: [box, ribbonV, ribbonH],
+      scale: { from: 0.85, to: 1.15 },
+      duration: 550,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+
+    this.giftPickup = box;
+
+    this.giftPickupOverlap = this.physics.add.overlap(
+      this.player.sprite,
+      box,
+      this.pickupGift,
+      null,
+      this,
+    );
+
+    this.giftWarnEvent = this.time.delayedCall(
+      CFG.gift.lifetimeMs - CFG.gift.warnLastMs,
+      () => {
+        if (!this.giftPickup) return;
+        this.tweens.add({
+          targets: [this.giftPickup, ...this.giftPickup.ribbons],
+          alpha: { from: 1, to: 0.25 },
+          duration: 180,
+          yoyo: true,
+          repeat: -1,
+        });
+      },
+    );
+
+    this.giftDespawnEvent = this.time.delayedCall(CFG.gift.lifetimeMs, () => {
+      this.despawnGift();
+      this.scheduleNextGift();
+    });
+  }
+
+  pickupGift(playerSprite, pickup) {
+    if (!this.giftPickup || pickup !== this.giftPickup) return;
+    this.clearGiftTimers();
+    this.destroyGiftPickup();
+    playSfx(this, 'gift');
+    this.grantRandomMod();
+    this.scheduleNextGift();
+  }
+
+  despawnGift() {
+    if (!this.giftPickup) return;
+    this.clearGiftTimers();
+    this.destroyGiftPickup();
+  }
+
+  destroyGiftPickup() {
+    if (!this.giftPickup) return;
+    this.giftPickup.pulseTween?.stop();
+    (this.giftPickup.ribbons || []).forEach((r) => r.destroy());
+    this.giftPickup.destroy();
+    this.giftPickup = null;
+  }
+
+  clearGiftTimers() {
+    if (this.giftDespawnEvent) { this.giftDespawnEvent.remove(false); this.giftDespawnEvent = null; }
+    if (this.giftWarnEvent) { this.giftWarnEvent.remove(false); this.giftWarnEvent = null; }
+    if (this.giftPickupOverlap) { this.giftPickupOverlap.destroy(); this.giftPickupOverlap = null; }
+  }
+
+  // Grant a random mod the player is NOT already using (loadout or active gift).
+  grantRandomMod() {
+    const used = new Set((Save.get().loadout?.mods || []).filter(Boolean));
+    if (this.tempMod) used.add(this.tempMod.id);
+    const pool = MODS.filter((m) => !used.has(m.id));
+    if (!pool.length) {
+      this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, 'GIFT!', '#ff80ab');
+      return;
+    }
+    const mod = pool[Phaser.Math.Between(0, pool.length - 1)];
+    this.activateTempMod(mod);
+  }
+
+  activateTempMod(mod) {
+    this.clearTempPhoenix();
+    this.tempMod = mod;
+    this.tempModEndsAt = this.time.now + CFG.gift.durationMs;
+    this.computeRuntime(mod.id);
+    this.player.hp = Math.min(this.player.hp, this.runtime.maxHp);
+    if (mod.id === 'phoenix') {
+      this.phoenixCharges += 1;
+      this.tempPhoenixActive = true;
+    }
+    this.giftHud.setVisible(true);
+    this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, `+ ${mod.name}`, '#ff80ab');
+  }
+
+  expireTempMod() {
+    if (!this.tempMod) return;
+    this.clearTempPhoenix();
+    this.tempMod = null;
+    this.tempModEndsAt = 0;
+    this.computeRuntime();
+    this.player.hp = Math.min(this.player.hp, this.runtime.maxHp);
+    this.giftHud.setVisible(false);
+  }
+
+  clearTempPhoenix() {
+    if (!this.tempPhoenixActive) return;
+    this.tempPhoenixActive = false;
+    if (this.phoenixCharges > 0) this.phoenixCharges -= 1;
+  }
+
+  updateTempMod(time) {
+    if (!this.tempMod) return;
+    if (time >= this.tempModEndsAt) this.expireTempMod();
+  }
+
   onKeyDown(event) {
     if (event.key === '`' || event.code === 'Backquote') {
       event.preventDefault?.();
@@ -2092,6 +2261,11 @@ export default class GameScene extends Phaser.Scene {
       this.shieldHud.setText(
         `\u{1F6E1} SHIELD  hits: ${this.shieldHitsRemaining}/${CFG.shieldBonus.maxHits}  ${secs}s`,
       );
+    }
+
+    if (this.tempMod) {
+      const secs = Math.max(0, (this.tempModEndsAt - time) / 1000).toFixed(1);
+      this.giftHud.setText(`\u{1F381} ${this.tempMod.name}  ${secs}s`);
     }
   }
 }
