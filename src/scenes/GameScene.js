@@ -1742,6 +1742,15 @@ export default class GameScene extends Phaser.Scene {
     this.cheatPromptActive = false;
     this.physics.resume();
     this.time.paused = false;
+    // Record the run on exit just like death does. Coins are already credited
+    // to the wallet live during play, so persistCoins is false to avoid
+    // double-counting; this still saves stats and the lifetime coin total.
+    Save.recordRun({
+      wave: this.wave,
+      score: this.score,
+      coinsEarned: this.coinsThisRun,
+      persistCoins: false,
+    });
     this.scene.start('MainMenuScene');
   }
 
