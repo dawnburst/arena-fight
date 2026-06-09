@@ -76,6 +76,7 @@ export default class GameScene extends Phaser.Scene {
     this.runtime = {
       maxHp: Math.max(1, CFG.player.hp + this.modStats.maxHpDelta),
       playerSpeed: CFG.player.speed * this.modStats.moveSpeedMult,
+      dashSpeed: CFG.player.dashSpeed * this.modStats.dashSpeedMult,
       dashCooldownMs: CFG.player.dashCooldownMs * this.modStats.dashCooldownMult,
       bulletSpeed: CFG.bullet.speed * this.modStats.bulletSpeedMult,
       bulletLifetimeMs: CFG.bullet.lifetimeMs * this.modStats.bulletLifetimeMult,
@@ -559,8 +560,8 @@ export default class GameScene extends Phaser.Scene {
     const body = this.player.sprite.body;
     if (time < this.player.dashEndsAt) {
       body.setVelocity(
-        this.player.dashDir.x * CFG.player.dashSpeed,
-        this.player.dashDir.y * CFG.player.dashSpeed,
+        this.player.dashDir.x * this.runtime.dashSpeed,
+        this.player.dashDir.y * this.runtime.dashSpeed,
       );
     } else {
       body.setVelocity(vx * this.runtime.playerSpeed, vy * this.runtime.playerSpeed);
