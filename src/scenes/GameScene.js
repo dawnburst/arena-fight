@@ -563,6 +563,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (time < this.player.nextFireAt) return;
+
+    const weaponMods = weapon.fire.bulletMods;
+    if (!useBuff && weaponMods && weaponMods.hitscan) {
+      this.fireLaser(time);
+      this.player.nextFireAt = time + weapon.fire.rateMs * this.runtime.fireRateMult;
+      return;
+    }
+
     const angles = useBuff ? level.angles : weapon.fire.angles;
     for (const offsetDeg of angles) {
       this.fireBullet(time, offsetDeg);
@@ -570,6 +578,53 @@ export default class GameScene extends Phaser.Scene {
     this.playWeaponSfx(time);
     const baseRate = useBuff ? level.fireRateMs : weapon.fire.rateMs;
     this.player.nextFireAt = time + baseRate * this.runtime.fireRateMult;
+  }
+
+  fireLaser(time) {
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    const angle = this.aimAngle;
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+    const reach = CFG.arena.width + CFG.arena.height;
+    const ex = px + dirX * reach;
+    const ey = py + dirY * reach;
+
+    this.player.shootUntil = time + 90;
+
+    const pad = CFG.bullet.radius + 4;
+    const targets = this.enemies.getChildren().slice();
+    for (const enemy of targets) {
+      if (!enemy.active) continue;
+      const r = (enemy.body && enemy.body.radius ? enemy.body.radius : 12) + pad;
+      if (this.pointToSegmentDistance(enemy.x, enemy.y, px, py, ex, ey) <= r) {
+        this.damageEnemy(enemy, px, py, 1);
+      }
+    }
+    this.maybeStartNextWave();
+
+    playSfx(this, 'laser', 0.7);
+
+    const beam = this.add.graphics().setDepth(4.6);
+    beam.lineStyle(6, 0x29b6f6, 0.3);
+    beam.lineBetween(px, py, ex, ey);
+    beam.lineStyle(3, 0x4fc3f7, 0.85);
+    beam.lineBetween(px, py, ex, ey);
+    beam.lineStyle(1, 0xffffff, 1);
+    beam.lineBetween(px, py, ex, ey);
+    this.tweens.add({ targets: beam, alpha: 0, duration: 150, onComplete: () => beam.destroy() });
+  }
+
+  pointToSegmentDistance(px, py, ax, ay, bx, by) {
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+    const lenSq = abx * abx + aby * aby || 1;
+    const t = Phaser.Math.Clamp((apx * abx + apy * aby) / lenSq, 0, 1);
+    const cx = ax + abx * t;
+    const cy = ay + aby * t;
+    return Math.hypot(px - cx, py - cy);
   }
 
   fireWeaponShot(time) {
