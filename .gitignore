@@ -5,6 +5,7 @@ dist/
 *.log
 .vite/
 verify_game.mjs
+plan_docs/
 
 # Claude Code local state — keep skills + project settings committed
 .claude/projects/
