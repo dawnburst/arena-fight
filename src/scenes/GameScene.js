@@ -188,9 +188,11 @@ export default class GameScene extends Phaser.Scene {
     );
 
     this.createEnemyAnimations();
+    this.createBoomerangTexture();
     this.createHUD();
 
     this.input.keyboard.on('keydown', this.onKeyDown, this);
+    this.input.on('pointerdown', this.onPointerDown, this);
 
     this.startNextWave();
     this.scheduleNextBonus();
@@ -233,6 +235,35 @@ export default class GameScene extends Phaser.Scene {
         });
       }
     }
+  }
+
+  createBoomerangTexture() {
+    if (this.textures.exists('boomerang-bullet')) return;
+    const g = this.add.graphics();
+    const points = [
+      { x: 4, y: 7 }, { x: 16, y: 15 }, { x: 28, y: 7 },
+      { x: 25, y: 13 }, { x: 16, y: 22 }, { x: 7, y: 13 },
+    ];
+    g.fillStyle(0x29b6f6, 1);
+    g.fillPoints(points, true);
+    g.lineStyle(2, 0xe1f5fe, 1);
+    g.strokePoints(points, true);
+    g.generateTexture('boomerang-bullet', 32, 32);
+    g.destroy();
+  }
+
+  onPointerDown() {
+    if (this.paused || this.gameOver || this.cheatPromptActive) return;
+    this.recallBoomerangs();
+  }
+
+  recallBoomerangs() {
+    this.bullets.getChildren().forEach((bullet) => {
+      if (bullet.isBoomerang && !bullet.recalled) {
+        bullet.recalled = true;
+        bullet.bulletReturned = true;
+      }
+    });
   }
 
   createHUD() {
@@ -374,6 +405,28 @@ export default class GameScene extends Phaser.Scene {
     this.bullets.getChildren().forEach((bullet) => {
       const mods = bullet.bulletMods;
       if (!mods) return;
+      if (bullet.isBoomerang) {
+        if (bullet.recalled) {
+          const px = this.player.sprite.x;
+          const py = this.player.sprite.y;
+          const dx = px - bullet.x;
+          const dy = py - bullet.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const recallSpeed = bullet.bulletSpeed * 1.9;
+          bullet.body.setVelocity((dx / dist) * recallSpeed, (dy / dist) * recallSpeed);
+          if (dist < 20) { bullet.destroy(); return; }
+        } else if (mods.returningAfterMs && !bullet.bulletReturned
+          && time - bullet.bulletBornAt >= mods.returningAfterMs) {
+          bullet.bulletReturned = true;
+          bullet.body.setVelocity(-bullet.body.velocity.x, -bullet.body.velocity.y);
+        }
+        if (bullet.visual) {
+          bullet.visual.x = bullet.x;
+          bullet.visual.y = bullet.y;
+          bullet.visual.rotation += 0.45;
+        }
+        return;
+      }
       if (mods.returningAfterMs && !bullet.bulletReturned) {
         if (time - bullet.bulletBornAt >= mods.returningAfterMs) {
           bullet.bulletReturned = true;
@@ -675,6 +728,16 @@ export default class GameScene extends Phaser.Scene {
     bullet.bulletBornAt = time;
     bullet.bulletReturned = false;
     bullet.isHomingSecond = !!mods.homingSecondShot && offsetDeg > 0;
+    bullet.isBoomerang = !!mods.boomerang;
+    bullet.recalled = false;
+
+    if (bullet.isBoomerang) {
+      bullet.setVisible(false);
+      const visual = this.add.image(spawnX, spawnY, 'boomerang-bullet').setDepth(4.7);
+      visual.setScale((radius / 8) * 0.9);
+      bullet.visual = visual;
+      bullet.once('destroy', () => { if (bullet.visual) bullet.visual.destroy(); });
+    }
   }
 
   despawnExpiredBullets(time) {

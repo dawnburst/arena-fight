@@ -73,8 +73,8 @@ export const WEAPONS = [
     name: 'Boomerang',
     tier: 'epic',
     price: 7200,
-    description: 'Returns after 500ms. Damages on the way back.',
-    fire: { rateMs: 700, angles: [0], bulletMods: { returningAfterMs: 500, piercing: true } },
+    description: 'Large blue boomerang that pierces. Click fire again to recall it faster.',
+    fire: { rateMs: 700, angles: [0], bulletMods: { returningAfterMs: 500, piercing: true, boomerang: true, sizeMult: 2.2 } },
   },
   {
     id: 'beam',
