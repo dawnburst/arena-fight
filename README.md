@@ -1,8 +1,8 @@
 # Arena Fight
 
-A top-down arena shooter for the browser, inspired by *Onslaught! Arena*. **Phase 1 prototype** — primitive shapes, one enemy type, escalating waves, combo scoring, dash. No audio, no art, just feel.
+A browser-based retro arena shooter built with Phaser 3 and Vite. Survive escalating monster waves, collect coins, buy weapons and mods, tune your loadout, and push for a higher wave.
 
-See [`plan-game.md`](./plan-game.md) for the full design and implementation plan.
+See [`CODEBASE.md`](./CODEBASE.md) for the current implementation map.
 
 ## Run
 
@@ -29,8 +29,17 @@ npm run preview
 | Fire (hold) | Left mouse button |
 | Dash | `Space` |
 | Pause / Resume | `P` or `Esc` |
-| Restart (on game over) | `R` |
+| Cheat screen | `` ` `` |
+| Menu navigation | Mouse or arrow keys + `Enter` |
+
+## Settings
+
+The Settings menu lets you choose the arena background and control the looping background music:
+
+- Music on/off toggle.
+- Volume slider.
+- Keyboard shortcuts: `M` toggles music, `+` / `-` adjusts volume.
 
 ## Goal
 
-Survive escalating waves of red swarmers. Each kill builds your combo multiplier and your score. Taking damage resets the combo. Use dash to phase through enemies (brief invulnerability). See how far you can push the wave counter.
+Survive escalating waves of monsters. Each kill builds your score, coins persist in your wallet, and store upgrades help future runs.

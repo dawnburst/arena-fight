@@ -19,6 +19,7 @@ Important files:
 - `src/catalog.js` contains weapons and mods.
 - `src/enemies.js` contains enemy sprite metadata and monster-menu copy.
 - `src/save.js` contains localStorage persistence.
+- `src/audio.js` owns shared background music loading and setting synchronization.
 
 Read `CODEBASE.md` for a broad map, but verify against source before changing behavior because implementation may move faster than the documentation.
 
@@ -51,7 +52,7 @@ If the change is documentation-only, no build is required.
 - Prefer existing project patterns over new architecture.
 - Keep gameplay values configurable through `src/config.js` where practical.
 - Keep persistent state changes centralized in `src/save.js`.
-- Keep static images and sprite sheets under `public/assets/...`.
+- Keep static images, sprite sheets, and music under `public/assets/...`.
 - Use Phaser scene transitions rather than DOM overlays for in-game screens.
 
 ## Documentation Maintenance
@@ -68,7 +69,7 @@ Update them when changing:
 - Scene flow, boot order, menus, or game-over behavior.
 - Enemy roster, monster-menu details, wave appearance rules, weapons, mods, or power-ups.
 - Save schema, wallet persistence, store/loadout logic, or settings.
-- Asset locations, generated images, sprite dimensions, or loading conventions.
+- Asset locations, generated images, music, sprite dimensions, or loading conventions.
 - Development, build, preview, verification, or deployment commands.
 
 If a rule belongs in both Claude and Codex instructions, update both `CLAUDE.md` and `AGENTS.md` together.
@@ -86,4 +87,3 @@ For visual changes:
 1. Check the affected screen at the fixed `800x600` canvas.
 2. Ensure text is readable and does not overlap important UI or gameplay.
 3. Keep the retro game feel unless the user explicitly asks for a different style.
-
