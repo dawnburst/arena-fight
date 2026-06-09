@@ -4,7 +4,7 @@ import { Save } from '../save.js';
 import { getWeapon, buildRuntimeStats } from '../catalog.js';
 import { ARENA_BACKGROUNDS, backgroundKey, backgroundPath, resolveBackground } from '../backgrounds.js';
 import { ENEMY_SPRITES } from '../enemies.js';
-import { preloadMusic, syncMusic } from '../audio.js';
+import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
 
 const PLAYER_DIRECTIONS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 const PLAYER_POSES = ['idle', 'walk1', 'walk2', 'dash', 'hit', 'death'];
@@ -52,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
       }
     }
     preloadMusic(this);
+    preloadSfx(this);
   }
 
   create() {
@@ -91,6 +92,7 @@ export default class GameScene extends Phaser.Scene {
     this.coinsThisRun = 0;
     this.burstShotsRemaining = 0;
     this.burstNextAt = 0;
+    this.lastLaserSfxAt = -Infinity;
 
     this.aimAngle = 0;
     this.lastMoveDir = { x: 1, y: 0 };
@@ -250,8 +252,8 @@ export default class GameScene extends Phaser.Scene {
     this.pauseText = this.add
       .text(
         CFG.arena.width / 2,
-        CFG.arena.height / 2,
-        'PAUSED\n(press P / Esc to resume)',
+        CFG.arena.height / 2 - 34,
+        'PAUSED\nP / Esc resume',
         {
           ...style,
           fontSize: '28px',
@@ -260,6 +262,19 @@ export default class GameScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
       .setVisible(false);
+    this.pauseExitButton = this.add
+      .text(CFG.arena.width / 2, CFG.arena.height / 2 + 78, 'EXIT TO MENU   [M]', {
+        ...style,
+        fontSize: '20px',
+        color: '#ffd54f',
+      })
+      .setOrigin(0.5)
+      .setVisible(false)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.exitToMainMenu())
+      .on('pointerover', () => this.pauseExitButton.setColor('#ffffff'))
+      .on('pointerout', () => this.pauseExitButton.setColor('#ffd54f'));
+    this.pauseExitButton.disableInteractive();
 
     this.dashCdText = this.add
       .text(CFG.arena.width / 2, CFG.arena.height - 18, '', {
@@ -507,6 +522,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.dashEndsAt = time + CFG.player.dashDurationMs;
     this.player.dashReadyAt = time + this.runtime.dashCooldownMs;
     this.player.invulnerableUntil = this.player.dashEndsAt;
+    playSfx(this, 'dash');
 
     this.tweens.add({
       targets: this.player.sprite,
@@ -551,6 +567,7 @@ export default class GameScene extends Phaser.Scene {
     for (const offsetDeg of angles) {
       this.fireBullet(time, offsetDeg);
     }
+    this.playWeaponSfx(time);
     const baseRate = useBuff ? level.fireRateMs : weapon.fire.rateMs;
     this.player.nextFireAt = time + baseRate * this.runtime.fireRateMult;
   }
@@ -562,6 +579,14 @@ export default class GameScene extends Phaser.Scene {
     for (const offsetDeg of angles) {
       this.fireBullet(time, offsetDeg);
     }
+    this.playWeaponSfx(time);
+  }
+
+  playWeaponSfx(time) {
+    if (!['beam', 'plasma'].includes(this.weaponDef.id)) return;
+    if (time - this.lastLaserSfxAt < 120) return;
+    this.lastLaserSfxAt = time;
+    playSfx(this, 'laser', this.weaponDef.id === 'beam' ? 0.45 : 0.8);
   }
 
   fireBullet(time, offsetDeg = 0) {
@@ -1349,6 +1374,7 @@ export default class GameScene extends Phaser.Scene {
     coin.destroy();
     this.coinsThisRun += 1;
     Save.addToWallet(1);
+    playSfx(this, 'coin');
     this.updateHUD(this.time.now);
   }
 
@@ -1493,6 +1519,7 @@ export default class GameScene extends Phaser.Scene {
 
   endGame() {
     this.gameOver = true;
+    playSfx(this, 'lose');
     this.player.sprite.setTexture(this.playerFrameKey(this.player.facing, 'death'));
     this.player.barrel.setVisible(false);
     this.physics.pause();
@@ -1545,12 +1572,32 @@ export default class GameScene extends Phaser.Scene {
     if (this.paused) {
       this.physics.pause();
       this.time.paused = true;
-      this.pauseText.setVisible(true);
+      this.setPauseMenuVisible(true);
     } else {
       this.physics.resume();
       this.time.paused = false;
-      this.pauseText.setVisible(false);
+      this.setPauseMenuVisible(false);
     }
+  }
+
+  setPauseMenuVisible(visible) {
+    this.pauseText.setVisible(visible);
+    this.pauseExitButton.setVisible(visible);
+    if (visible) {
+      this.pauseExitButton.setInteractive({ useHandCursor: true });
+    } else {
+      this.pauseExitButton.disableInteractive();
+    }
+  }
+
+  exitToMainMenu() {
+    if (this.gameOver) return;
+    this.input.setDefaultCursor('default');
+    this.paused = false;
+    this.cheatPromptActive = false;
+    this.physics.resume();
+    this.time.paused = false;
+    this.scene.start('MainMenuScene');
   }
 
   scheduleNextBonus() {
@@ -1623,6 +1670,7 @@ export default class GameScene extends Phaser.Scene {
     this.bonusPickup.pulseTween?.stop();
     this.bonusPickup.destroy();
     this.bonusPickup = null;
+    playSfx(this, 'gift');
 
     const maxLevel = CFG.bonus.levels.length - 1;
     this.buffLevel = Math.min(this.buffLevel + 1, maxLevel);
@@ -1762,6 +1810,7 @@ export default class GameScene extends Phaser.Scene {
     this.shieldPickup.rotateTween?.stop();
     this.shieldPickup.destroy();
     this.shieldPickup = null;
+    playSfx(this, 'gift');
 
     this.activateShield();
     this.scheduleNextShieldBonus();
@@ -1856,6 +1905,11 @@ export default class GameScene extends Phaser.Scene {
       else this.openCheat();
       return;
     }
+    if (this.paused && !this.cheatPromptActive && (event.key === 'm' || event.key === 'M')) {
+      event.preventDefault?.();
+      this.exitToMainMenu();
+      return;
+    }
     if (!this.cheatPromptActive) return;
     if (event.key === 'Enter') {
       this.submitCheat();
@@ -1887,7 +1941,7 @@ export default class GameScene extends Phaser.Scene {
       this.physics.pause();
       this.time.paused = true;
     }
-    this.pauseText.setVisible(false);
+    this.setPauseMenuVisible(false);
     this.cheatBg.setVisible(true);
     this.cheatTitle.setVisible(true);
     this.cheatInput.setVisible(true);
@@ -1903,7 +1957,7 @@ export default class GameScene extends Phaser.Scene {
     this.cheatInput.setVisible(false);
     this.cheatHint.setVisible(false);
     if (this.preCheatPaused) {
-      this.pauseText.setVisible(true);
+      this.setPauseMenuVisible(true);
     } else {
       this.physics.resume();
       this.time.paused = false;

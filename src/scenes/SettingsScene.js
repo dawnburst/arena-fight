@@ -92,7 +92,7 @@ export default class SettingsScene extends Phaser.Scene {
     this.hintText = this.add.text(
       CFG.arena.width / 2,
       CFG.arena.height - 38,
-      '←/→ select  •  enter apply  •  M music  •  +/- volume  •  B / Esc back',
+      '←/→ select  •  enter apply  •  M music  •  S sound  •  B / Esc back',
       { ...style, fontSize: '13px', color: '#cccccc' },
     ).setOrigin(0.5);
 
@@ -131,6 +131,11 @@ export default class SettingsScene extends Phaser.Scene {
       this.toggleMusic();
       return;
     }
+    if (event.key === 's' || event.key === 'S') {
+      event.preventDefault?.();
+      this.toggleSfx();
+      return;
+    }
     if (event.key === '+' || event.key === '=') {
       event.preventDefault?.();
       this.setMusicVolume((Save.get().settings?.musicVolume ?? 0.55) + 0.05);
@@ -155,35 +160,52 @@ export default class SettingsScene extends Phaser.Scene {
 
   createMusicControls(style) {
     const x = 36;
-    const y = 408;
+    const y = 392;
     const width = 724;
-    const height = 104;
+    const height = 132;
+    const checkX = x + 124;
+    const titleY = y + 18;
+    const checkY = titleY - 1;
+    const musicRowY = y + 50;
+    const sfxTitleY = y + 72;
+    const sfxCheckY = sfxTitleY - 1;
+    const sfxRowY = y + 104;
+    const sliderX = x + 356;
+    const sliderWidth = 220;
 
-    this.musicFrame = this.add.graphics();
+    this.audioFrame = this.add.graphics();
     this.musicCheck = this.add.graphics();
     this.musicSlider = this.add.graphics();
-    this.musicTitle = this.add.text(x + 24, y + 18, 'MUSIC', {
+    this.sfxCheck = this.add.graphics();
+    this.sfxSlider = this.add.graphics();
+    this.musicTitle = this.add.text(x + 24, titleY, 'MUSIC', {
       ...style,
       fontSize: '20px',
       color: '#ffd54f',
     });
-    this.musicStatus = this.add.text(x + 24, y + 54, '', {
+    this.musicVolumeText = this.add.text(sliderX - 18, checkY + 5, '', {
       ...style,
       fontSize: '14px',
-      color: '#d7f5c3',
+      color: '#ffffff',
+    }).setOrigin(1, 0);
+    this.sfxTitle = this.add.text(x + 24, sfxTitleY, 'SOUND', {
+      ...style,
+      fontSize: '20px',
+      color: '#ffd54f',
     });
-    this.musicVolumeText = this.add.text(x + 522, y + 54, '', {
+    this.sfxVolumeText = this.add.text(sliderX - 18, sfxCheckY + 5, '', {
       ...style,
       fontSize: '14px',
       color: '#ffffff',
     }).setOrigin(1, 0);
 
-    this.musicToggleZone = this.add.zone(x + 24, y + 50, 220, 36)
+    this.musicToggleZone = this.add.zone(x + 24, titleY - 4, 150, 34)
       .setOrigin(0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.toggleMusic());
 
-    this.musicSliderBounds = new Phaser.Geom.Rectangle(x + 548, y + 50, 176, 24);
+    this.musicCheckBounds = new Phaser.Geom.Rectangle(checkX, checkY, 28, 28);
+    this.musicSliderBounds = new Phaser.Geom.Rectangle(sliderX, checkY + 2, sliderWidth, 24);
     this.musicSliderZone = this.add.zone(
       this.musicSliderBounds.x,
       this.musicSliderBounds.y - 8,
@@ -197,16 +219,30 @@ export default class SettingsScene extends Phaser.Scene {
         if (pointer.isDown) this.setMusicVolumeFromPointer(pointer);
       });
 
-    this.musicHelp = this.add.text(x + width - 24, y + 18, 'looping background track', {
-      ...style,
-      fontSize: '12px',
-      color: '#bfbfbf',
-    }).setOrigin(1, 0);
+    this.sfxToggleZone = this.add.zone(x + 24, sfxTitleY - 4, 150, 34)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.toggleSfx());
 
-    this.musicFrame.fillStyle(0x121812, 0.9);
-    this.musicFrame.fillRoundedRect(x, y, width, height, 8);
-    this.musicFrame.lineStyle(2, 0x4f704f, 1);
-    this.musicFrame.strokeRoundedRect(x, y, width, height, 8);
+    this.sfxCheckBounds = new Phaser.Geom.Rectangle(checkX, sfxCheckY, 28, 28);
+    this.sfxSliderBounds = new Phaser.Geom.Rectangle(sliderX, sfxCheckY + 2, sliderWidth, 24);
+    this.sfxSliderZone = this.add.zone(
+      this.sfxSliderBounds.x,
+      this.sfxSliderBounds.y - 8,
+      this.sfxSliderBounds.width,
+      this.sfxSliderBounds.height + 16,
+    )
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', (pointer) => this.setSfxVolumeFromPointer(pointer))
+      .on('pointermove', (pointer) => {
+        if (pointer.isDown) this.setSfxVolumeFromPointer(pointer);
+      });
+
+    this.audioFrame.fillStyle(0x121812, 0.9);
+    this.audioFrame.fillRoundedRect(x, y, width, height, 8);
+    this.audioFrame.lineStyle(2, 0x4f704f, 1);
+    this.audioFrame.strokeRoundedRect(x, y, width, height, 8);
   }
 
   toggleMusic() {
@@ -226,6 +262,23 @@ export default class SettingsScene extends Phaser.Scene {
     const bounds = this.musicSliderBounds;
     const volume = Phaser.Math.Clamp((pointer.x - bounds.x) / bounds.width, 0, 1);
     this.setMusicVolume(volume);
+  }
+
+  toggleSfx() {
+    const enabled = Save.get().settings?.sfxEnabled !== false;
+    Save.setSfxEnabled(!enabled);
+    this.refresh();
+  }
+
+  setSfxVolume(volume) {
+    Save.setSfxVolume(Phaser.Math.Clamp(volume, 0, 1));
+    this.refresh();
+  }
+
+  setSfxVolumeFromPointer(pointer) {
+    const bounds = this.sfxSliderBounds;
+    const volume = Phaser.Math.Clamp((pointer.x - bounds.x) / bounds.width, 0, 1);
+    this.setSfxVolume(volume);
   }
 
   refresh() {
@@ -248,6 +301,7 @@ export default class SettingsScene extends Phaser.Scene {
     });
 
     this.refreshMusicControls();
+    this.refreshSfxControls();
   }
 
   refreshMusicControls() {
@@ -255,33 +309,44 @@ export default class SettingsScene extends Phaser.Scene {
     const settings = Save.get().settings || {};
     const enabled = settings.musicEnabled !== false;
     const volume = Phaser.Math.Clamp(settings.musicVolume ?? 0.55, 0, 1);
-    const bounds = this.musicSliderBounds;
-    const knobX = bounds.x + bounds.width * volume;
 
-    this.musicStatus.setText(enabled ? 'ON' : 'OFF');
-    this.musicStatus.setColor(enabled ? '#69f0ae' : '#ff8a80');
     this.musicVolumeText.setText(`Volume ${Math.round(volume * 100)}%`);
+    this.drawAudioControl(this.musicCheck, this.musicSlider, this.musicCheckBounds, this.musicSliderBounds, enabled, volume);
+  }
 
-    this.musicCheck.clear();
-    this.musicCheck.fillStyle(enabled ? 0x1b3d28 : 0x241818, 1);
-    this.musicCheck.fillRoundedRect(128, 455, 28, 28, 5);
-    this.musicCheck.lineStyle(3, enabled ? 0x69f0ae : 0xff8a80, 1);
-    this.musicCheck.strokeRoundedRect(128, 455, 28, 28, 5);
+  refreshSfxControls() {
+    if (!this.sfxCheck) return;
+    const settings = Save.get().settings || {};
+    const enabled = settings.sfxEnabled !== false;
+    const volume = Phaser.Math.Clamp(settings.sfxVolume ?? 0.75, 0, 1);
+
+    this.sfxVolumeText.setText(`Volume ${Math.round(volume * 100)}%`);
+    this.drawAudioControl(this.sfxCheck, this.sfxSlider, this.sfxCheckBounds, this.sfxSliderBounds, enabled, volume);
+  }
+
+  drawAudioControl(check, slider, checkBounds, sliderBounds, enabled, volume) {
+    const knobX = sliderBounds.x + sliderBounds.width * volume;
+
+    check.clear();
+    check.fillStyle(enabled ? 0x1b3d28 : 0x241818, 1);
+    check.fillRoundedRect(checkBounds.x, checkBounds.y, checkBounds.width, checkBounds.height, 5);
+    check.lineStyle(3, enabled ? 0x69f0ae : 0xff8a80, 1);
+    check.strokeRoundedRect(checkBounds.x, checkBounds.y, checkBounds.width, checkBounds.height, 5);
     if (enabled) {
-      this.musicCheck.lineStyle(4, 0x69f0ae, 1);
-      this.musicCheck.beginPath();
-      this.musicCheck.moveTo(135, 469);
-      this.musicCheck.lineTo(143, 477);
-      this.musicCheck.lineTo(151, 462);
-      this.musicCheck.strokePath();
+      check.lineStyle(4, 0x69f0ae, 1);
+      check.beginPath();
+      check.moveTo(checkBounds.x + 7, checkBounds.y + 14);
+      check.lineTo(checkBounds.x + 15, checkBounds.y + 22);
+      check.lineTo(checkBounds.x + 23, checkBounds.y + 7);
+      check.strokePath();
     }
 
-    this.musicSlider.clear();
-    this.musicSlider.fillStyle(0x0b0f0b, 1);
-    this.musicSlider.fillRoundedRect(bounds.x, bounds.y + 8, bounds.width, 8, 4);
-    this.musicSlider.fillStyle(enabled ? 0x69f0ae : 0x777777, 1);
-    this.musicSlider.fillRoundedRect(bounds.x, bounds.y + 8, Math.max(6, knobX - bounds.x), 8, 4);
-    this.musicSlider.fillStyle(0xffffff, 1);
-    this.musicSlider.fillCircle(knobX, bounds.y + 12, 10);
+    slider.clear();
+    slider.fillStyle(0x0b0f0b, 1);
+    slider.fillRoundedRect(sliderBounds.x, sliderBounds.y + 8, sliderBounds.width, 8, 4);
+    slider.fillStyle(enabled ? 0x69f0ae : 0x777777, 1);
+    slider.fillRoundedRect(sliderBounds.x, sliderBounds.y + 8, Math.max(6, knobX - sliderBounds.x), 8, 4);
+    slider.fillStyle(0xffffff, 1);
+    slider.fillCircle(knobX, sliderBounds.y + 12, 10);
   }
 }

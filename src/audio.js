@@ -3,6 +3,13 @@ import { Save } from './save.js';
 
 export const MUSIC_KEY = 'music-retro-game';
 export const MUSIC_PATH = '/assets/music/retro_game_music.mp3';
+export const SFX = {
+  laser: { key: 'sfx-laser', path: '/assets/sounds/laser.wav', volume: 0.42 },
+  coin: { key: 'sfx-coin', path: '/assets/sounds/coin.wav', volume: 0.5 },
+  dash: { key: 'sfx-dash', path: '/assets/sounds/dash.wav', volume: 0.55 },
+  gift: { key: 'sfx-gift', path: '/assets/sounds/gift.wav', volume: 0.6 },
+  lose: { key: 'sfx-lose', path: '/assets/sounds/lose.wav', volume: 0.7 },
+};
 const MUSIC_MANAGER_KEY = 'backgroundMusicManager';
 const CROSSFADE_MS = 2600;
 const FADE_STEP_MS = 80;
@@ -11,6 +18,25 @@ export function preloadMusic(scene) {
   if (!scene.cache.audio.exists(MUSIC_KEY)) {
     scene.load.audio(MUSIC_KEY, MUSIC_PATH);
   }
+}
+
+export function preloadSfx(scene) {
+  for (const sfx of Object.values(SFX)) {
+    if (!scene.cache.audio.exists(sfx.key)) {
+      scene.load.audio(sfx.key, sfx.path);
+    }
+  }
+}
+
+export function playSfx(scene, id, volumeMult = 1) {
+  const sfx = SFX[id];
+  if (!sfx || scene.sound.locked || !scene.cache.audio.exists(sfx.key)) return;
+  const settings = Save.get().settings || {};
+  if (settings.sfxEnabled === false) return;
+  const sfxVolume = Phaser.Math.Clamp(settings.sfxVolume ?? 0.75, 0, 1);
+  scene.sound.play(sfx.key, {
+    volume: Phaser.Math.Clamp(sfx.volume * volumeMult * sfxVolume, 0, 1),
+  });
 }
 
 export function syncMusic(scene) {
