@@ -41,7 +41,7 @@ export default class StoreScene extends Phaser.Scene {
       .setOrigin(1, 0);
 
     this.tabWeapons = this.add.text(20, 60, '[ WEAPONS ]', { ...style, fontSize: '16px' });
-    this.tabMods = this.add.text(160, 60, 'MODS', { ...style, fontSize: '16px' });
+    this.tabMods = this.add.text(180, 60, 'EQUIPMENT', { ...style, fontSize: '16px' });
 
     this.listGroup = this.add.container(0, 0);
 
@@ -144,7 +144,7 @@ export default class StoreScene extends Phaser.Scene {
     const save = Save.get();
     this.walletText.setText(`¢ ${save.wallet}`);
     this.tabWeapons.setText(this.tab === 'weapons' ? '[ WEAPONS ]' : '  WEAPONS  ');
-    this.tabMods.setText(this.tab === 'mods' ? '[ MODS ]' : '  MODS  ');
+    this.tabMods.setText(this.tab === 'mods' ? '[ EQUIPMENT ]' : '  EQUIPMENT  ');
 
     const source = this.tab === 'weapons' ? WEAPONS : MODS;
     const ownedSet = new Set(this.tab === 'weapons' ? save.ownedWeapons : save.ownedMods);

@@ -3,7 +3,7 @@ import { CFG } from '../config.js';
 import { Save } from '../save.js';
 import { WEAPONS, MODS, WEAPONS_BY_ID, MODS_BY_ID, TIER_COLORS } from '../catalog.js';
 
-const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'MOD 1', 'MOD 2'];
+const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'EQUIPMENT 1', 'EQUIPMENT 2'];
 // Shares the StoreScene icon key scheme so textures are reused once loaded.
 const itemIconKey = (id) => `store-item-${id}`;
 
@@ -39,7 +39,7 @@ export default class LoadoutScene extends Phaser.Scene {
     };
 
     this.add.text(20, 16, 'LOADOUT', { ...style, fontSize: '28px' });
-    this.add.text(20, 56, 'pick up to 2 weapons and up to 2 mods for your next run', {
+    this.add.text(20, 56, 'pick up to 2 weapons and up to 2 equipment for your next run', {
       ...style, fontSize: '14px', color: '#aaaaaa',
     });
 
@@ -52,11 +52,11 @@ export default class LoadoutScene extends Phaser.Scene {
       const y = 120 + i * 84;
       const label = this.add.text(40, y, SLOT_LABELS[i], { ...style, fontSize: '16px', color: '#888' });
       const frame = this.add
-        .rectangle(150, y + 14, 50, 50, 0x101010, 1)
+        .rectangle(200, y + 14, 50, 50, 0x101010, 1)
         .setStrokeStyle(2, 0x444444, 1);
-      const icon = this.add.image(150, y + 14, '__DEFAULT').setDisplaySize(44, 44).setVisible(false);
-      const value = this.add.text(190, y, '', { ...style, fontSize: '24px' });
-      const desc = this.add.text(190, y + 32, '', { ...style, fontSize: '13px', color: '#bbb', wordWrap: { width: 540 } });
+      const icon = this.add.image(200, y + 14, '__DEFAULT').setDisplaySize(44, 44).setVisible(false);
+      const value = this.add.text(255, y, '', { ...style, fontSize: '24px' });
+      const desc = this.add.text(255, y + 32, '', { ...style, fontSize: '13px', color: '#bbb', wordWrap: { width: 510 } });
       this.slotTexts.push(label);
       this.slotIcons.push({ frame, icon });
       this.slotValues.push(value);
@@ -178,7 +178,7 @@ export default class LoadoutScene extends Phaser.Scene {
       } else {
         this.slotValues[i + 2].setText('< (empty) >');
         this.slotValues[i + 2].setColor('#666');
-        this.slotDescs[i + 2].setText('no mod equipped in this slot');
+        this.slotDescs[i + 2].setText('no equipment in this slot');
       }
       this.setSlotIcon(i + 2, id, mod?.tier);
     }
