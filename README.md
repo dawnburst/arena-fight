@@ -38,7 +38,10 @@ The Settings menu lets you choose the arena background and control the looping b
 
 - Music on/off toggle.
 - Volume slider.
+- Sound effects on/off toggle.
+- Sound effects volume slider.
 - Keyboard shortcuts: `M` toggles music, `+` / `-` adjusts volume.
+- Gameplay sound effects play for coins, dash, gifts, game over, and Beam/Plasma shots.
 
 ## Goal
 

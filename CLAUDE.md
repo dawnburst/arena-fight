@@ -29,7 +29,7 @@ npm run preview
 - Keep changes scoped to the requested feature or bug fix.
 - Preserve user work in the working tree. Do not revert unrelated edits.
 - Use existing Phaser scene patterns and config-driven tuning before adding new abstractions.
-- Put static game assets under `public/assets/...` and load them with root-relative paths such as `/assets/intro/intro.png` or `/assets/music/retro_game_music.mp3`.
+- Put static game assets under `public/assets/...` and load them with root-relative paths such as `/assets/intro/intro.png`, `/assets/music/retro_game_music.mp3`, or `/assets/sounds/coin.wav`.
 - Keep persistent player state in `src/save.js` and avoid creating new localStorage keys unless there is a migration plan.
 - Prefer changing `src/config.js` for gameplay tuning values such as wave timing, enemy appearance waves, prices, movement, and coin behavior.
 - For visual UI work, keep the game-first retro style and verify text does not overlap at the fixed `800x600` canvas size.
@@ -52,5 +52,5 @@ At minimum, check whether `CODEBASE.md`, `README.md`, `CLAUDE.md`, and `AGENTS.m
 - `MainMenuScene` is the single menu and also renders game-over details when reached after death.
 - `GameScene` owns gameplay and records completed runs before returning to `MainMenuScene`.
 - Store, loadout, settings, and monsters are separate scenes reached from the main menu.
-- Background music is loaded through `src/audio.js`; its enabled state and volume persist in `Save.settings`.
+- Background music and gameplay sound effects are loaded through `src/audio.js`; music and sound-effect enabled state and volume persist in `Save.settings`.
 - The saved wallet should survive death; avoid double-crediting coins at game over.

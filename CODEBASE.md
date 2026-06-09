@@ -13,8 +13,10 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - The game now boots through `IntroScene`, using `/assets/intro/intro.png`, then transitions to `MainMenuScene`.
 - `MainMenuScene` is the only menu flow and also renders game-over details after death.
 - Music is loaded from `/assets/music/retro_game_music.mp3` through `src/audio.js`.
+- Sound effects are loaded from `/assets/sounds/*.wav` through `src/audio.js` and played from `GameScene` gameplay hooks.
 - Music settings persist in `Save.settings` as `musicEnabled` and `musicVolume`.
-- `SettingsScene` controls arena background, music on/off, and music volume.
+- Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
+- `SettingsScene` controls arena background, music on/off and volume, and sound-effect on/off and volume.
 - Static generated assets live under `public/assets/...`; Windows `*:Zone.Identifier` sidecars are ignored.
 
 ---

@@ -19,7 +19,7 @@ Important files:
 - `src/catalog.js` contains weapons and mods.
 - `src/enemies.js` contains enemy sprite metadata and monster-menu copy.
 - `src/save.js` contains localStorage persistence.
-- `src/audio.js` owns shared background music loading and setting synchronization.
+- `src/audio.js` owns shared background music loading, setting synchronization, and gameplay sound-effect helpers.
 
 Read `CODEBASE.md` for a broad map, but verify against source before changing behavior because implementation may move faster than the documentation.
 
