@@ -1,13 +1,26 @@
 import Phaser from 'phaser';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
-import { WEAPONS_BY_ID, MODS_BY_ID, TIER_COLORS } from '../catalog.js';
+import { WEAPONS, MODS, WEAPONS_BY_ID, MODS_BY_ID, TIER_COLORS } from '../catalog.js';
 
 const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'MOD 1', 'MOD 2'];
+// Shares the StoreScene icon key scheme so textures are reused once loaded.
+const itemIconKey = (id) => `store-item-${id}`;
 
 export default class LoadoutScene extends Phaser.Scene {
   constructor() {
     super('LoadoutScene');
+  }
+
+  preload() {
+    // Free items (the default Pistol) have no icon asset, so skip them.
+    for (const item of [...WEAPONS, ...MODS]) {
+      if (item.price <= 0) continue;
+      const key = itemIconKey(item.id);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, `/assets/items/${item.id}.png`);
+      }
+    }
   }
 
   create() {
@@ -31,15 +44,21 @@ export default class LoadoutScene extends Phaser.Scene {
     });
 
     this.slotTexts = [];
+    this.slotIcons = [];
     this.slotValues = [];
     this.slotDescs = [];
 
     for (let i = 0; i < SLOT_LABELS.length; i++) {
       const y = 120 + i * 84;
       const label = this.add.text(40, y, SLOT_LABELS[i], { ...style, fontSize: '16px', color: '#888' });
-      const value = this.add.text(180, y, '', { ...style, fontSize: '24px' });
-      const desc = this.add.text(180, y + 32, '', { ...style, fontSize: '13px', color: '#bbb', wordWrap: { width: 560 } });
+      const frame = this.add
+        .rectangle(150, y + 14, 50, 50, 0x101010, 1)
+        .setStrokeStyle(2, 0x444444, 1);
+      const icon = this.add.image(150, y + 14, '__DEFAULT').setDisplaySize(44, 44).setVisible(false);
+      const value = this.add.text(190, y, '', { ...style, fontSize: '24px' });
+      const desc = this.add.text(190, y + 32, '', { ...style, fontSize: '13px', color: '#bbb', wordWrap: { width: 540 } });
       this.slotTexts.push(label);
+      this.slotIcons.push({ frame, icon });
       this.slotValues.push(value);
       this.slotDescs.push(desc);
     }
@@ -115,6 +134,18 @@ export default class LoadoutScene extends Phaser.Scene {
     this.refresh();
   }
 
+  setSlotIcon(i, id, tier) {
+    const { frame, icon } = this.slotIcons[i];
+    const key = id ? itemIconKey(id) : null;
+    if (key && this.textures.exists(key)) {
+      icon.setTexture(key).setDisplaySize(44, 44).setVisible(true);
+      frame.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier]).color, 1);
+    } else {
+      icon.setVisible(false);
+      frame.setStrokeStyle(2, 0x444444, 1);
+    }
+  }
+
   refresh() {
     for (let i = 0; i < SLOT_LABELS.length; i++) {
       const selected = i === this.slotIndex;
@@ -134,6 +165,7 @@ export default class LoadoutScene extends Phaser.Scene {
         this.slotValues[i].setColor('#666');
         this.slotDescs[i].setText('no secondary weapon — equip one to swap with C in-game');
       }
+      this.setSlotIcon(i, id, weapon?.tier);
     }
 
     for (let i = 0; i < 2; i++) {
@@ -148,6 +180,7 @@ export default class LoadoutScene extends Phaser.Scene {
         this.slotValues[i + 2].setColor('#666');
         this.slotDescs[i + 2].setText('no mod equipped in this slot');
       }
+      this.setSlotIcon(i + 2, id, mod?.tier);
     }
   }
 }
