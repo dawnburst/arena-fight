@@ -18,6 +18,7 @@ const ENEMY_MONSTER_SCALE = 0.58;
 const DASHER_MONSTER_SCALE = 0.64;
 const FIRECASTER_SCALE = 0.58;
 const DEFAULT_ENEMY_SCALE = 0.58;
+const ENEMY_HITBOX_MULT = 1.35;
 const ENEMY_TYPE_ORDER = ['sniper', 'teleporter', 'shielded', 'summoner', 'healer', 'slime', 'egg', 'bomber', 'splitter', 'tank', 'firecaster', 'dasher'];
 
 export default class GameScene extends Phaser.Scene {
@@ -841,10 +842,11 @@ export default class GameScene extends Phaser.Scene {
     const enemy = this.add.sprite(x, y, spriteDef.key, 0);
     this.physics.add.existing(enemy);
     this.enemies.add(enemy);
-    enemy.body.setCircle(cfg.radius);
+    const bodyRadius = cfg.radius * ENEMY_HITBOX_MULT;
+    enemy.body.setCircle(bodyRadius);
     enemy.body.setOffset(
-      ENEMY_MONSTER_FRAME.width / 2 - cfg.radius,
-      ENEMY_MONSTER_FRAME.height / 2 - cfg.radius + 6,
+      ENEMY_MONSTER_FRAME.width / 2 - bodyRadius,
+      ENEMY_MONSTER_FRAME.height / 2 - bodyRadius + 6,
     );
     enemy.setScale(scale);
     enemy.setDepth(4);
