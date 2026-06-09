@@ -222,21 +222,6 @@ export const CFG = {
     waveClearPerWave: 10,
     coinDropPerKillBase: 1,
   },
-  bonus: {
-    spawnDelayMinMs: 60000,
-    spawnDelayMaxMs: 120000,
-    lifetimeMs: 6000,
-    warnLastMs: 1500,
-    radius: 12,
-    color: 0x4caf50,
-    edgePadding: 60,
-    levels: [
-      { fireRateMs: 500, angles: [0],         barrelColor: 0xffffff, label: ''      },
-      { fireRateMs: 200, angles: [0],         barrelColor: 0x69f0ae, label: 'LVL 1' },
-      { fireRateMs: 120, angles: [0],         barrelColor: 0x00e676, label: 'LVL 2' },
-      { fireRateMs: 120, angles: [-30, 0, 30], barrelColor: 0xff4081, label: 'LVL 3' },
-    ],
-  },
   shieldBonus: {
     spawnDelayMinMs: 60000,
     spawnDelayMaxMs: 120000,

@@ -98,11 +98,6 @@ export default class GameScene extends Phaser.Scene {
     this.aimAngle = 0;
     this.lastMoveDir = { x: 1, y: 0 };
 
-    this.buffLevel = 0;
-    this.bonusPickup = null;
-    this.bonusDespawnEvent = null;
-    this.bonusWarnEvent = null;
-
     this.shieldActive = false;
     this.shieldHitsRemaining = 0;
     this.shieldEndsAt = 0;
@@ -196,7 +191,6 @@ export default class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', this.onPointerDown, this);
 
     this.startNextWave();
-    this.scheduleNextBonus();
     this.scheduleNextShieldBonus();
   }
 
@@ -315,15 +309,6 @@ export default class GameScene extends Phaser.Scene {
         color: '#ffd54f',
       })
       .setOrigin(0.5, 1);
-
-    this.powerupText = this.add
-      .text(CFG.arena.width / 2, 14, '★ POWER UP ★', {
-        ...style,
-        fontSize: '18px',
-        color: '#69f0ae',
-      })
-      .setOrigin(0.5, 0)
-      .setVisible(false);
 
     this.shieldHud = this.add
       .text(CFG.arena.width / 2, 38, '', {
@@ -592,13 +577,11 @@ export default class GameScene extends Phaser.Scene {
   handleFire(time) {
     if (!this.input.activePointer.isDown && this.burstShotsRemaining === 0) return;
 
-    const useBuff = this.buffLevel > 0;
-    const level = CFG.bonus.levels[this.buffLevel];
     const weapon = this.weaponDef;
     const burst = weapon.fire.burst;
 
     // Burst weapons: pace shots independently of pointer state
-    if (burst && !useBuff) {
+    if (burst) {
       if (this.burstShotsRemaining > 0) {
         if (time < this.burstNextAt) return;
         this.fireWeaponShot(time);
@@ -619,19 +602,17 @@ export default class GameScene extends Phaser.Scene {
     if (time < this.player.nextFireAt) return;
 
     const weaponMods = weapon.fire.bulletMods;
-    if (!useBuff && weaponMods && weaponMods.hitscan) {
+    if (weaponMods && weaponMods.hitscan) {
       this.fireLaser(time);
       this.player.nextFireAt = time + weapon.fire.rateMs * this.runtime.fireRateMult;
       return;
     }
 
-    const angles = useBuff ? level.angles : weapon.fire.angles;
-    for (const offsetDeg of angles) {
+    for (const offsetDeg of weapon.fire.angles) {
       this.fireBullet(time, offsetDeg);
     }
     this.playWeaponSfx(time);
-    const baseRate = useBuff ? level.fireRateMs : weapon.fire.rateMs;
-    this.player.nextFireAt = time + baseRate * this.runtime.fireRateMult;
+    this.player.nextFireAt = time + weapon.fire.rateMs * this.runtime.fireRateMult;
   }
 
   fireLaser(time) {
@@ -682,10 +663,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   fireWeaponShot(time) {
-    const useBuff = this.buffLevel > 0;
-    const level = CFG.bonus.levels[this.buffLevel];
-    const angles = useBuff ? level.angles : this.weaponDef.fire.angles;
-    for (const offsetDeg of angles) {
+    for (const offsetDeg of this.weaponDef.fire.angles) {
       this.fireBullet(time, offsetDeg);
     }
     this.playWeaponSfx(time);
@@ -702,7 +680,7 @@ export default class GameScene extends Phaser.Scene {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
     const angle = this.aimAngle + (offsetDeg * Math.PI) / 180;
-    const mods = (this.buffLevel === 0 && this.weaponDef.fire.bulletMods) || {};
+    const mods = this.weaponDef.fire.bulletMods || {};
     const sizeMult = mods.sizeMult || 1;
     const radius = CFG.bullet.radius * sizeMult;
     const speedMult = mods.speedMult || 1;
@@ -1543,7 +1521,6 @@ export default class GameScene extends Phaser.Scene {
 
     this.cleanupEnemyExtras(enemy);
     enemy.destroy();
-    this.stepDownBuff();
     this.player.hp -= this.getEnemyContactDamage(enemy.type);
     this.comboMultiplier = 1;
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
@@ -1611,7 +1588,6 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    this.stepDownBuff();
     this.player.hp -= amount;
     this.comboMultiplier = 1;
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
@@ -1664,7 +1640,6 @@ export default class GameScene extends Phaser.Scene {
     this.player.sprite.setTexture(this.playerFrameKey(this.player.facing, 'death'));
     this.player.barrel.setVisible(false);
     this.physics.pause();
-    if (this.bonusPickup) this.despawnBonus();
     if (this.shieldPickup) this.despawnShieldBonus();
     if (this.shieldActive) this.endShield();
     const saved = Save.recordRun({
@@ -1739,134 +1714,6 @@ export default class GameScene extends Phaser.Scene {
     this.physics.resume();
     this.time.paused = false;
     this.scene.start('MainMenuScene');
-  }
-
-  scheduleNextBonus() {
-    if (this.gameOver) return;
-    const delay = Phaser.Math.Between(
-      CFG.bonus.spawnDelayMinMs,
-      CFG.bonus.spawnDelayMaxMs,
-    );
-    this.time.delayedCall(delay, () => this.spawnBonus());
-  }
-
-  spawnBonus() {
-    if (this.gameOver) return;
-    if (this.bonusPickup) return;
-
-    const pad = CFG.bonus.edgePadding;
-    const x = Phaser.Math.Between(pad, CFG.arena.width - pad);
-    const y = Phaser.Math.Between(pad, CFG.arena.height - pad);
-
-    const pickup = this.add.circle(x, y, CFG.bonus.radius, CFG.bonus.color);
-    pickup.setStrokeStyle(2, 0xffffff, 0.7);
-    this.physics.add.existing(pickup);
-    pickup.body.setCircle(CFG.bonus.radius);
-    pickup.body.setOffset(-CFG.bonus.radius, -CFG.bonus.radius);
-    pickup.body.setImmovable(true);
-
-    pickup.pulseTween = this.tweens.add({
-      targets: pickup,
-      scale: { from: 0.85, to: 1.2 },
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.inOut',
-    });
-
-    this.bonusPickup = pickup;
-
-    this.bonusOverlap = this.physics.add.overlap(
-      this.player.sprite,
-      pickup,
-      this.pickupBonus,
-      null,
-      this,
-    );
-
-    this.bonusWarnEvent = this.time.delayedCall(
-      CFG.bonus.lifetimeMs - CFG.bonus.warnLastMs,
-      () => {
-        if (!this.bonusPickup) return;
-        this.tweens.add({
-          targets: this.bonusPickup,
-          alpha: { from: 1, to: 0.25 },
-          duration: 180,
-          yoyo: true,
-          repeat: -1,
-        });
-      },
-    );
-
-    this.bonusDespawnEvent = this.time.delayedCall(CFG.bonus.lifetimeMs, () => {
-      this.despawnBonus();
-      this.scheduleNextBonus();
-    });
-  }
-
-  pickupBonus(playerSprite, pickup) {
-    if (!this.bonusPickup || pickup !== this.bonusPickup) return;
-
-    this.clearBonusTimers();
-    this.bonusPickup.pulseTween?.stop();
-    this.bonusPickup.destroy();
-    this.bonusPickup = null;
-    playSfx(this, 'gift');
-
-    const maxLevel = CFG.bonus.levels.length - 1;
-    this.buffLevel = Math.min(this.buffLevel + 1, maxLevel);
-    this.applyBuffVisuals();
-
-    this.tweens.add({
-      targets: this.player.sprite,
-      scale: { from: PLAYER_BODY_SCALE * 1.25, to: PLAYER_BODY_SCALE },
-      alpha: { from: 0.5, to: 1 },
-      duration: 220,
-      ease: 'Quad.out',
-    });
-
-    this.scheduleNextBonus();
-  }
-
-  despawnBonus() {
-    if (!this.bonusPickup) return;
-    this.clearBonusTimers();
-    this.bonusPickup.pulseTween?.stop();
-    this.bonusPickup.destroy();
-    this.bonusPickup = null;
-  }
-
-  clearBonusTimers() {
-    if (this.bonusDespawnEvent) {
-      this.bonusDespawnEvent.remove(false);
-      this.bonusDespawnEvent = null;
-    }
-    if (this.bonusWarnEvent) {
-      this.bonusWarnEvent.remove(false);
-      this.bonusWarnEvent = null;
-    }
-    if (this.bonusOverlap) {
-      this.bonusOverlap.destroy();
-      this.bonusOverlap = null;
-    }
-  }
-
-  stepDownBuff() {
-    if (this.buffLevel === 0) return;
-    this.buffLevel -= 1;
-    this.applyBuffVisuals();
-  }
-
-  applyBuffVisuals() {
-    const level = CFG.bonus.levels[this.buffLevel];
-    if (this.buffLevel > 0) this.player.barrel.setTint(level.barrelColor);
-    else this.player.barrel.clearTint();
-    if (this.buffLevel > 0) {
-      this.powerupText.setText(`★ ${level.label} ★`);
-      this.powerupText.setVisible(true);
-    } else {
-      this.powerupText.setVisible(false);
-    }
   }
 
   scheduleNextShieldBonus() {
