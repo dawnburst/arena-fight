@@ -132,7 +132,7 @@ export default class StoreScene extends Phaser.Scene {
 
   tryBuy() {
     const entry = this.entries[this.selectedIndex];
-    if (!entry || entry.owned) return;
+    if (!entry || entry.owned || entry.locked) return;
     const save = Save.get();
     if (save.wallet < entry.price) return;
     if (this.tab === 'weapons') Save.buyWeapon(entry.id, entry.price);
@@ -148,6 +148,7 @@ export default class StoreScene extends Phaser.Scene {
 
     const source = this.tab === 'weapons' ? WEAPONS : MODS;
     const ownedSet = new Set(this.tab === 'weapons' ? save.ownedWeapons : save.ownedMods);
+    const legendaryUnlocked = (save.stats?.bestWave ?? 0) >= 25;
 
     this.entries = [];
     for (const tier of TIERS) {
@@ -160,6 +161,7 @@ export default class StoreScene extends Phaser.Scene {
           price: it.price,
           description: it.description,
           owned: ownedSet.has(it.id),
+          locked: it.tier === 'legendary' && !legendaryUnlocked,
           iconKey: itemIconKey(it.id),
         });
       }
@@ -219,6 +221,7 @@ export default class StoreScene extends Phaser.Scene {
       let badge;
       let badgeColor = '#888';
       if (e.owned) { badge = '[OWNED]'; badgeColor = '#4caf50'; }
+      else if (e.locked) { badge = '[WAVE 25]'; badgeColor = '#ab47bc'; }
       else if (save.wallet < e.price) { badge = `[NEED ¢${e.price - save.wallet}]`; badgeColor = '#ef5350'; }
       else { badge = '[BUY]'; badgeColor = '#ffd54f'; }
       const badgeText = this.add.text(520, y + 7, badge, {
@@ -232,7 +235,9 @@ export default class StoreScene extends Phaser.Scene {
     }
 
     const cur = this.entries[this.selectedIndex];
-    this.descText.setText(cur ? cur.description : '');
+    let desc = cur ? cur.description : '';
+    if (cur && cur.locked) desc += '  — Locked: reach wave 25 to unlock legendary items.';
+    this.descText.setText(desc);
     if (cur) {
       this.previewFrame.setVisible(true).setStrokeStyle(2, tierColorNumber(cur.tier), 1);
       this.previewIcon.setTexture(cur.iconKey).setVisible(true);
