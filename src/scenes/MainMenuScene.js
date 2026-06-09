@@ -13,6 +13,10 @@ export default class MainMenuScene extends Phaser.Scene {
     super('MainMenuScene');
   }
 
+  init(data) {
+    this.gameOverData = data?.gameOver ? data : null;
+  }
+
   preload() {
     for (const background of ARENA_BACKGROUNDS) {
       const key = backgroundKey(background.id);
@@ -37,11 +41,17 @@ export default class MainMenuScene extends Phaser.Scene {
       fontSize: '54px',
       color: '#ffd54f',
     });
-    this.add.text(62, 132, 'retro survival shooter', {
-      ...style,
-      fontSize: '16px',
-      color: '#e5e5e5',
-    });
+    if (this.gameOverData) {
+      this.add.text(62, 132, 'run ended', {
+        ...style,
+        fontSize: '16px',
+        color: '#ff8a80',
+      });
+    }
+
+    if (this.gameOverData) {
+      this.createGameOverDetails(style);
+    }
 
     this.add.text(62, CFG.arena.height - 46, `Arena: ${selectedBackground.name}`, {
       ...style,
@@ -50,10 +60,18 @@ export default class MainMenuScene extends Phaser.Scene {
     });
 
     this.actionIndex = 0;
+    const submenuData = () => ({
+      returnScene: 'MainMenuScene',
+      ...(this.gameOverData || {}),
+    });
+    const firstAction = this.gameOverData
+      ? { label: 'RETRY', shortcut: 'r', color: 0x69f0ae, action: () => this.scene.start('GameScene') }
+      : { label: 'START', shortcut: 'enter', color: 0x69f0ae, action: () => this.scene.start('GameScene') };
     this.actions = [
-      { label: 'START', shortcut: 'enter', color: 0x69f0ae, action: () => this.scene.start('GameScene') },
-      { label: 'STORE', shortcut: 's', color: 0xffd54f, action: () => this.scene.start('StoreScene', { returnScene: 'MainMenuScene' }) },
-      { label: 'LOADOUT', shortcut: 'l', color: 0x4fc3f7, action: () => this.scene.start('LoadoutScene', { returnScene: 'MainMenuScene' }) },
+      firstAction,
+      { label: 'STORE', shortcut: 's', color: 0xffd54f, action: () => this.scene.start('StoreScene', submenuData()) },
+      { label: 'LOADOUT', shortcut: 'l', color: 0x4fc3f7, action: () => this.scene.start('LoadoutScene', submenuData()) },
+      { label: 'MONSTERS', shortcut: 'm', color: 0xff7043, action: () => this.scene.start('MonstersScene') },
       { label: 'SETTINGS', shortcut: 'o', color: 0xce93d8, action: () => this.scene.start('SettingsScene') },
     ];
 
@@ -65,6 +83,26 @@ export default class MainMenuScene extends Phaser.Scene {
   shutdown() {
     this.input.setDefaultCursor('default');
     this.input.keyboard.off('keydown', this.onKey, this);
+  }
+
+  createGameOverDetails(style) {
+    const data = this.gameOverData;
+    const walletSaved = data.walletSaved ?? Save.get().wallet;
+    const lines = [
+      { text: 'GAME OVER', y: 168, size: '34px', color: '#ff4242' },
+      { text: `Wave reached: ${data.wave ?? 0}`, y: 230, size: '18px', color: '#ffffff' },
+      { text: `Score: ${data.score ?? 0}`, y: 260, size: '18px', color: '#ffffff' },
+      { text: `Coins earned: +${data.coinsEarned ?? 0}`, y: 292, size: '18px', color: '#ffd54f' },
+      { text: `Wallet saved: ${walletSaved}`, y: 322, size: '16px', color: '#d0d0d0' },
+    ];
+
+    for (const line of lines) {
+      this.add.text(62, line.y, line.text, {
+        ...style,
+        fontSize: line.size,
+        color: line.color,
+      });
+    }
   }
 
   createMenu(style) {
@@ -113,14 +151,16 @@ export default class MainMenuScene extends Phaser.Scene {
 
   onKey(event) {
     const k = event.key?.toLowerCase();
-    if (['arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'enter', ' ', 's', 'l', 'o'].includes(k) || event.code === 'Space') {
+    if (['arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'enter', ' ', 'r', 's', 'l', 'm', 'o'].includes(k) || event.code === 'Space') {
       event.preventDefault?.();
     }
     if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') this.selectAction(this.actionIndex - 1);
     else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') this.selectAction(this.actionIndex + 1);
     else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') this.activateAction(this.actionIndex);
-    else if (k === 's') this.scene.start('StoreScene', { returnScene: 'MainMenuScene' });
-    else if (k === 'l') this.scene.start('LoadoutScene', { returnScene: 'MainMenuScene' });
+    else if (k === 'r' && this.gameOverData) this.scene.start('GameScene');
+    else if (k === 's') this.scene.start('StoreScene', { returnScene: 'MainMenuScene', ...(this.gameOverData || {}) });
+    else if (k === 'l') this.scene.start('LoadoutScene', { returnScene: 'MainMenuScene', ...(this.gameOverData || {}) });
+    else if (k === 'm') this.scene.start('MonstersScene');
     else if (k === 'o') this.scene.start('SettingsScene');
   }
 

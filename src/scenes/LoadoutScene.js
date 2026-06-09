@@ -59,7 +59,7 @@ export default class LoadoutScene extends Phaser.Scene {
   onKey(event) {
     if (event.key === 'b' || event.key === 'B' || event.key === 'Escape') {
       const data = this.scene.settings.data || {};
-      this.scene.start(data.returnScene || 'GameOverScene', data);
+      this.scene.start(data.returnScene || 'MainMenuScene', data);
       return;
     }
     if (event.key === 'ArrowUp') {

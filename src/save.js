@@ -83,10 +83,10 @@ export const Save = {
       settings: { ...(s.settings || {}), backgroundId },
     }));
   },
-  recordRun({ wave, score, coinsEarned }) {
+  recordRun({ wave, score, coinsEarned, persistCoins = true }) {
     return this.set((s) => ({
       ...s,
-      wallet: s.wallet + coinsEarned,
+      wallet: persistCoins ? s.wallet + coinsEarned : s.wallet,
       stats: {
         runsPlayed: s.stats.runsPlayed + 1,
         bestWave: Math.max(s.stats.bestWave, wave),
