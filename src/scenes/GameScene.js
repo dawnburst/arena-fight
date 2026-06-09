@@ -3,6 +3,7 @@ import { CFG } from '../config.js';
 import { Save } from '../save.js';
 import { getWeapon, buildRuntimeStats } from '../catalog.js';
 import { ARENA_BACKGROUNDS, backgroundKey, backgroundPath, resolveBackground } from '../backgrounds.js';
+import { ENEMY_SPRITES } from '../enemies.js';
 
 const PLAYER_DIRECTIONS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 const PLAYER_POSES = ['idle', 'walk1', 'walk2', 'dash', 'hit', 'death'];
@@ -14,6 +15,9 @@ const PLAYER_HITBOX = { width: 18, height: 26, offsetX: 23, offsetY: 28 };
 const ENEMY_MONSTER_FRAME = { width: 64, height: 64 };
 const ENEMY_MONSTER_SCALE = 0.58;
 const DASHER_MONSTER_SCALE = 0.64;
+const FIRECASTER_SCALE = 0.58;
+const DEFAULT_ENEMY_SCALE = 0.58;
+const ENEMY_TYPE_ORDER = ['sniper', 'teleporter', 'shielded', 'summoner', 'healer', 'slime', 'egg', 'bomber', 'splitter', 'tank', 'firecaster', 'dasher'];
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -38,11 +42,13 @@ export default class GameScene extends Phaser.Scene {
         this.load.image(key, backgroundPath(background));
       }
     }
-    if (!this.textures.exists('enemy-monster-walk')) {
-      this.load.spritesheet('enemy-monster-walk', '/assets/enemies/monster/walk.png', {
-        frameWidth: ENEMY_MONSTER_FRAME.width,
-        frameHeight: ENEMY_MONSTER_FRAME.height,
-      });
+    for (const sprite of Object.values(ENEMY_SPRITES)) {
+      if (!this.textures.exists(sprite.key)) {
+        this.load.spritesheet(sprite.key, sprite.path, {
+          frameWidth: sprite.frameWidth,
+          frameHeight: sprite.frameHeight,
+        });
+      }
     }
   }
 
@@ -123,6 +129,8 @@ export default class GameScene extends Phaser.Scene {
     this.spawnPlayer();
 
     this.bullets = this.physics.add.group();
+    this.enemyProjectiles = this.physics.add.group();
+    this.hazards = this.physics.add.group();
     this.enemies = this.physics.add.group();
     this.coins = this.physics.add.group();
 
@@ -156,6 +164,20 @@ export default class GameScene extends Phaser.Scene {
       this.player.sprite,
       this.enemies,
       this.onPlayerHitEnemy,
+      null,
+      this,
+    );
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.enemyProjectiles,
+      this.onPlayerHitEnemyProjectile,
+      null,
+      this,
+    );
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.hazards,
+      this.onPlayerHitHazard,
       null,
       this,
     );
@@ -196,13 +218,16 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createEnemyAnimations() {
-    if (this.anims.exists('enemy-monster-walk')) return;
-    this.anims.create({
-      key: 'enemy-monster-walk',
-      frames: this.anims.generateFrameNumbers('enemy-monster-walk', { start: 0, end: 3 }),
-      frameRate: 7,
-      repeat: -1,
-    });
+    for (const sprite of Object.values(ENEMY_SPRITES)) {
+      if (!this.anims.exists(sprite.key)) {
+        this.anims.create({
+          key: sprite.key,
+          frames: this.anims.generateFrameNumbers(sprite.key, { start: 0, end: 3 }),
+          frameRate: 6,
+          repeat: -1,
+        });
+      }
+    }
   }
 
   createHUD() {
@@ -317,6 +342,8 @@ export default class GameScene extends Phaser.Scene {
     this.updatePlayerVisuals(time);
     this.updateEnemies();
     this.updateBullets(time);
+    this.updateEnemyProjectiles(time);
+    this.updateHazards(time);
     this.updateCoins(time, delta);
     this.despawnExpiredBullets(time);
     this.maybeDecayCombo(time);
@@ -581,6 +608,28 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  updateEnemyProjectiles(time) {
+    this.enemyProjectiles.getChildren().forEach((projectile) => {
+      if (
+        time >= projectile.expiresAt ||
+        projectile.x < -30 ||
+        projectile.x > CFG.arena.width + 30 ||
+        projectile.y < -30 ||
+        projectile.y > CFG.arena.height + 30
+      ) {
+        projectile.destroy();
+      }
+    });
+  }
+
+  updateHazards(time) {
+    this.hazards.getChildren().forEach((hazard) => {
+      if (time >= hazard.expiresAt) {
+        hazard.destroy();
+      }
+    });
+  }
+
   pickSpawnEdge() {
     const side = Phaser.Math.Between(0, 3);
     const margin = 24;
@@ -592,11 +641,8 @@ export default class GameScene extends Phaser.Scene {
 
   spawnEnemy() {
     const { x, y } = this.pickSpawnEdge();
-    const useDasher =
-      this.wave >= CFG.dasher.appearFromWave &&
-      Math.random() < CFG.dasher.spawnRatio;
-    if (useDasher) this.createDasher(x, y);
-    else this.createSwarmer(x, y);
+    const type = this.pickEnemyType();
+    this.createEnemyByType(type, x, y);
     this.pendingSpawns -= 1;
     if (this.pendingSpawns <= 0) {
       this.pendingSpawns = 0;
@@ -604,38 +650,68 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  pickEnemyType() {
+    for (const type of ENEMY_TYPE_ORDER) {
+      const cfg = CFG[type];
+      if (!cfg) continue;
+      if (this.wave < cfg.appearFromWave) continue;
+      if (cfg.maxAlive && this.countEnemiesByType(type) >= cfg.maxAlive) continue;
+      if (Math.random() < cfg.spawnRatio) return type;
+    }
+    return 'swarmer';
+  }
+
+  createEnemyByType(type, x, y) {
+    if (type === 'dasher') this.createDasher(x, y);
+    else if (type === 'firecaster') this.createFirecaster(x, y);
+    else if (type === 'tank') this.createTank(x, y);
+    else if (type === 'splitter') this.createSplitter(x, y);
+    else if (type === 'splitter-child') this.createSplitterChild(x, y);
+    else if (type === 'bomber') this.createBomber(x, y);
+    else if (type === 'healer') this.createHealer(x, y);
+    else if (type === 'summoner') this.createSummoner(x, y);
+    else if (type === 'shielded') this.createShielded(x, y);
+    else if (type === 'teleporter') this.createTeleporter(x, y);
+    else if (type === 'sniper') this.createSniper(x, y);
+    else if (type === 'egg') this.createEgg(x, y);
+    else if (type === 'slime') this.createSlime(x, y);
+    else this.createSwarmer(x, y);
+  }
+
+  countEnemiesByType(type) {
+    return this.enemies.getChildren().filter((enemy) => enemy.type === type).length;
+  }
+
   createSwarmer(x, y) {
-    const enemy = this.add.sprite(x, y, 'enemy-monster-walk', 0);
-    this.physics.add.existing(enemy);
-    this.enemies.add(enemy);
-    enemy.body.setCircle(CFG.enemy.radius);
-    enemy.body.setOffset(
-      ENEMY_MONSTER_FRAME.width / 2 - CFG.enemy.radius,
-      ENEMY_MONSTER_FRAME.height / 2 - CFG.enemy.radius + 6,
-    );
-    enemy.setScale(ENEMY_MONSTER_SCALE);
-    enemy.setDepth(4);
-    enemy.play('enemy-monster-walk');
+    const enemy = this.createEnemySprite(x, y, 'monster', CFG.enemy, ENEMY_MONSTER_SCALE);
     enemy.speed = this.enemySpeedThisWave;
     enemy.hp = CFG.enemy.hp;
+    enemy.maxHp = CFG.enemy.hp;
     enemy.type = 'swarmer';
   }
 
-  createDasher(x, y) {
-    const enemy = this.add.sprite(x, y, 'enemy-monster-walk', 0);
+  createEnemySprite(x, y, spriteId, cfg, scale = DEFAULT_ENEMY_SCALE, tint = null) {
+    const spriteDef = ENEMY_SPRITES[spriteId];
+    const enemy = this.add.sprite(x, y, spriteDef.key, 0);
     this.physics.add.existing(enemy);
     this.enemies.add(enemy);
-    enemy.body.setCircle(CFG.dasher.radius);
+    enemy.body.setCircle(cfg.radius);
     enemy.body.setOffset(
-      ENEMY_MONSTER_FRAME.width / 2 - CFG.dasher.radius,
-      ENEMY_MONSTER_FRAME.height / 2 - CFG.dasher.radius + 6,
+      ENEMY_MONSTER_FRAME.width / 2 - cfg.radius,
+      ENEMY_MONSTER_FRAME.height / 2 - cfg.radius + 6,
     );
-    enemy.setScale(DASHER_MONSTER_SCALE);
+    enemy.setScale(scale);
     enemy.setDepth(4);
-    enemy.setTint(CFG.dasher.color);
-    enemy.play('enemy-monster-walk');
+    if (tint) enemy.setTint(tint);
+    enemy.play(spriteDef.key);
+    return enemy;
+  }
+
+  createDasher(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'monster', CFG.dasher, DASHER_MONSTER_SCALE, CFG.dasher.color);
     enemy.speed = this.enemySpeedThisWave * CFG.dasher.walkSpeedFactor;
     enemy.hp = CFG.dasher.hp;
+    enemy.maxHp = CFG.dasher.hp;
     enemy.type = 'dasher';
     enemy.baseTint = CFG.dasher.color;
     enemy.windupEndsAt = 0;
@@ -646,6 +722,127 @@ export default class GameScene extends Phaser.Scene {
     );
   }
 
+  createFirecaster(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'firecaster', CFG.firecaster, FIRECASTER_SCALE);
+    enemy.speed = CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, this.wave - 1) * 0.45;
+    enemy.hp = CFG.firecaster.hp;
+    enemy.maxHp = CFG.firecaster.hp;
+    enemy.type = 'firecaster';
+    enemy.baseTint = 0xffffff;
+    enemy.windupEndsAt = 0;
+    enemy.nextFireAt = this.time.now + Phaser.Math.Between(
+      CFG.firecaster.fireCooldownMinMs,
+      CFG.firecaster.fireCooldownMaxMs,
+    );
+    enemy.strafeDir = Math.random() < 0.5 ? -1 : 1;
+  }
+
+  createTank(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'tank', CFG.tank, 0.82);
+    enemy.speed = CFG.tank.speed;
+    enemy.hp = CFG.tank.hp;
+    enemy.maxHp = CFG.tank.hp;
+    enemy.type = 'tank';
+  }
+
+  createSplitter(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'splitter', CFG.splitter, 0.62);
+    enemy.speed = CFG.splitter.speed;
+    enemy.hp = CFG.splitter.hp;
+    enemy.maxHp = CFG.splitter.hp;
+    enemy.type = 'splitter';
+  }
+
+  createSplitterChild(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'splitter', {
+      radius: CFG.splitter.childRadius,
+    }, 0.38);
+    enemy.speed = CFG.splitter.childSpeed;
+    enemy.hp = CFG.splitter.childHp;
+    enemy.maxHp = CFG.splitter.childHp;
+    enemy.type = 'splitter-child';
+  }
+
+  createBomber(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'bomber', CFG.bomber, 0.62);
+    enemy.speed = CFG.bomber.speed;
+    enemy.hp = CFG.bomber.hp;
+    enemy.maxHp = CFG.bomber.hp;
+    enemy.type = 'bomber';
+    enemy.explodingAt = 0;
+  }
+
+  createHealer(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'healer', CFG.healer, 0.58);
+    enemy.speed = CFG.healer.speed;
+    enemy.hp = CFG.healer.hp;
+    enemy.maxHp = CFG.healer.hp;
+    enemy.type = 'healer';
+    enemy.nextHealAt = this.time.now + CFG.healer.healCooldownMs;
+  }
+
+  createSummoner(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'summoner', CFG.summoner, 0.6);
+    enemy.speed = CFG.summoner.speed;
+    enemy.hp = CFG.summoner.hp;
+    enemy.maxHp = CFG.summoner.hp;
+    enemy.type = 'summoner';
+    enemy.nextSummonAt = this.time.now + CFG.summoner.summonCooldownMs;
+  }
+
+  createShielded(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'shielded', CFG.shielded, 0.68);
+    enemy.speed = CFG.shielded.speed;
+    enemy.hp = CFG.shielded.hp;
+    enemy.maxHp = CFG.shielded.hp;
+    enemy.type = 'shielded';
+    enemy.facingAngle = 0;
+  }
+
+  createTeleporter(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'teleporter', CFG.teleporter, 0.58);
+    enemy.speed = CFG.teleporter.speed;
+    enemy.hp = CFG.teleporter.hp;
+    enemy.maxHp = CFG.teleporter.hp;
+    enemy.type = 'teleporter';
+    enemy.blinkAt = this.time.now + CFG.teleporter.blinkCooldownMs;
+    enemy.windupEndsAt = 0;
+  }
+
+  createSniper(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'sniper', CFG.sniper, 0.6);
+    enemy.speed = CFG.sniper.speed;
+    enemy.hp = CFG.sniper.hp;
+    enemy.maxHp = CFG.sniper.hp;
+    enemy.type = 'sniper';
+    enemy.nextShotAt = this.time.now + CFG.sniper.cooldownMs;
+    enemy.aimEndsAt = 0;
+    enemy.aimLine = null;
+    enemy.aimDir = { x: 1, y: 0 };
+  }
+
+  createEgg(x, y) {
+    const pad = 70;
+    const sx = Phaser.Math.Clamp(x, pad, CFG.arena.width - pad);
+    const sy = Phaser.Math.Clamp(y, pad, CFG.arena.height - pad);
+    const enemy = this.createEnemySprite(sx, sy, 'egg', CFG.egg, 0.7);
+    enemy.speed = 0;
+    enemy.hp = CFG.egg.hp;
+    enemy.maxHp = CFG.egg.hp;
+    enemy.type = 'egg';
+    enemy.nextHatchAt = this.time.now + CFG.egg.hatchCooldownMs;
+    enemy.body.setVelocity(0, 0);
+  }
+
+  createSlime(x, y) {
+    const enemy = this.createEnemySprite(x, y, 'slime', CFG.slime, 0.62);
+    enemy.speed = CFG.slime.speed;
+    enemy.hp = CFG.slime.hp;
+    enemy.maxHp = CFG.slime.hp;
+    enemy.type = 'slime';
+    enemy.nextPuddleAt = this.time.now + CFG.slime.puddleCooldownMs;
+  }
+
   updateEnemies() {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
@@ -654,13 +851,36 @@ export default class GameScene extends Phaser.Scene {
       enemy.setFlipX(px < enemy.x);
       if (enemy.type === 'dasher') {
         this.updateDasher(enemy, px, py, now);
+      } else if (enemy.type === 'firecaster') {
+        this.updateFirecaster(enemy, px, py, now);
+      } else if (enemy.type === 'bomber') {
+        this.updateBomber(enemy, px, py, now);
+      } else if (enemy.type === 'healer') {
+        this.updateHealer(enemy, px, py, now);
+      } else if (enemy.type === 'summoner') {
+        this.updateSummoner(enemy, px, py, now);
+      } else if (enemy.type === 'shielded') {
+        this.updateShielded(enemy, px, py);
+      } else if (enemy.type === 'teleporter') {
+        this.updateTeleporter(enemy, px, py, now);
+      } else if (enemy.type === 'sniper') {
+        this.updateSniper(enemy, px, py, now);
+      } else if (enemy.type === 'egg') {
+        this.updateEgg(enemy, now);
+      } else if (enemy.type === 'slime') {
+        this.updateSlime(enemy, px, py, now);
       } else {
-        const dx = px - enemy.x;
-        const dy = py - enemy.y;
-        const len = Math.hypot(dx, dy) || 1;
-        enemy.body.setVelocity((dx / len) * enemy.speed, (dy / len) * enemy.speed);
+        this.chasePlayer(enemy, px, py, enemy.speed);
       }
     });
+  }
+
+  chasePlayer(enemy, px, py, speed) {
+    const dx = px - enemy.x;
+    const dy = py - enemy.y;
+    const len = Math.hypot(dx, dy) || 1;
+    enemy.body.setVelocity((dx / len) * speed, (dy / len) * speed);
+    return { dx, dy, len, nx: dx / len, ny: dy / len };
   }
 
   updateDasher(enemy, px, py, now) {
@@ -701,6 +921,263 @@ export default class GameScene extends Phaser.Scene {
     const dy = py - enemy.y;
     const len = Math.hypot(dx, dy) || 1;
     enemy.body.setVelocity((dx / len) * enemy.speed, (dy / len) * enemy.speed);
+  }
+
+  updateFirecaster(enemy, px, py, now) {
+    const dx = px - enemy.x;
+    const dy = py - enemy.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+
+    if (enemy.windupEndsAt > 0) {
+      enemy.body.setVelocity(0, 0);
+      const flashOn = Math.floor((enemy.windupEndsAt - now) / CFG.firecaster.windupFlashMs) % 2 === 0;
+      enemy.setTint(flashOn ? 0xfff176 : 0xff7043);
+      if (now >= enemy.windupEndsAt) {
+        enemy.windupEndsAt = 0;
+        enemy.clearTint();
+        this.fireEnemyFireball(enemy, nx, ny, now);
+        enemy.nextFireAt = now + Phaser.Math.Between(
+          CFG.firecaster.fireCooldownMinMs,
+          CFG.firecaster.fireCooldownMaxMs,
+        );
+      }
+      return;
+    }
+
+    if (now >= enemy.nextFireAt && len <= CFG.firecaster.maxRange + 80) {
+      enemy.windupEndsAt = now + CFG.firecaster.windupMs;
+      enemy.body.setVelocity(0, 0);
+      return;
+    }
+
+    let moveX = 0;
+    let moveY = 0;
+    if (len > CFG.firecaster.maxRange) {
+      moveX += nx * enemy.speed;
+      moveY += ny * enemy.speed;
+    } else if (len < CFG.firecaster.minRange) {
+      moveX -= nx * enemy.speed;
+      moveY -= ny * enemy.speed;
+    } else {
+      moveX += -ny * CFG.firecaster.strafeSpeed * enemy.strafeDir;
+      moveY += nx * CFG.firecaster.strafeSpeed * enemy.strafeDir;
+      if (Math.random() < 0.004) enemy.strafeDir *= -1;
+    }
+    enemy.body.setVelocity(moveX, moveY);
+  }
+
+  updateBomber(enemy, px, py, now) {
+    const { len } = this.chasePlayer(enemy, px, py, enemy.speed);
+    if (!enemy.explodingAt && len <= CFG.bomber.triggerRadius) {
+      enemy.explodingAt = now + CFG.bomber.windupMs;
+      enemy.body.setVelocity(0, 0);
+    }
+    if (enemy.explodingAt) {
+      enemy.body.setVelocity(0, 0);
+      const flashOn = Math.floor((enemy.explodingAt - now) / CFG.bomber.flashMs) % 2 === 0;
+      enemy.setTint(flashOn ? 0xfff176 : 0xff5252);
+      if (now >= enemy.explodingAt) {
+        this.explodeEnemy(enemy.x, enemy.y, CFG.bomber.explosionRadius, true);
+        enemy.destroy();
+        this.maybeStartNextWave();
+      }
+    }
+  }
+
+  updateHealer(enemy, px, py, now) {
+    this.keepRange(enemy, px, py, CFG.healer.minRange, CFG.healer.minRange + 90, enemy.speed);
+    if (now < enemy.nextHealAt) return;
+    enemy.nextHealAt = now + CFG.healer.healCooldownMs;
+    let healed = false;
+    this.enemies.getChildren().forEach((target) => {
+      if (target === enemy || target.hp >= target.maxHp) return;
+      const d = Phaser.Math.Distance.Between(enemy.x, enemy.y, target.x, target.y);
+      if (d <= CFG.healer.healRadius) {
+        target.hp = Math.min(target.maxHp, target.hp + CFG.healer.healAmount);
+        target.setTint(0x69f0ae);
+        this.time.delayedCall(140, () => {
+          if (target.active && target.type !== 'dasher') target.clearTint();
+        });
+        healed = true;
+      }
+    });
+    if (healed) {
+      const ring = this.add.circle(enemy.x, enemy.y, CFG.healer.healRadius, 0x69f0ae, 0.12).setDepth(3.5);
+      this.tweens.add({ targets: ring, alpha: 0, scale: 1.1, duration: 300, onComplete: () => ring.destroy() });
+    }
+  }
+
+  updateSummoner(enemy, px, py, now) {
+    this.keepRange(enemy, px, py, CFG.summoner.minRange, CFG.summoner.minRange + 110, enemy.speed);
+    if (now < enemy.nextSummonAt) return;
+    enemy.nextSummonAt = now + CFG.summoner.summonCooldownMs;
+    for (let i = 0; i < CFG.summoner.summonCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      this.createSplitterChild(
+        enemy.x + Math.cos(angle) * 26,
+        enemy.y + Math.sin(angle) * 26,
+      );
+    }
+    const flash = this.add.circle(enemy.x, enemy.y, 44, 0xab47bc, 0.18).setDepth(3.5);
+    this.tweens.add({ targets: flash, alpha: 0, scale: 1.35, duration: 360, onComplete: () => flash.destroy() });
+  }
+
+  updateShielded(enemy, px, py) {
+    const { dx, dy, len } = this.chasePlayer(enemy, px, py, enemy.speed);
+    enemy.facingAngle = Math.atan2(dy, dx);
+    const shieldX = enemy.x + (dx / len) * 16;
+    const shieldY = enemy.y + (dy / len) * 16;
+    if (!enemy.shieldMark) {
+      enemy.shieldMark = this.add.circle(shieldX, shieldY, 5, 0xb0bec5, 0.8).setDepth(5);
+    } else {
+      enemy.shieldMark.setPosition(shieldX, shieldY);
+    }
+  }
+
+  updateTeleporter(enemy, px, py, now) {
+    if (enemy.windupEndsAt > 0) {
+      enemy.body.setVelocity(0, 0);
+      const flashOn = Math.floor((enemy.windupEndsAt - now) / 80) % 2 === 0;
+      enemy.setTint(flashOn ? 0xe040fb : 0x7c4dff);
+      if (now >= enemy.windupEndsAt) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Phaser.Math.Between(CFG.teleporter.blinkMinDistance, CFG.teleporter.blinkMaxDistance);
+        enemy.x = Phaser.Math.Clamp(px + Math.cos(angle) * dist, 32, CFG.arena.width - 32);
+        enemy.y = Phaser.Math.Clamp(py + Math.sin(angle) * dist, 32, CFG.arena.height - 32);
+        enemy.clearTint();
+        enemy.windupEndsAt = 0;
+        enemy.blinkAt = now + CFG.teleporter.blinkCooldownMs;
+      }
+      return;
+    }
+    if (now >= enemy.blinkAt) {
+      enemy.windupEndsAt = now + CFG.teleporter.windupMs;
+      return;
+    }
+    this.chasePlayer(enemy, px, py, enemy.speed);
+  }
+
+  updateSniper(enemy, px, py, now) {
+    const { dx, dy, len, nx, ny } = this.keepRange(enemy, px, py, CFG.sniper.minRange, CFG.sniper.maxRange, enemy.speed);
+    if (enemy.aimEndsAt > 0) {
+      enemy.body.setVelocity(0, 0);
+      if (enemy.aimLine) {
+        enemy.aimLine.clear();
+        enemy.aimLine.lineStyle(2, 0xff1744, 0.65);
+        enemy.aimLine.lineBetween(enemy.x, enemy.y, enemy.x + enemy.aimDir.x * 900, enemy.y + enemy.aimDir.y * 900);
+      }
+      if (now >= enemy.aimEndsAt) {
+        this.fireEnemyShot(enemy, enemy.aimDir.x, enemy.aimDir.y, now, CFG.sniper.shotRadius, 0xff1744, 0xffebee, CFG.sniper.shotSpeed, CFG.sniper.shotLifetimeMs, CFG.sniper.shotDamage);
+        if (enemy.aimLine) enemy.aimLine.destroy();
+        enemy.aimLine = null;
+        enemy.aimEndsAt = 0;
+        enemy.nextShotAt = now + CFG.sniper.cooldownMs;
+      }
+      return;
+    }
+    if (now >= enemy.nextShotAt && len <= CFG.sniper.maxRange + 120) {
+      enemy.aimDir = { x: dx / len || nx, y: dy / len || ny };
+      enemy.aimEndsAt = now + CFG.sniper.aimMs;
+      enemy.aimLine = this.add.graphics().setDepth(3.8);
+    }
+  }
+
+  updateEgg(enemy, now) {
+    enemy.body.setVelocity(0, 0);
+    if (now < enemy.nextHatchAt) return;
+    enemy.nextHatchAt = now + CFG.egg.hatchCooldownMs;
+    for (let i = 0; i < CFG.egg.hatchCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      this.createSplitterChild(enemy.x + Math.cos(angle) * 24, enemy.y + Math.sin(angle) * 24);
+    }
+    enemy.setTint(0xffd54f);
+    this.time.delayedCall(160, () => { if (enemy.active) enemy.clearTint(); });
+  }
+
+  updateSlime(enemy, px, py, now) {
+    this.chasePlayer(enemy, px, py, enemy.speed);
+    if (now < enemy.nextPuddleAt) return;
+    enemy.nextPuddleAt = now + CFG.slime.puddleCooldownMs;
+    this.createPoisonPuddle(enemy.x, enemy.y, now);
+  }
+
+  keepRange(enemy, px, py, minRange, maxRange, speed) {
+    const dx = px - enemy.x;
+    const dy = py - enemy.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    if (len > maxRange) enemy.body.setVelocity(nx * speed, ny * speed);
+    else if (len < minRange) enemy.body.setVelocity(-nx * speed, -ny * speed);
+    else enemy.body.setVelocity(-ny * speed * 0.55, nx * speed * 0.55);
+    return { dx, dy, len, nx, ny };
+  }
+
+  fireEnemyFireball(enemy, dirX, dirY, time) {
+    this.fireEnemyShot(
+      enemy,
+      dirX,
+      dirY,
+      time,
+      CFG.enemyFireball.radius,
+      CFG.enemyFireball.color,
+      CFG.enemyFireball.coreColor,
+      CFG.enemyFireball.speed,
+      CFG.enemyFireball.lifetimeMs,
+      CFG.enemyFireball.damage,
+    );
+  }
+
+  fireEnemyShot(enemy, dirX, dirY, time, radius, color, coreColor, speed, lifetimeMs, damage) {
+    const spawnX = enemy.x + dirX * 18;
+    const spawnY = enemy.y + dirY * 18;
+    const fireball = this.add.circle(spawnX, spawnY, radius, color);
+    fireball.setStrokeStyle(2, coreColor, 0.9);
+    fireball.setDepth(4.5);
+    this.physics.add.existing(fireball);
+    this.enemyProjectiles.add(fireball);
+    fireball.body.setCircle(radius);
+    fireball.body.setOffset(-radius, -radius);
+    fireball.body.setVelocity(dirX * speed, dirY * speed);
+    fireball.expiresAt = time + lifetimeMs;
+    fireball.damage = damage;
+    this.tweens.add({
+      targets: fireball,
+      scale: { from: 0.9, to: 1.18 },
+      alpha: { from: 0.95, to: 0.75 },
+      yoyo: true,
+      repeat: -1,
+      duration: 180,
+    });
+  }
+
+  explodeEnemy(x, y, radius, damagesPlayer) {
+    const blast = this.add.circle(x, y, radius, 0xff7043, 0.28).setDepth(4.2);
+    this.tweens.add({ targets: blast, alpha: 0, scale: 1.2, duration: 260, onComplete: () => blast.destroy() });
+    if (damagesPlayer) {
+      const d = Phaser.Math.Distance.Between(x, y, this.player.sprite.x, this.player.sprite.y);
+      if (d <= radius) this.damagePlayer(CFG.bomber.explosionDamage);
+    }
+  }
+
+  createPoisonPuddle(x, y, time) {
+    const puddle = this.add.circle(x, y, CFG.slime.puddleRadius, 0x7cb342, 0.24).setDepth(2.5);
+    this.physics.add.existing(puddle);
+    this.hazards.add(puddle);
+    puddle.body.setCircle(CFG.slime.puddleRadius);
+    puddle.body.setOffset(-CFG.slime.puddleRadius, -CFG.slime.puddleRadius);
+    puddle.expiresAt = time + CFG.slime.puddleLifetimeMs;
+    puddle.damage = CFG.slime.puddleDamage;
+    puddle.nextDamageAt = 0;
+    this.tweens.add({
+      targets: puddle,
+      alpha: { from: 0.24, to: 0.36 },
+      yoyo: true,
+      repeat: -1,
+      duration: 420,
+    });
   }
 
   startNextWave() {
@@ -765,8 +1242,8 @@ export default class GameScene extends Phaser.Scene {
     }
     const ex = enemy.x;
     const ey = enemy.y;
-    enemy.destroy();
-    this.killEnemyScoring(ex, ey);
+    const damage = this.damageEnemy(enemy, bullet.x, bullet.y, 1);
+    if (damage <= 0) return;
 
     if (mods.aoeRadius) {
       const r = mods.aoeRadius;
@@ -776,14 +1253,60 @@ export default class GameScene extends Phaser.Scene {
       this.enemies.getChildren().forEach((e) => {
         const d = Phaser.Math.Distance.Squared(ex, ey, e.x, e.y);
         if (d <= rSq) {
-          const ex2 = e.x, ey2 = e.y;
-          e.destroy();
-          this.killEnemyScoring(ex2, ey2);
+          this.damageEnemy(e, ex, ey, 1);
         }
       });
+    } else if (enemy.active) {
+      return;
     }
 
     this.maybeStartNextWave();
+  }
+
+  damageEnemy(enemy, sourceX, sourceY, amount) {
+    if (!enemy.active) return 0;
+    let damage = amount;
+    if (enemy.type === 'shielded') {
+      const hitAngle = Math.atan2(sourceY - enemy.y, sourceX - enemy.x);
+      const diff = Math.abs(Phaser.Math.Angle.Wrap(hitAngle - enemy.facingAngle));
+      if (diff < Math.PI / 2) {
+        damage *= CFG.shielded.frontDamageMult;
+        enemy.setTint(0xb0bec5);
+        this.time.delayedCall(90, () => { if (enemy.active) enemy.clearTint(); });
+      }
+    }
+    enemy.hp -= damage;
+    if (enemy.hp > 0) {
+      if (enemy.type !== 'shielded') {
+        enemy.setTint(0xffffff);
+        this.time.delayedCall(80, () => { if (enemy.active && enemy.type !== 'dasher') enemy.clearTint(); });
+      }
+      return damage;
+    }
+    const ex = enemy.x;
+    const ey = enemy.y;
+    const type = enemy.type;
+    this.cleanupEnemyExtras(enemy);
+    enemy.destroy();
+    this.onEnemyKilled(type, ex, ey);
+    return damage;
+  }
+
+  cleanupEnemyExtras(enemy) {
+    if (enemy.shieldMark) enemy.shieldMark.destroy();
+    if (enemy.aimLine) enemy.aimLine.destroy();
+  }
+
+  onEnemyKilled(type, x, y) {
+    this.killEnemyScoring(x, y);
+    if (type === 'splitter') {
+      for (let i = 0; i < CFG.splitter.childCount; i++) {
+        const angle = (Math.PI * 2 * i) / CFG.splitter.childCount;
+        this.createSplitterChild(x + Math.cos(angle) * 18, y + Math.sin(angle) * 18);
+      }
+    } else if (type === 'bomber') {
+      this.explodeEnemy(x, y, CFG.bomber.explosionRadius, true);
+    }
   }
 
   killEnemyScoring(x, y) {
@@ -822,6 +1345,7 @@ export default class GameScene extends Phaser.Scene {
   onPlayerCoin(playerSprite, coin) {
     coin.destroy();
     this.coinsThisRun += 1;
+    Save.addToWallet(1);
     this.updateHUD(this.time.now);
   }
 
@@ -829,6 +1353,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.time.now < this.player.invulnerableUntil) return;
 
     if (this.shieldActive) {
+      this.cleanupEnemyExtras(enemy);
       enemy.destroy();
       this.shieldHitsRemaining -= 1;
       this.player.invulnerableUntil = this.time.now + 200;
@@ -846,9 +1371,10 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.cleanupEnemyExtras(enemy);
     enemy.destroy();
     this.stepDownBuff();
-    this.player.hp -= CFG.enemy.contactDamage;
+    this.player.hp -= this.getEnemyContactDamage(enemy.type);
     this.comboMultiplier = 1;
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
     this.player.hitUntil = this.time.now + CFG.player.hitFlashMs;
@@ -881,6 +1407,71 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  getEnemyContactDamage(type) {
+    return CFG[type]?.contactDamage || CFG.enemy.contactDamage;
+  }
+
+  onPlayerHitEnemyProjectile(playerSprite, projectile) {
+    projectile.destroy();
+    this.damagePlayer(projectile.damage || CFG.enemyFireball.damage);
+  }
+
+  onPlayerHitHazard(playerSprite, hazard) {
+    if (this.time.now < hazard.nextDamageAt) return;
+    hazard.nextDamageAt = this.time.now + 650;
+    this.damagePlayer(hazard.damage || 1);
+  }
+
+  damagePlayer(amount) {
+    if (this.time.now < this.player.invulnerableUntil) return;
+
+    if (this.shieldActive) {
+      this.shieldHitsRemaining -= 1;
+      this.player.invulnerableUntil = this.time.now + 200;
+      this.tweens.add({
+        targets: this.shieldRing,
+        alpha: { from: 0.3, to: 1 },
+        scale: { from: 1.25, to: 1 },
+        duration: 220,
+        ease: 'Quad.out',
+      });
+      if (this.shieldHitsRemaining <= 0) {
+        this.endShield();
+      }
+      return;
+    }
+
+    this.stepDownBuff();
+    this.player.hp -= amount;
+    this.comboMultiplier = 1;
+    this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
+    this.player.hitUntil = this.time.now + CFG.player.hitFlashMs;
+
+    this.tweens.add({
+      targets: this.player.sprite,
+      alpha: 0.3,
+      duration: CFG.player.hitFlashMs,
+      yoyo: true,
+      onComplete: () => {
+        this.player.sprite.setAlpha(1);
+        this.player.sprite.setScale(PLAYER_BODY_SCALE);
+      },
+    });
+
+    this.cameras.main.shake(120, 0.005);
+
+    if (this.player.hp <= 0) {
+      if (this.phoenixCharges > 0) {
+        this.phoenixCharges -= 1;
+        this.player.hp = 1;
+        this.activateShield();
+        this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, 'PHOENIX', '#ffd54f');
+      } else {
+        this.endGame();
+      }
+    }
+  }
+
   showFloatingText(x, y, text, color = '#ffffff') {
     const t = this.add.text(x, y, text, {
       fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
@@ -905,11 +1496,19 @@ export default class GameScene extends Phaser.Scene {
     if (this.bonusPickup) this.despawnBonus();
     if (this.shieldPickup) this.despawnShieldBonus();
     if (this.shieldActive) this.endShield();
+    const saved = Save.recordRun({
+      wave: this.wave,
+      score: this.score,
+      coinsEarned: this.coinsThisRun,
+      persistCoins: false,
+    });
     this.time.delayedCall(400, () => {
-      this.scene.start('GameOverScene', {
+      this.scene.start('MainMenuScene', {
+        gameOver: true,
         score: this.score,
         wave: this.wave,
         coinsEarned: this.coinsThisRun,
+        walletSaved: saved.wallet,
       });
     });
   }
@@ -919,6 +1518,7 @@ export default class GameScene extends Phaser.Scene {
     const bonus = CFG.store.waveClearBase + CFG.store.waveClearPerWave * this.wave;
     const amount = Math.max(1, Math.round(bonus * this.runtime.coinDropMult));
     this.coinsThisRun += amount;
+    Save.addToWallet(amount);
     this.showFloatingText(
       this.player.sprite.x,
       this.player.sprite.y - 40,
@@ -1336,6 +1936,7 @@ export default class GameScene extends Phaser.Scene {
     const coins = Math.max(0, Math.min(999999, amount));
     if (coins <= 0) return;
     this.coinsThisRun += coins;
+    Save.addToWallet(coins);
     this.showFloatingText(
       this.player.sprite.x,
       this.player.sprite.y - 44,
@@ -1358,6 +1959,8 @@ export default class GameScene extends Phaser.Scene {
 
     this.enemies.clear(true, true);
     this.bullets.clear(true, true);
+    this.enemyProjectiles.clear(true, true);
+    this.hazards.clear(true, true);
 
     if (this.waveBanner) {
       this.waveBanner.destroy();
