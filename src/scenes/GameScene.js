@@ -1241,7 +1241,7 @@ export default class GameScene extends Phaser.Scene {
       this.createSplitterChild(enemy.x + Math.cos(angle) * 24, enemy.y + Math.sin(angle) * 24);
     }
     enemy.setTint(0xffd54f);
-    this.time.delayedCall(160, () => { if (enemy.active) enemy.clearTint(); });
+    this.time.delayedCall(160, () => { if (enemy.active) this.applyDamageTint(enemy); });
   }
 
   updateSlime(enemy, px, py, now) {
@@ -1414,21 +1414,18 @@ export default class GameScene extends Phaser.Scene {
   damageEnemy(enemy, sourceX, sourceY, amount) {
     if (!enemy.active) return 0;
     let damage = amount;
+    let frontBlocked = false;
     if (enemy.type === 'shielded') {
       const hitAngle = Math.atan2(sourceY - enemy.y, sourceX - enemy.x);
       const diff = Math.abs(Phaser.Math.Angle.Wrap(hitAngle - enemy.facingAngle));
       if (diff < Math.PI / 2) {
         damage *= CFG.shielded.frontDamageMult;
-        enemy.setTint(0xb0bec5);
-        this.time.delayedCall(90, () => { if (enemy.active) enemy.clearTint(); });
+        frontBlocked = true;
       }
     }
     enemy.hp -= damage;
     if (enemy.hp > 0) {
-      if (enemy.type !== 'shielded') {
-        enemy.setTint(0xffffff);
-        this.time.delayedCall(80, () => { if (enemy.active && enemy.type !== 'dasher') enemy.clearTint(); });
-      }
+      this.flashEnemyHit(enemy, frontBlocked);
       return damage;
     }
     const ex = enemy.x;
@@ -1438,6 +1435,30 @@ export default class GameScene extends Phaser.Scene {
     enemy.destroy();
     this.onEnemyKilled(type, ex, ey);
     return damage;
+  }
+
+  // Brief hit flash, then settle to the enemy's persistent visual state.
+  flashEnemyHit(enemy, frontBlocked = false) {
+    enemy.setTint(frontBlocked ? 0xb0bec5 : 0xffffff);
+    if (enemy.hitSettleEvent) enemy.hitSettleEvent.remove(false);
+    enemy.hitSettleEvent = this.time.delayedCall(frontBlocked ? 90 : 80, () => {
+      enemy.hitSettleEvent = null;
+      this.applyDamageTint(enemy);
+    });
+  }
+
+  // Multi-HP enemies keep a "broken" tint that deepens as their HP drops, so
+  // damage stays visible until they die. Others restore their normal look.
+  applyDamageTint(enemy) {
+    if (!enemy.active) return;
+    if (enemy.maxHp > 1 && enemy.hp > 0 && enemy.hp < enemy.maxHp) {
+      const t = Phaser.Math.Clamp(1 - enemy.hp / enemy.maxHp, 0, 1);
+      const c = Phaser.Display.Color.Interpolate.RGBWithRGB(255, 255, 255, 140, 50, 40, 100, Math.round(t * 100));
+      enemy.setTint(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
+      return;
+    }
+    if (enemy.type === 'dasher') { enemy.setTint(enemy.baseTint); return; }
+    enemy.clearTint();
   }
 
   cleanupEnemyExtras(enemy) {
