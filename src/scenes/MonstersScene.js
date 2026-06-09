@@ -7,6 +7,9 @@ const STYLE = {
   color: '#ffffff',
 };
 
+// Bestiary ids map to CFG blocks by name, except the swarmer (CFG.enemy).
+const enemyMaxHp = (id) => (id === 'swarmer' ? CFG.enemy.hp : (CFG[id]?.hp ?? 1));
+
 export default class MonstersScene extends Phaser.Scene {
   constructor() {
     super('MonstersScene');
@@ -84,13 +87,18 @@ export default class MonstersScene extends Phaser.Scene {
         ...STYLE,
         fontSize: '13px',
       }).setOrigin(0.5);
-      const wave = this.add.text(cardW / 2, 110, enemy.firstWave, {
+      const wave = this.add.text(cardW / 2, 104, enemy.firstWave, {
         ...STYLE,
         fontSize: '11px',
         color: '#ffd54f',
       }).setOrigin(0.5);
+      const hp = this.add.text(cardW / 2, 120, `HP ${enemyMaxHp(enemy.id)}`, {
+        ...STYLE,
+        fontSize: '11px',
+        color: '#ff8a80',
+      }).setOrigin(0.5);
 
-      container.add([bg, portrait, name, wave]);
+      container.add([bg, portrait, name, wave, hp]);
       container
         .setSize(cardW, cardH)
         .setInteractive(new Phaser.Geom.Rectangle(0, 0, cardW, cardH), Phaser.Geom.Rectangle.Contains)
@@ -111,6 +119,7 @@ export default class MonstersScene extends Phaser.Scene {
     this.detailPortrait = this.add.sprite(190, 230, ENEMY_SPRITES.monster.key, 0).setScale(3.1);
     this.detailName = this.add.text(360, 116, '', { ...STYLE, fontSize: '34px', color: '#ffd54f' });
     this.detailWave = this.add.text(362, 160, '', { ...STYLE, fontSize: '15px', color: '#b9d7b3' });
+    this.detailHp = this.add.text(362, 184, '', { ...STYLE, fontSize: '15px', color: '#ff8a80' });
     this.detailMovement = this.add.text(362, 218, '', {
       ...STYLE,
       fontSize: '15px',
@@ -135,6 +144,7 @@ export default class MonstersScene extends Phaser.Scene {
       this.detailPortrait,
       this.detailName,
       this.detailWave,
+      this.detailHp,
       this.detailMovement,
       this.detailPower,
       this.detailCounter,
@@ -200,6 +210,7 @@ export default class MonstersScene extends Phaser.Scene {
     if (enemy.tint) this.detailPortrait.setTint(enemy.tint);
     this.detailName.setText(enemy.name);
     this.detailWave.setText(`Appears: ${enemy.firstWave}`);
+    this.detailHp.setText(`Health: ${enemyMaxHp(enemy.id)} HP`);
     this.detailMovement.setText(`Movement\n${enemy.movement}`);
     this.detailPower.setText(`Special Power\n${enemy.power}`);
     this.detailCounter.setText(`How to Fight\n${enemy.counter}`);
