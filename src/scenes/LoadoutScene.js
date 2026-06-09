@@ -3,16 +3,21 @@ import { CFG } from '../config.js';
 import { Save } from '../save.js';
 import { WEAPONS_BY_ID, MODS_BY_ID, TIER_COLORS } from '../catalog.js';
 
+const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'MOD 1', 'MOD 2'];
+
 export default class LoadoutScene extends Phaser.Scene {
   constructor() {
     super('LoadoutScene');
   }
 
   create() {
-    this.slotIndex = 0; // 0 = weapon, 1 = mod1, 2 = mod2
+    this.slotIndex = 0; // 0 = weapon1, 1 = weapon2, 2 = mod1, 3 = mod2
 
     const save = Save.get();
-    this.weaponId = save.loadout.weapon || 'pistol';
+    this.weaponIds = [
+      save.loadout.weapons?.[0] || save.loadout.weapon || 'pistol',
+      save.loadout.weapons?.[1] ?? null,
+    ];
     this.modIds = [save.loadout.mods?.[0] ?? null, save.loadout.mods?.[1] ?? null];
 
     const style = {
@@ -21,7 +26,7 @@ export default class LoadoutScene extends Phaser.Scene {
     };
 
     this.add.text(20, 16, 'LOADOUT', { ...style, fontSize: '28px' });
-    this.add.text(20, 56, 'pick a weapon and up to 2 mods for your next run', {
+    this.add.text(20, 56, 'pick up to 2 weapons and up to 2 mods for your next run', {
       ...style, fontSize: '14px', color: '#aaaaaa',
     });
 
@@ -29,10 +34,9 @@ export default class LoadoutScene extends Phaser.Scene {
     this.slotValues = [];
     this.slotDescs = [];
 
-    const labels = ['WEAPON', 'MOD 1', 'MOD 2'];
-    for (let i = 0; i < 3; i++) {
-      const y = 130 + i * 90;
-      const label = this.add.text(40, y, labels[i], { ...style, fontSize: '16px', color: '#888' });
+    for (let i = 0; i < SLOT_LABELS.length; i++) {
+      const y = 120 + i * 84;
+      const label = this.add.text(40, y, SLOT_LABELS[i], { ...style, fontSize: '16px', color: '#888' });
       const value = this.add.text(180, y, '', { ...style, fontSize: '24px' });
       const desc = this.add.text(180, y + 32, '', { ...style, fontSize: '13px', color: '#bbb', wordWrap: { width: 560 } });
       this.slotTexts.push(label);
@@ -42,8 +46,8 @@ export default class LoadoutScene extends Phaser.Scene {
 
     this.hintText = this.add.text(
       20,
-      CFG.arena.height - 60,
-      '↑/↓ slot  •  ←/→ cycle  •  enter start run  •  B back',
+      CFG.arena.height - 36,
+      '↑/↓ slot  •  ←/→ cycle  •  enter start run  •  B back  •  swap weapons in-game with C',
       { ...style, fontSize: '12px', color: '#666' },
     );
 
@@ -63,12 +67,12 @@ export default class LoadoutScene extends Phaser.Scene {
       return;
     }
     if (event.key === 'ArrowUp') {
-      this.slotIndex = (this.slotIndex + 2) % 3;
+      this.slotIndex = (this.slotIndex + SLOT_LABELS.length - 1) % SLOT_LABELS.length;
       this.refresh();
       return;
     }
     if (event.key === 'ArrowDown') {
-      this.slotIndex = (this.slotIndex + 1) % 3;
+      this.slotIndex = (this.slotIndex + 1) % SLOT_LABELS.length;
       this.refresh();
       return;
     }
@@ -81,7 +85,7 @@ export default class LoadoutScene extends Phaser.Scene {
       return;
     }
     if (event.key === 'Enter') {
-      Save.setLoadout(this.weaponId, this.modIds);
+      Save.setLoadout(this.weaponIds, this.modIds);
       this.scene.start('GameScene');
       return;
     }
@@ -89,16 +93,21 @@ export default class LoadoutScene extends Phaser.Scene {
 
   cycle(dir) {
     const save = Save.get();
-    if (this.slotIndex === 0) {
-      const list = save.ownedWeapons.length ? save.ownedWeapons : ['pistol'];
-      const idx = Math.max(0, list.indexOf(this.weaponId));
-      this.weaponId = list[(idx + dir + list.length) % list.length];
+    if (this.slotIndex === 0 || this.slotIndex === 1) {
+      const isPrimary = this.slotIndex === 0;
+      const other = this.weaponIds[isPrimary ? 1 : 0];
+      const avail = (save.ownedWeapons.length ? save.ownedWeapons : ['pistol']).filter((w) => w !== other);
+      // The primary weapon is required; the secondary slot may be empty.
+      const choices = isPrimary ? avail : [null, ...avail];
+      if (!choices.length) return;
+      const cur = this.weaponIds[this.slotIndex];
+      const idx = Math.max(0, choices.indexOf(cur));
+      this.weaponIds[this.slotIndex] = choices[(idx + dir + choices.length) % choices.length];
     } else {
-      const otherSlot = this.slotIndex === 1 ? 1 : 0;
-      const taken = this.modIds[otherSlot];
+      const slot = this.slotIndex - 2;
+      const taken = this.modIds[1 - slot];
       const avail = save.ownedMods.filter((m) => m !== taken);
       const choices = [null, ...avail];
-      const slot = this.slotIndex - 1;
       const cur = this.modIds[slot];
       const idx = Math.max(0, choices.indexOf(cur));
       this.modIds[slot] = choices[(idx + dir + choices.length) % choices.length];
@@ -107,34 +116,37 @@ export default class LoadoutScene extends Phaser.Scene {
   }
 
   refresh() {
-    const labels = ['WEAPON', 'MOD 1', 'MOD 2'];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < SLOT_LABELS.length; i++) {
       const selected = i === this.slotIndex;
-      this.slotTexts[i].setText(`${selected ? '▶ ' : '  '}${labels[i]}`);
+      this.slotTexts[i].setText(`${selected ? '▶ ' : '  '}${SLOT_LABELS[i]}`);
       this.slotTexts[i].setColor(selected ? '#ffd54f' : '#888');
     }
 
-    const weapon = WEAPONS_BY_ID[this.weaponId];
-    if (weapon) {
-      this.slotValues[0].setText(`< ${weapon.name} >`);
-      this.slotValues[0].setColor(TIER_COLORS[weapon.tier]);
-      this.slotDescs[0].setText(weapon.description);
-    } else {
-      this.slotValues[0].setText('< Pistol >');
-      this.slotDescs[0].setText('');
+    for (let i = 0; i < 2; i++) {
+      const id = this.weaponIds[i];
+      const weapon = id ? WEAPONS_BY_ID[id] : null;
+      if (weapon) {
+        this.slotValues[i].setText(`< ${weapon.name} >`);
+        this.slotValues[i].setColor(TIER_COLORS[weapon.tier]);
+        this.slotDescs[i].setText(weapon.description);
+      } else {
+        this.slotValues[i].setText('< (empty) >');
+        this.slotValues[i].setColor('#666');
+        this.slotDescs[i].setText('no secondary weapon — equip one to swap with C in-game');
+      }
     }
 
     for (let i = 0; i < 2; i++) {
       const id = this.modIds[i];
       const mod = id ? MODS_BY_ID[id] : null;
       if (mod) {
-        this.slotValues[i + 1].setText(`< ${mod.name} >`);
-        this.slotValues[i + 1].setColor(TIER_COLORS[mod.tier]);
-        this.slotDescs[i + 1].setText(mod.description);
+        this.slotValues[i + 2].setText(`< ${mod.name} >`);
+        this.slotValues[i + 2].setColor(TIER_COLORS[mod.tier]);
+        this.slotDescs[i + 2].setText(mod.description);
       } else {
-        this.slotValues[i + 1].setText('< (empty) >');
-        this.slotValues[i + 1].setColor('#666');
-        this.slotDescs[i + 1].setText('no mod equipped in this slot');
+        this.slotValues[i + 2].setText('< (empty) >');
+        this.slotValues[i + 2].setColor('#666');
+        this.slotDescs[i + 2].setText('no mod equipped in this slot');
       }
     }
   }

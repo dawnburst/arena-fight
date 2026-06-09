@@ -5,7 +5,7 @@ const DEFAULTS = () => ({
   wallet: 0,
   ownedWeapons: ['pistol'],
   ownedMods: [],
-  loadout: { weapon: 'pistol', mods: [null, null] },
+  loadout: { weapon: 'pistol', weapons: ['pistol', null], mods: [null, null] },
   settings: {
     backgroundId: 'meadow',
     musicEnabled: true,
@@ -28,10 +28,17 @@ function read() {
       return DEFAULTS();
     }
     const base = DEFAULTS();
+    const loadout = { ...base.loadout, ...(parsed.loadout || {}) };
+    // Migrate single-weapon saves to the two-slot weapons array.
+    const weaponsArr = Array.isArray(loadout.weapons) && loadout.weapons.length
+      ? loadout.weapons
+      : [loadout.weapon || 'pistol', null];
+    loadout.weapons = [weaponsArr[0] || 'pistol', weaponsArr[1] || null];
+    loadout.weapon = loadout.weapons[0];
     return {
       ...base,
       ...parsed,
-      loadout: { ...base.loadout, ...(parsed.loadout || {}) },
+      loadout,
       settings: { ...base.settings, ...(parsed.settings || {}) },
       stats: { ...base.stats, ...(parsed.stats || {}) },
       ownedWeapons: Array.isArray(parsed.ownedWeapons) ? parsed.ownedWeapons : base.ownedWeapons,
@@ -80,8 +87,14 @@ export const Save = {
       return { ...s, wallet: s.wallet - price, ownedMods: [...s.ownedMods, id] };
     });
   },
-  setLoadout(weapon, mods) {
-    return this.set((s) => ({ ...s, loadout: { weapon, mods: [...mods] } }));
+  setLoadout(weapons, mods) {
+    const arr = Array.isArray(weapons) ? weapons : [weapons, null];
+    const primary = arr[0] || 'pistol';
+    const secondary = arr[1] || null;
+    return this.set((s) => ({
+      ...s,
+      loadout: { weapon: primary, weapons: [primary, secondary], mods: [...mods] },
+    }));
   },
   setBackground(backgroundId) {
     return this.set((s) => ({

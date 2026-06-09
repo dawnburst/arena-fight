@@ -64,7 +64,13 @@ export default class GameScene extends Phaser.Scene {
     const selectedBackground = resolveBackground(save.settings?.backgroundId);
     this.add.image(0, 0, backgroundKey(selectedBackground.id)).setOrigin(0).setDepth(-20);
     const loadoutMods = (save.loadout?.mods || []).filter(Boolean);
-    this.weaponDef = getWeapon(save.loadout?.weapon || 'pistol');
+    const weaponIds = save.loadout?.weapons || [save.loadout?.weapon || 'pistol', null];
+    this.weapons = [
+      getWeapon(weaponIds[0] || 'pistol'),
+      weaponIds[1] ? getWeapon(weaponIds[1]) : null,
+    ];
+    this.activeWeaponIndex = 0;
+    this.weaponDef = this.weapons[0];
     this.modStats = buildRuntimeStats(loadoutMods);
 
     this.runtime = {
@@ -151,6 +157,7 @@ export default class GameScene extends Phaser.Scene {
       dash: Phaser.Input.Keyboard.KeyCodes.SPACE,
       pauseP: Phaser.Input.Keyboard.KeyCodes.P,
       pauseEsc: Phaser.Input.Keyboard.KeyCodes.ESC,
+      switchWeapon: Phaser.Input.Keyboard.KeyCodes.C,
     });
     this.cursors = this.input.keyboard.createCursorKeys();
 
@@ -310,6 +317,14 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 1);
 
+    this.hudWeapon = this.add
+      .text(10, CFG.arena.height - 8, '', {
+        ...style,
+        fontSize: '12px',
+        color: '#bbbbbb',
+      })
+      .setOrigin(0, 1);
+
     this.shieldHud = this.add
       .text(CFG.arena.width / 2, 38, '', {
         ...style,
@@ -370,6 +385,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     if (this.paused) return;
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.switchWeapon)) {
+      this.switchWeapon(time);
+    }
 
     this.updateAim();
     this.handleMovementAndDash(time);
@@ -667,6 +686,16 @@ export default class GameScene extends Phaser.Scene {
       this.fireBullet(time, offsetDeg);
     }
     this.playWeaponSfx(time);
+  }
+
+  switchWeapon(time) {
+    if (!this.weapons[1]) return;
+    this.activeWeaponIndex = this.activeWeaponIndex === 0 ? 1 : 0;
+    this.weaponDef = this.weapons[this.activeWeaponIndex];
+    this.burstShotsRemaining = 0;
+    this.player.nextFireAt = time;
+    this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, this.weaponDef.name, '#4fc3f7');
+    this.updateHUD(time);
   }
 
   playWeaponSfx(time) {
@@ -2041,6 +2070,11 @@ export default class GameScene extends Phaser.Scene {
       this.dashCdText.setText(`dash cooldown: ${(remaining / 1000).toFixed(1)}s`);
     } else {
       this.dashCdText.setText('dash ready  [space]');
+    }
+
+    if (this.hudWeapon) {
+      const name = this.weaponDef?.name || '';
+      this.hudWeapon.setText(this.weapons[1] ? `${name}  [C swap]` : name);
     }
 
     if (this.shieldActive) {
