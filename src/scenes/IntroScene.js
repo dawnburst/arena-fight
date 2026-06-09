@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CFG } from '../config.js';
+import { preloadMusic, syncMusic } from '../audio.js';
 
 export default class IntroScene extends Phaser.Scene {
   constructor() {
@@ -10,10 +11,12 @@ export default class IntroScene extends Phaser.Scene {
     if (!this.textures.exists('intro-art')) {
       this.load.image('intro-art', '/assets/intro/intro.png');
     }
+    preloadMusic(this);
   }
 
   create() {
     this.started = false;
+    syncMusic(this);
     const style = {
       fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
       color: '#ffffff',

@@ -7,6 +7,7 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
+import { preloadMusic, syncMusic } from '../audio.js';
 
 export default class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -20,9 +21,11 @@ export default class SettingsScene extends Phaser.Scene {
         this.load.image(key, backgroundPath(background));
       }
     }
+    preloadMusic(this);
   }
 
   create() {
+    syncMusic(this);
     const style = {
       fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
       color: '#ffffff',
@@ -84,10 +87,12 @@ export default class SettingsScene extends Phaser.Scene {
       this.views.push({ container, frame, title, desc, marker });
     });
 
+    this.createMusicControls(style);
+
     this.hintText = this.add.text(
       CFG.arena.width / 2,
       CFG.arena.height - 38,
-      '←/→ select  •  enter apply  •  B / Esc back',
+      '←/→ select  •  enter apply  •  M music  •  +/- volume  •  B / Esc back',
       { ...style, fontSize: '13px', color: '#cccccc' },
     ).setOrigin(0.5);
 
@@ -119,6 +124,21 @@ export default class SettingsScene extends Phaser.Scene {
     if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') {
       event.preventDefault?.();
       this.applySelection(this.selectedIndex);
+      return;
+    }
+    if (event.key === 'm' || event.key === 'M') {
+      event.preventDefault?.();
+      this.toggleMusic();
+      return;
+    }
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault?.();
+      this.setMusicVolume((Save.get().settings?.musicVolume ?? 0.55) + 0.05);
+      return;
+    }
+    if (event.key === '-' || event.key === '_') {
+      event.preventDefault?.();
+      this.setMusicVolume((Save.get().settings?.musicVolume ?? 0.55) - 0.05);
     }
   }
 
@@ -131,6 +151,81 @@ export default class SettingsScene extends Phaser.Scene {
     this.selectedIndex = Phaser.Math.Wrap(index, 0, ARENA_BACKGROUNDS.length);
     Save.setBackground(ARENA_BACKGROUNDS[this.selectedIndex].id);
     this.refresh();
+  }
+
+  createMusicControls(style) {
+    const x = 36;
+    const y = 408;
+    const width = 724;
+    const height = 104;
+
+    this.musicFrame = this.add.graphics();
+    this.musicCheck = this.add.graphics();
+    this.musicSlider = this.add.graphics();
+    this.musicTitle = this.add.text(x + 24, y + 18, 'MUSIC', {
+      ...style,
+      fontSize: '20px',
+      color: '#ffd54f',
+    });
+    this.musicStatus = this.add.text(x + 24, y + 54, '', {
+      ...style,
+      fontSize: '14px',
+      color: '#d7f5c3',
+    });
+    this.musicVolumeText = this.add.text(x + 522, y + 54, '', {
+      ...style,
+      fontSize: '14px',
+      color: '#ffffff',
+    }).setOrigin(1, 0);
+
+    this.musicToggleZone = this.add.zone(x + 24, y + 50, 220, 36)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.toggleMusic());
+
+    this.musicSliderBounds = new Phaser.Geom.Rectangle(x + 548, y + 50, 176, 24);
+    this.musicSliderZone = this.add.zone(
+      this.musicSliderBounds.x,
+      this.musicSliderBounds.y - 8,
+      this.musicSliderBounds.width,
+      this.musicSliderBounds.height + 16,
+    )
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', (pointer) => this.setMusicVolumeFromPointer(pointer))
+      .on('pointermove', (pointer) => {
+        if (pointer.isDown) this.setMusicVolumeFromPointer(pointer);
+      });
+
+    this.musicHelp = this.add.text(x + width - 24, y + 18, 'looping background track', {
+      ...style,
+      fontSize: '12px',
+      color: '#bfbfbf',
+    }).setOrigin(1, 0);
+
+    this.musicFrame.fillStyle(0x121812, 0.9);
+    this.musicFrame.fillRoundedRect(x, y, width, height, 8);
+    this.musicFrame.lineStyle(2, 0x4f704f, 1);
+    this.musicFrame.strokeRoundedRect(x, y, width, height, 8);
+  }
+
+  toggleMusic() {
+    const enabled = Save.get().settings?.musicEnabled !== false;
+    Save.setMusicEnabled(!enabled);
+    syncMusic(this);
+    this.refresh();
+  }
+
+  setMusicVolume(volume) {
+    Save.setMusicVolume(Phaser.Math.Clamp(volume, 0, 1));
+    syncMusic(this);
+    this.refresh();
+  }
+
+  setMusicVolumeFromPointer(pointer) {
+    const bounds = this.musicSliderBounds;
+    const volume = Phaser.Math.Clamp((pointer.x - bounds.x) / bounds.width, 0, 1);
+    this.setMusicVolume(volume);
   }
 
   refresh() {
@@ -151,5 +246,42 @@ export default class SettingsScene extends Phaser.Scene {
       view.marker.setText(active ? 'ON' : '');
       view.container.setScale(selected ? 1.02 : 1);
     });
+
+    this.refreshMusicControls();
+  }
+
+  refreshMusicControls() {
+    if (!this.musicCheck) return;
+    const settings = Save.get().settings || {};
+    const enabled = settings.musicEnabled !== false;
+    const volume = Phaser.Math.Clamp(settings.musicVolume ?? 0.55, 0, 1);
+    const bounds = this.musicSliderBounds;
+    const knobX = bounds.x + bounds.width * volume;
+
+    this.musicStatus.setText(enabled ? 'ON' : 'OFF');
+    this.musicStatus.setColor(enabled ? '#69f0ae' : '#ff8a80');
+    this.musicVolumeText.setText(`Volume ${Math.round(volume * 100)}%`);
+
+    this.musicCheck.clear();
+    this.musicCheck.fillStyle(enabled ? 0x1b3d28 : 0x241818, 1);
+    this.musicCheck.fillRoundedRect(128, 455, 28, 28, 5);
+    this.musicCheck.lineStyle(3, enabled ? 0x69f0ae : 0xff8a80, 1);
+    this.musicCheck.strokeRoundedRect(128, 455, 28, 28, 5);
+    if (enabled) {
+      this.musicCheck.lineStyle(4, 0x69f0ae, 1);
+      this.musicCheck.beginPath();
+      this.musicCheck.moveTo(135, 469);
+      this.musicCheck.lineTo(143, 477);
+      this.musicCheck.lineTo(151, 462);
+      this.musicCheck.strokePath();
+    }
+
+    this.musicSlider.clear();
+    this.musicSlider.fillStyle(0x0b0f0b, 1);
+    this.musicSlider.fillRoundedRect(bounds.x, bounds.y + 8, bounds.width, 8, 4);
+    this.musicSlider.fillStyle(enabled ? 0x69f0ae : 0x777777, 1);
+    this.musicSlider.fillRoundedRect(bounds.x, bounds.y + 8, Math.max(6, knobX - bounds.x), 8, 4);
+    this.musicSlider.fillStyle(0xffffff, 1);
+    this.musicSlider.fillCircle(knobX, bounds.y + 12, 10);
   }
 }

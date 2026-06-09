@@ -4,6 +4,7 @@ import { Save } from '../save.js';
 import { getWeapon, buildRuntimeStats } from '../catalog.js';
 import { ARENA_BACKGROUNDS, backgroundKey, backgroundPath, resolveBackground } from '../backgrounds.js';
 import { ENEMY_SPRITES } from '../enemies.js';
+import { preloadMusic, syncMusic } from '../audio.js';
 
 const PLAYER_DIRECTIONS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 const PLAYER_POSES = ['idle', 'walk1', 'walk2', 'dash', 'hit', 'death'];
@@ -50,9 +51,11 @@ export default class GameScene extends Phaser.Scene {
         });
       }
     }
+    preloadMusic(this);
   }
 
   create() {
+    syncMusic(this);
     this.physics.world.setBounds(0, 0, CFG.arena.width, CFG.arena.height);
 
     const save = Save.get();

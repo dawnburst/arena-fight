@@ -7,6 +7,7 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
+import { preloadMusic, syncMusic } from '../audio.js';
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -24,9 +25,11 @@ export default class MainMenuScene extends Phaser.Scene {
         this.load.image(key, backgroundPath(background));
       }
     }
+    preloadMusic(this);
   }
 
   create() {
+    syncMusic(this);
     const style = {
       fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
       color: '#ffffff',

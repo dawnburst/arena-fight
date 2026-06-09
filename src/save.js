@@ -6,7 +6,7 @@ const DEFAULTS = () => ({
   ownedWeapons: ['pistol'],
   ownedMods: [],
   loadout: { weapon: 'pistol', mods: [null, null] },
-  settings: { backgroundId: 'meadow' },
+  settings: { backgroundId: 'meadow', musicEnabled: true, musicVolume: 0.55 },
   stats: { runsPlayed: 0, bestWave: 0, bestScore: 0, totalCoinsEarned: 0 },
 });
 
@@ -81,6 +81,18 @@ export const Save = {
     return this.set((s) => ({
       ...s,
       settings: { ...(s.settings || {}), backgroundId },
+    }));
+  },
+  setMusicEnabled(musicEnabled) {
+    return this.set((s) => ({
+      ...s,
+      settings: { ...(s.settings || {}), musicEnabled },
+    }));
+  },
+  setMusicVolume(musicVolume) {
+    return this.set((s) => ({
+      ...s,
+      settings: { ...(s.settings || {}), musicVolume },
     }));
   },
   recordRun({ wave, score, coinsEarned, persistCoins = true }) {
