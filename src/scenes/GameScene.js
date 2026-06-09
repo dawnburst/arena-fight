@@ -311,7 +311,7 @@ export default class GameScene extends Phaser.Scene {
       .text(CFG.arena.width / 2, CFG.arena.height - 18, '', {
         ...style,
         fontSize: '12px',
-        color: '#888',
+        color: '#ffd54f',
       })
       .setOrigin(0.5, 1);
 
