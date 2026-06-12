@@ -1,3 +1,5 @@
+import { assetPath } from './assetPath.js';
+
 export const ARENA_BACKGROUNDS = [
   {
     id: 'meadow',
@@ -30,7 +32,7 @@ export function backgroundKey(id) {
 }
 
 export function backgroundPath(background) {
-  return `/assets/backgrounds/${background.file}`;
+  return assetPath(`assets/backgrounds/${background.file}`);
 }
 
 export function resolveBackground(id) {

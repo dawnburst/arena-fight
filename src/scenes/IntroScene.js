@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { assetPath } from '../assetPath.js';
 import { CFG } from '../config.js';
 import { preloadMusic, syncMusic } from '../audio.js';
 
@@ -9,7 +10,7 @@ export default class IntroScene extends Phaser.Scene {
 
   preload() {
     if (!this.textures.exists('intro-art')) {
-      this.load.image('intro-art', '/assets/intro/intro.png');
+      this.load.image('intro-art', assetPath('assets/intro/intro.png'));
     }
     preloadMusic(this);
   }

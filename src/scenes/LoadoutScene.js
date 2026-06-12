@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { assetPath } from '../assetPath.js';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
 import { WEAPONS, MODS, WEAPONS_BY_ID, MODS_BY_ID, TIER_COLORS } from '../catalog.js';
@@ -18,7 +19,7 @@ export default class LoadoutScene extends Phaser.Scene {
       if (item.price <= 0) continue;
       const key = itemIconKey(item.id);
       if (!this.textures.exists(key)) {
-        this.load.image(key, `/assets/items/${item.id}.png`);
+        this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
     }
   }

@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
+import { assetPath } from './assetPath.js';
 import { Save } from './save.js';
 
 export const MUSIC_KEY = 'music-retro-game';
-export const MUSIC_PATH = '/assets/music/retro_game_music.mp3';
+export const MUSIC_PATH = assetPath('assets/music/retro_game_music.mp3');
 export const SFX = {
-  laser: { key: 'sfx-laser', path: '/assets/sounds/laser.wav', volume: 0.42 },
-  coin: { key: 'sfx-coin', path: '/assets/sounds/coin.wav', volume: 0.5 },
-  dash: { key: 'sfx-dash', path: '/assets/sounds/dash.wav', volume: 0.55 },
-  gift: { key: 'sfx-gift', path: '/assets/sounds/gift.wav', volume: 0.6 },
-  lose: { key: 'sfx-lose', path: '/assets/sounds/lose.wav', volume: 0.7 },
+  laser: { key: 'sfx-laser', path: assetPath('assets/sounds/laser.wav'), volume: 0.42 },
+  coin: { key: 'sfx-coin', path: assetPath('assets/sounds/coin.wav'), volume: 0.5 },
+  dash: { key: 'sfx-dash', path: assetPath('assets/sounds/dash.wav'), volume: 0.55 },
+  gift: { key: 'sfx-gift', path: assetPath('assets/sounds/gift.wav'), volume: 0.6 },
+  lose: { key: 'sfx-lose', path: assetPath('assets/sounds/lose.wav'), volume: 0.7 },
 };
 const MUSIC_MANAGER_KEY = 'backgroundMusicManager';
 const CROSSFADE_MS = 2600;
