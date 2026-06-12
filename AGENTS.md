@@ -42,6 +42,14 @@ npm run build
 
 If the change is documentation-only, no build is required.
 
+## Workflow & Git Standards
+
+Follow these rules for all development tasks:
+
+- **Branching:** Always create a new branch for every task using best practice naming conventions (e.g., `feat/description`, `fix/description`, `ci/description`, `docs/description`, `refactor/description`). Never work directly on the `main` branch.
+- **Logical Commits:** Break your changes into small, logical units. Do not bundle unrelated changes into a single commit.
+- **Sign-off:** Every commit must include the Developer Certificate of Origin (DCO) sign-off. Use the `-s` flag with `git commit`.
+
 ## Coding Guidelines
 
 - Use `rg` for searches.

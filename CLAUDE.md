@@ -30,6 +30,9 @@ npm run preview
 - Preserve user work in the working tree. Do not revert unrelated edits.
 - Use existing Phaser scene patterns and config-driven tuning before adding new abstractions.
 - Put static game assets under `public/assets/...` and load them through `src/assetPath.js` so production builds work under the GitHub Pages `/arena-fight/` base path.
+- **Workflow:** Always create a new branch for any task (e.g., `feat/`, `fix/`, `docs/`, `ci/`) and never commit directly to `main`.
+- **Commits:** Break changes into small, logical units and avoid unrelated refactors in the same commit.
+- **DCO Sign-off:** Every commit must include the sign-off flag (`git commit -s`).
 - Keep persistent player state in `src/save.js` and avoid creating new localStorage keys unless there is a migration plan.
 - Prefer changing `src/config.js` for gameplay tuning values such as wave timing, enemy appearance waves, prices, movement, and coin behavior.
 - For visual UI work, keep the game-first retro style and verify text does not overlap at the fixed `800x600` canvas size.
