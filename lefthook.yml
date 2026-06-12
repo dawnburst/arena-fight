@@ -1,0 +1,5 @@
+pre-commit:
+  commands:
+    check:
+      glob: "*.{js,json,md,html}"
+      run: npx @biomejs/biome check --write --no-errors-on-unmatched --staged {staged_files}
