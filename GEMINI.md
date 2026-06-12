@@ -13,6 +13,11 @@ Follow these rules for all development tasks in this repository:
   - Never work directly on the `main` branch.
 - **Logical Commits:** Break your changes into small, logical units. Do not bundle unrelated changes into a single commit.
 - **Sign-off:** Every commit must include the Developer Certificate of Origin (DCO) sign-off flag. Use `git commit -s -m "..."`.
+- **Code Quality:** This project uses Biome for linting and formatting. Run `npm run check` before finishing any task.
+- **Security Best Practices:**
+  - Never store sensitive data (PII, tokens) in `localStorage`.
+  - Use `textContent` or `innerText` instead of `innerHTML` for user-controlled strings to prevent XSS.
+  - Validate and sanitize all game state loaded from external sources.
 
 ## Verification
 

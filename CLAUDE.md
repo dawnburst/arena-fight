@@ -33,6 +33,8 @@ npm run preview
 - **Workflow:** Always create a new branch for any task (e.g., `feat/`, `fix/`, `docs/`, `ci/`) and never commit directly to `main`.
 - **Commits:** Break changes into small, logical units and avoid unrelated refactors in the same commit.
 - **DCO Sign-off:** Every commit must include the sign-off flag (`git commit -s`).
+- **Formatting:** This project uses Biome. Run `npm run check` before committing to ensure code quality and consistent styling.
+- **Security:** Avoid storing sensitive tokens in `localStorage`. Sanitize all user-provided strings before DOM insertion.
 - Keep persistent player state in `src/save.js` and avoid creating new localStorage keys unless there is a migration plan.
 - Prefer changing `src/config.js` for gameplay tuning values such as wave timing, enemy appearance waves, prices, movement, and coin behavior.
 - For visual UI work, keep the game-first retro style and verify text does not overlap at the fixed `800x600` canvas size.
