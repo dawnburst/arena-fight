@@ -52,7 +52,7 @@ If the change is documentation-only, no build is required.
 - Prefer existing project patterns over new architecture.
 - Keep gameplay values configurable through `src/config.js` where practical.
 - Keep persistent state changes centralized in `src/save.js`.
-- Keep static images, sprite sheets, and music under `public/assets/...`.
+- Keep static images, sprite sheets, and music under `public/assets/...`, and load them through `src/assetPath.js` when referencing them from Phaser code.
 - Use Phaser scene transitions rather than DOM overlays for in-game screens.
 
 ## Documentation Maintenance

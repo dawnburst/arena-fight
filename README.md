@@ -20,6 +20,8 @@ npm run build
 npm run preview
 ```
 
+Production builds use the `/arena-fight/` base path for GitHub Pages. Pushes to `main` deploy `dist` through the GitHub Actions workflow in `.github/workflows/deploy.yml`; configure repository Pages to use `GitHub Actions` as the source.
+
 ## Controls
 
 | Action | Key |
@@ -29,7 +31,6 @@ npm run preview
 | Fire (hold) | Left mouse button |
 | Dash | `Space` |
 | Pause / Resume | `P` or `Esc` |
-| Cheat screen | `` ` `` |
 | Menu navigation | Mouse or arrow keys + `Enter` |
 
 ## Settings

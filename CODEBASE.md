@@ -10,14 +10,14 @@
 
 Recent implementation has moved beyond the original Phase 1 notes below:
 
-- The game now boots through `IntroScene`, using `/assets/intro/intro.png`, then transitions to `MainMenuScene`.
+- The game now boots through `IntroScene`, using `public/assets/intro/intro.png`, then transitions to `MainMenuScene`.
 - `MainMenuScene` is the only menu flow and also renders game-over details after death.
-- Music is loaded from `/assets/music/retro_game_music.mp3` through `src/audio.js`.
-- Sound effects are loaded from `/assets/sounds/*.wav` through `src/audio.js` and played from `GameScene` gameplay hooks.
+- Music is loaded from `public/assets/music/retro_game_music.mp3` through `src/audio.js`.
+- Sound effects are loaded from `public/assets/sounds/*.wav` through `src/audio.js` and played from `GameScene` gameplay hooks.
 - Music settings persist in `Save.settings` as `musicEnabled` and `musicVolume`.
 - Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
 - `SettingsScene` controls arena background, music on/off and volume, and sound-effect on/off and volume.
-- Static generated assets live under `public/assets/...`; Windows `*:Zone.Identifier` sidecars are ignored.
+- Static generated assets live under `public/assets/...`; Phaser code resolves them through `src/assetPath.js` so builds work at `/arena-fight/` on GitHub Pages. Windows `*:Zone.Identifier` sidecars are ignored.
 
 ---
 
@@ -70,7 +70,7 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 
 `package.json` scripts: `dev`, `build`, `preview` (all standard Vite).
 
-No TypeScript. No test framework. No linter configured. No CI.
+No TypeScript. No test framework. No linter configured. GitHub Actions deploys the static Vite build to GitHub Pages on pushes to `main`.
 
 ---
 
@@ -92,7 +92,6 @@ npm run preview  # serves built ./dist
 | Fire (hold) | Left mouse button |
 | Dash | `Space` (brief invulnerability, cooldown-gated) |
 | Pause / Resume | `P` or `Esc` |
-| Cheat: jump to wave | `` ` `` (backtick) → type number → `Enter` |
 | Restart (Game Over) | `R` |
 | Open Store (Game Over) | `S` |
 | Open Loadout (Game Over) | `L` |
@@ -104,7 +103,9 @@ npm run preview  # serves built ./dist
 ```
 arena-fight/
 ├── package.json              # phaser + vite, type:module
-├── vite.config.js            # port 5173, host:true, open:true
+├── vite.config.js            # dev port 5173; production base /arena-fight/
+├── .github/workflows/
+│   └── deploy.yml            # builds dist and deploys to GitHub Pages
 ├── index.html                # mounts #game div, loads /src/main.js
 ├── README.md                 # short player-facing readme
 ├── plan-game.md              # Phase 1 design (predates implementation)
@@ -117,6 +118,7 @@ arena-fight/
 │           └── SKILL.md      # project-level skill: keep README in sync with code
 └── src/
     ├── main.js               # Phaser.Game config; registers all scenes
+    ├── assetPath.js          # prefixes public asset paths with Vite's base URL
     ├── config.js             # All tunable constants (CFG)
     ├── save.js               # localStorage wrapper, defaults, persistence API
     ├── catalog.js            # Weapons + mods, prices, apply functions
@@ -488,7 +490,9 @@ Other UI elements created in `createHUD()`:
 - `update()` returns early if `this.paused`.
 - All `time.addEvent` and `time.delayedCall` events naturally pause along with `this.time.paused = true`, so bonus/shield/wave timers all freeze correctly.
 
-### 6.17 Cheat console: jump to wave (backtick)
+### 6.17 Dev-only cheat console: jump to wave / add coins (backtick)
+
+The cheat console is gated by `import.meta.env.DEV`, so it is available during `npm run dev` and disabled in production builds such as GitHub Pages.
 
 `onKeyDown(event)` registered as `this.input.keyboard.on('keydown', ...)` in `create()`.
 

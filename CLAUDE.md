@@ -29,7 +29,7 @@ npm run preview
 - Keep changes scoped to the requested feature or bug fix.
 - Preserve user work in the working tree. Do not revert unrelated edits.
 - Use existing Phaser scene patterns and config-driven tuning before adding new abstractions.
-- Put static game assets under `public/assets/...` and load them with root-relative paths such as `/assets/intro/intro.png`, `/assets/music/retro_game_music.mp3`, or `/assets/sounds/coin.wav`.
+- Put static game assets under `public/assets/...` and load them through `src/assetPath.js` so production builds work under the GitHub Pages `/arena-fight/` base path.
 - Keep persistent player state in `src/save.js` and avoid creating new localStorage keys unless there is a migration plan.
 - Prefer changing `src/config.js` for gameplay tuning values such as wave timing, enemy appearance waves, prices, movement, and coin behavior.
 - For visual UI work, keep the game-first retro style and verify text does not overlap at the fixed `800x600` canvas size.
