@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { assetPath } from '../assetPath.js';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
 import { getWeapon, buildRuntimeStats, MODS } from '../catalog.js';
@@ -20,6 +21,7 @@ const FIRECASTER_SCALE = 0.58;
 const DEFAULT_ENEMY_SCALE = 0.58;
 const ENEMY_HITBOX_MULT = 1.35;
 const ENEMY_TYPE_ORDER = ['sniper', 'teleporter', 'shielded', 'summoner', 'healer', 'slime', 'egg', 'bomber', 'splitter', 'tank', 'firecaster', 'dasher'];
+const CHEATS_ENABLED = import.meta.env.DEV;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
