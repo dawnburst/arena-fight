@@ -46,12 +46,14 @@ export default class MonstersScene extends Phaser.Scene {
     this.createGallery();
     this.createDetail();
 
-    this.hint = this.add.text(
-      CFG.arena.width / 2,
-      CFG.arena.height - 28,
-      'arrows select  •  enter inspect  •  B / Esc back',
-      { ...STYLE, fontSize: '12px', color: '#b7c7b3' },
-    ).setOrigin(0.5);
+    this.hint = this.add
+      .text(
+        CFG.arena.width / 2,
+        CFG.arena.height - 28,
+        'arrows select  •  enter inspect  •  B / Esc back',
+        { ...STYLE, fontSize: '12px', color: '#b7c7b3' },
+      )
+      .setOrigin(0.5);
 
     this.input.keyboard.on('keydown', this.onKey, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
@@ -80,28 +82,36 @@ export default class MonstersScene extends Phaser.Scene {
       const container = this.add.container(x, y);
       const bg = this.add.graphics();
       const spriteDef = ENEMY_SPRITES[enemy.sprite];
-      const portrait = this.add.sprite(cardW / 2, 46, spriteDef.key, enemy.frame)
-        .setScale(0.7);
+      const portrait = this.add.sprite(cardW / 2, 46, spriteDef.key, enemy.frame).setScale(0.7);
       if (enemy.tint) portrait.setTint(enemy.tint);
-      const name = this.add.text(cardW / 2, 86, enemy.name, {
-        ...STYLE,
-        fontSize: '13px',
-      }).setOrigin(0.5);
-      const wave = this.add.text(cardW / 2, 104, enemy.firstWave, {
-        ...STYLE,
-        fontSize: '11px',
-        color: '#ffd54f',
-      }).setOrigin(0.5);
-      const hp = this.add.text(cardW / 2, 120, `HP ${enemyMaxHp(enemy.id)}`, {
-        ...STYLE,
-        fontSize: '11px',
-        color: '#ff8a80',
-      }).setOrigin(0.5);
+      const name = this.add
+        .text(cardW / 2, 86, enemy.name, {
+          ...STYLE,
+          fontSize: '13px',
+        })
+        .setOrigin(0.5);
+      const wave = this.add
+        .text(cardW / 2, 104, enemy.firstWave, {
+          ...STYLE,
+          fontSize: '11px',
+          color: '#ffd54f',
+        })
+        .setOrigin(0.5);
+      const hp = this.add
+        .text(cardW / 2, 120, `HP ${enemyMaxHp(enemy.id)}`, {
+          ...STYLE,
+          fontSize: '11px',
+          color: '#ff8a80',
+        })
+        .setOrigin(0.5);
 
       container.add([bg, portrait, name, wave, hp]);
       container
         .setSize(cardW, cardH)
-        .setInteractive(new Phaser.Geom.Rectangle(0, 0, cardW, cardH), Phaser.Geom.Rectangle.Contains)
+        .setInteractive(
+          new Phaser.Geom.Rectangle(0, 0, cardW, cardH),
+          Phaser.Geom.Rectangle.Contains,
+        )
         .on('pointerover', () => {
           this.input.setDefaultCursor('pointer');
           this.select(index);
@@ -153,7 +163,12 @@ export default class MonstersScene extends Phaser.Scene {
 
   onKey(event) {
     const k = event.key?.toLowerCase();
-    if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'enter', ' ', 'b', 'escape'].includes(k) || event.code === 'Space') {
+    if (
+      ['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'enter', ' ', 'b', 'escape'].includes(
+        k,
+      ) ||
+      event.code === 'Space'
+    ) {
       event.preventDefault?.();
     }
 
@@ -163,9 +178,12 @@ export default class MonstersScene extends Phaser.Scene {
     }
 
     if (k === 'b' || event.key === 'Escape') this.scene.start('MainMenuScene');
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') this.select(this.selectedIndex - 1);
-    else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') this.select(this.selectedIndex + 1);
-    else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') this.openDetail(this.selectedIndex);
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+      this.select(this.selectedIndex - 1);
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+      this.select(this.selectedIndex + 1);
+    else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
+      this.openDetail(this.selectedIndex);
   }
 
   select(index) {

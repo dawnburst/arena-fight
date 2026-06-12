@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
-import { CFG } from '../config.js';
-import { Save } from '../save.js';
+import { preloadMusic, syncMusic } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
   backgroundKey,
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
-import { preloadMusic, syncMusic } from '../audio.js';
+import { CFG } from '../config.js';
+import { Save } from '../save.js';
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -68,14 +68,44 @@ export default class MainMenuScene extends Phaser.Scene {
       ...(this.gameOverData || {}),
     });
     const firstAction = this.gameOverData
-      ? { label: 'RETRY', shortcut: 'r', color: 0x69f0ae, action: () => this.scene.start('GameScene') }
-      : { label: 'START', shortcut: 'enter', color: 0x69f0ae, action: () => this.scene.start('GameScene') };
+      ? {
+          label: 'RETRY',
+          shortcut: 'r',
+          color: 0x69f0ae,
+          action: () => this.scene.start('GameScene'),
+        }
+      : {
+          label: 'START',
+          shortcut: 'enter',
+          color: 0x69f0ae,
+          action: () => this.scene.start('GameScene'),
+        };
     this.actions = [
       firstAction,
-      { label: 'STORE', shortcut: 's', color: 0xffd54f, action: () => this.scene.start('StoreScene', submenuData()) },
-      { label: 'LOADOUT', shortcut: 'l', color: 0x4fc3f7, action: () => this.scene.start('LoadoutScene', submenuData()) },
-      { label: 'MONSTERS', shortcut: 'm', color: 0xff7043, action: () => this.scene.start('MonstersScene') },
-      { label: 'SETTINGS', shortcut: 'o', color: 0xce93d8, action: () => this.scene.start('SettingsScene') },
+      {
+        label: 'STORE',
+        shortcut: 's',
+        color: 0xffd54f,
+        action: () => this.scene.start('StoreScene', submenuData()),
+      },
+      {
+        label: 'LOADOUT',
+        shortcut: 'l',
+        color: 0x4fc3f7,
+        action: () => this.scene.start('LoadoutScene', submenuData()),
+      },
+      {
+        label: 'MONSTERS',
+        shortcut: 'm',
+        color: 0xff7043,
+        action: () => this.scene.start('MonstersScene'),
+      },
+      {
+        label: 'SETTINGS',
+        shortcut: 'o',
+        color: 0xce93d8,
+        action: () => this.scene.start('SettingsScene'),
+      },
     ];
 
     this.createMenu(style);
@@ -119,20 +149,27 @@ export default class MainMenuScene extends Phaser.Scene {
       const top = y + index * (height + gap);
       const container = this.add.container(x, top);
       const bg = this.add.graphics();
-      const label = this.add.text(28, height / 2, action.label, {
-        ...style,
-        fontSize: '22px',
-      }).setOrigin(0, 0.5);
-      const shortcut = this.add.text(width - 24, height / 2, action.shortcut.toUpperCase(), {
-        ...style,
-        fontSize: '10px',
-        color: '#999999',
-      }).setOrigin(0.5);
+      const label = this.add
+        .text(28, height / 2, action.label, {
+          ...style,
+          fontSize: '22px',
+        })
+        .setOrigin(0, 0.5);
+      const shortcut = this.add
+        .text(width - 24, height / 2, action.shortcut.toUpperCase(), {
+          ...style,
+          fontSize: '10px',
+          color: '#999999',
+        })
+        .setOrigin(0.5);
 
       container.add([bg, label, shortcut]);
       container
         .setSize(width, height)
-        .setInteractive(new Phaser.Geom.Rectangle(0, 0, width, height), Phaser.Geom.Rectangle.Contains)
+        .setInteractive(
+          new Phaser.Geom.Rectangle(0, 0, width, height),
+          Phaser.Geom.Rectangle.Contains,
+        )
         .on('pointerover', () => {
           this.input.setDefaultCursor('pointer');
           this.selectAction(index);
@@ -143,26 +180,59 @@ export default class MainMenuScene extends Phaser.Scene {
       return { container, bg, label, shortcut };
     });
 
-    this.add.text(x + width / 2, y + this.actions.length * (height + gap) + 10, 'click or use arrows + enter', {
-      ...style,
-      fontSize: '12px',
-      color: '#cccccc',
-    }).setOrigin(0.5);
+    this.add
+      .text(
+        x + width / 2,
+        y + this.actions.length * (height + gap) + 10,
+        'click or use arrows + enter',
+        {
+          ...style,
+          fontSize: '12px',
+          color: '#cccccc',
+        },
+      )
+      .setOrigin(0.5);
 
     this.selectAction(0);
   }
 
   onKey(event) {
     const k = event.key?.toLowerCase();
-    if (['arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'enter', ' ', 'r', 's', 'l', 'm', 'o'].includes(k) || event.code === 'Space') {
+    if (
+      [
+        'arrowup',
+        'arrowleft',
+        'arrowdown',
+        'arrowright',
+        'enter',
+        ' ',
+        'r',
+        's',
+        'l',
+        'm',
+        'o',
+      ].includes(k) ||
+      event.code === 'Space'
+    ) {
       event.preventDefault?.();
     }
-    if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') this.selectAction(this.actionIndex - 1);
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') this.selectAction(this.actionIndex + 1);
-    else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') this.activateAction(this.actionIndex);
+    if (event.key === 'ArrowUp' || event.key === 'ArrowLeft')
+      this.selectAction(this.actionIndex - 1);
+    else if (event.key === 'ArrowDown' || event.key === 'ArrowRight')
+      this.selectAction(this.actionIndex + 1);
+    else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
+      this.activateAction(this.actionIndex);
     else if (k === 'r' && this.gameOverData) this.scene.start('GameScene');
-    else if (k === 's') this.scene.start('StoreScene', { returnScene: 'MainMenuScene', ...(this.gameOverData || {}) });
-    else if (k === 'l') this.scene.start('LoadoutScene', { returnScene: 'MainMenuScene', ...(this.gameOverData || {}) });
+    else if (k === 's')
+      this.scene.start('StoreScene', {
+        returnScene: 'MainMenuScene',
+        ...(this.gameOverData || {}),
+      });
+    else if (k === 'l')
+      this.scene.start('LoadoutScene', {
+        returnScene: 'MainMenuScene',
+        ...(this.gameOverData || {}),
+      });
     else if (k === 'm') this.scene.start('MonstersScene');
     else if (k === 'o') this.scene.start('SettingsScene');
   }

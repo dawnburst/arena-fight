@@ -23,16 +23,17 @@ function read() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULTS();
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.version !== 1) {
+    if (parsed?.version !== 1) {
       console.warn('[save] unknown schema version, resetting');
       return DEFAULTS();
     }
     const base = DEFAULTS();
     const loadout = { ...base.loadout, ...(parsed.loadout || {}) };
     // Migrate single-weapon saves to the two-slot weapons array.
-    const weaponsArr = Array.isArray(loadout.weapons) && loadout.weapons.length
-      ? loadout.weapons
-      : [loadout.weapon || 'pistol', null];
+    const weaponsArr =
+      Array.isArray(loadout.weapons) && loadout.weapons.length
+        ? loadout.weapons
+        : [loadout.weapon || 'pistol', null];
     loadout.weapons = [weaponsArr[0] || 'pistol', weaponsArr[1] || null];
     loadout.weapon = loadout.weapons[0];
     return {

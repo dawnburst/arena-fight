@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Save } from '../src/save.js';
 
 describe('save', () => {
@@ -20,7 +20,7 @@ describe('save', () => {
   });
 
   it('set should accept a function', () => {
-    Save.set(prev => ({ ...prev, wallet: prev.wallet + 50 }));
+    Save.set((prev) => ({ ...prev, wallet: prev.wallet + 50 }));
     expect(Save.get().wallet).toBe(50);
   });
 
@@ -113,7 +113,7 @@ describe('save', () => {
     expect(stats.totalCoinsEarned).toBe(100);
     expect(Save.get().wallet).toBe(100);
   });
-  
+
   it('recordRun should update stats without persisting coins if requested', () => {
     Save.recordRun({ wave: 5, score: 1000, coinsEarned: 50, persistCoins: false });
     expect(Save.get().wallet).toBe(0);
@@ -135,7 +135,7 @@ describe('save', () => {
     const raw = localStorage.getItem('arenaFight.save.v1');
     expect(JSON.parse(raw).wallet).toBe(0);
   });
-  
+
   it('should handle corrupt storage data', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     localStorage.setItem('arenaFight.save.v1', 'invalid-json');
@@ -157,10 +157,13 @@ describe('save', () => {
   });
 
   it('should handle partial loadout in migration', () => {
-    localStorage.setItem('arenaFight.save.v1', JSON.stringify({
-      version: 1,
-      loadout: { weapons: ['pistol'] }
-    }));
+    localStorage.setItem(
+      'arenaFight.save.v1',
+      JSON.stringify({
+        version: 1,
+        loadout: { weapons: ['pistol'] },
+      }),
+    );
     Save._clearCache();
     const state = Save.get();
     expect(state.loadout.weapons).toEqual(['pistol', null]);
