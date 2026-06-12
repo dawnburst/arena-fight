@@ -143,4 +143,7 @@ export const Save = {
     write(cache);
     return cache;
   },
+  _clearCache() {
+    cache = null;
+  },
 };
