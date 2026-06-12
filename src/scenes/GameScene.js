@@ -364,41 +364,43 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setVisible(false);
 
-    this.cheatBg = this.add
-      .rectangle(
-        CFG.arena.width / 2,
-        CFG.arena.height / 2,
-        460,
-        180,
-        0x000000,
-        0.85,
-      )
-      .setStrokeStyle(2, 0xffd54f)
-      .setVisible(false);
-    this.cheatTitle = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height / 2 - 52, 'CHEAT CONSOLE', {
-        ...style,
-        fontSize: '22px',
-        color: '#ffd54f',
-      })
-      .setOrigin(0.5)
-      .setVisible(false);
-    this.cheatInput = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height / 2, '_', {
-        ...style,
-        fontSize: '24px',
-      })
-      .setOrigin(0.5)
-      .setVisible(false);
-    this.cheatHint = this.add
-      .text(
-        CFG.arena.width / 2,
-        CFG.arena.height / 2 + 52,
-        'wave 10  ·  coins 500  ·  enter confirm  ·  esc cancel',
-        { ...style, fontSize: '12px', color: '#999' },
-      )
-      .setOrigin(0.5)
-      .setVisible(false);
+    if (CHEATS_ENABLED) {
+      this.cheatBg = this.add
+        .rectangle(
+          CFG.arena.width / 2,
+          CFG.arena.height / 2,
+          460,
+          180,
+          0x000000,
+          0.85,
+        )
+        .setStrokeStyle(2, 0xffd54f)
+        .setVisible(false);
+      this.cheatTitle = this.add
+        .text(CFG.arena.width / 2, CFG.arena.height / 2 - 52, 'CHEAT CONSOLE', {
+          ...style,
+          fontSize: '22px',
+          color: '#ffd54f',
+        })
+        .setOrigin(0.5)
+        .setVisible(false);
+      this.cheatInput = this.add
+        .text(CFG.arena.width / 2, CFG.arena.height / 2, '_', {
+          ...style,
+          fontSize: '24px',
+        })
+        .setOrigin(0.5)
+        .setVisible(false);
+      this.cheatHint = this.add
+        .text(
+          CFG.arena.width / 2,
+          CFG.arena.height / 2 + 52,
+          'wave 10  ·  coins 500  ·  enter confirm  ·  esc cancel',
+          { ...style, fontSize: '12px', color: '#999' },
+        )
+        .setOrigin(0.5)
+        .setVisible(false);
+    }
 
     this.updateHUD();
   }
@@ -2131,6 +2133,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   openCheat() {
+    if (!CHEATS_ENABLED) return;
     if (this.gameOver) return;
     this.cheatPromptActive = true;
     this.cheatBuffer = '';
@@ -2163,6 +2166,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   submitCheat() {
+    if (!CHEATS_ENABLED) return;
     const input = this.cheatBuffer.trim().replace(/\s+/g, ' ');
     this.closeCheat();
     if (!input) return;
@@ -2184,10 +2188,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   refreshCheatInput() {
+    if (!CHEATS_ENABLED || !this.cheatInput) return;
     this.cheatInput.setText(this.cheatBuffer.length ? `> ${this.cheatBuffer}` : '> _');
   }
 
   addCheatCoins(amount) {
+    if (!CHEATS_ENABLED) return;
     const coins = Math.max(0, Math.min(999999, amount));
     if (coins <= 0) return;
     this.coinsThisRun += coins;
@@ -2202,6 +2208,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   jumpToWave(n) {
+    if (!CHEATS_ENABLED) return;
     if (this.activeSpawnEvent) {
       this.activeSpawnEvent.remove(false);
       this.activeSpawnEvent = null;
