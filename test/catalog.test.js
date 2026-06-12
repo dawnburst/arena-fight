@@ -1,14 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  WEAPONS,
-  MODS,
-  WEAPONS_BY_ID,
-  MODS_BY_ID,
-  getWeapon,
-  getMod,
   buildRuntimeStats,
-  TIERS,
+  getMod,
+  getWeapon,
+  MODS,
   TIER_COLORS,
+  TIERS,
+  WEAPONS,
 } from '../src/catalog.js';
 
 describe('catalog', () => {
@@ -43,7 +41,7 @@ describe('catalog', () => {
   });
 
   it('should apply all mod effects correctly', () => {
-    MODS.forEach(mod => {
+    MODS.forEach((mod) => {
       const ctx = {
         fireRateMult: 1,
         moveSpeedMult: 1,
@@ -64,7 +62,8 @@ describe('catalog', () => {
         // Quick Draw modifies fireRateMult which is initially 1.
         const modified = Object.entries(ctx).some(([key, value]) => {
           if (key.endsWith('Mult')) return value !== 1;
-          if (key.endsWith('Delta') || key === 'luckyChance' || key === 'phoenixCharges') return value !== 0;
+          if (key.endsWith('Delta') || key === 'luckyChance' || key === 'phoenixCharges')
+            return value !== 0;
           return false;
         });
         expect(modified, `Mod ${mod.id} should modify at least one stat`).toBe(true);

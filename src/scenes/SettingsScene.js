@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
-import { CFG } from '../config.js';
-import { Save } from '../save.js';
+import { preloadMusic, syncMusic } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
   backgroundKey,
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
-import { preloadMusic, syncMusic } from '../audio.js';
+import { CFG } from '../config.js';
+import { Save } from '../save.js';
 
 export default class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -31,7 +31,10 @@ export default class SettingsScene extends Phaser.Scene {
       color: '#ffffff',
     };
     const current = resolveBackground(Save.get().settings?.backgroundId);
-    this.selectedIndex = Math.max(0, ARENA_BACKGROUNDS.findIndex((bg) => bg.id === current.id));
+    this.selectedIndex = Math.max(
+      0,
+      ARENA_BACKGROUNDS.findIndex((bg) => bg.id === current.id),
+    );
 
     this.add.image(0, 0, backgroundKey(current.id)).setOrigin(0).setDepth(-20);
     this.add.rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x000000, 0.48).setOrigin(0);
@@ -67,16 +70,21 @@ export default class SettingsScene extends Phaser.Scene {
         color: '#cfcfcf',
         wordWrap: { width: cardWidth - 36 },
       });
-      const marker = this.add.text(cardWidth - 18, 18, '', {
-        ...style,
-        fontSize: '18px',
-        color: '#69f0ae',
-      }).setOrigin(1, 0);
+      const marker = this.add
+        .text(cardWidth - 18, 18, '', {
+          ...style,
+          fontSize: '18px',
+          color: '#69f0ae',
+        })
+        .setOrigin(1, 0);
 
       container.add([frame, image, title, desc, marker]);
       container
         .setSize(cardWidth, cardHeight)
-        .setInteractive(new Phaser.Geom.Rectangle(0, 0, cardWidth, cardHeight), Phaser.Geom.Rectangle.Contains)
+        .setInteractive(
+          new Phaser.Geom.Rectangle(0, 0, cardWidth, cardHeight),
+          Phaser.Geom.Rectangle.Contains,
+        )
         .on('pointerover', () => {
           this.input.setDefaultCursor('pointer');
           this.select(index);
@@ -89,12 +97,14 @@ export default class SettingsScene extends Phaser.Scene {
 
     this.createMusicControls(style);
 
-    this.hintText = this.add.text(
-      CFG.arena.width / 2,
-      CFG.arena.height - 38,
-      '←/→ select  •  enter apply  •  M music  •  S sound  •  B / Esc back',
-      { ...style, fontSize: '13px', color: '#cccccc' },
-    ).setOrigin(0.5);
+    this.hintText = this.add
+      .text(
+        CFG.arena.width / 2,
+        CFG.arena.height - 38,
+        '←/→ select  •  enter apply  •  M music  •  S sound  •  B / Esc back',
+        { ...style, fontSize: '13px', color: '#cccccc' },
+      )
+      .setOrigin(0.5);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     this.input.keyboard.on('keydown', this.onKey, this);
@@ -166,10 +176,10 @@ export default class SettingsScene extends Phaser.Scene {
     const checkX = x + 124;
     const titleY = y + 18;
     const checkY = titleY - 1;
-    const musicRowY = y + 50;
+    const _musicRowY = y + 50;
     const sfxTitleY = y + 72;
     const sfxCheckY = sfxTitleY - 1;
-    const sfxRowY = y + 104;
+    const _sfxRowY = y + 104;
     const sliderX = x + 356;
     const sliderWidth = 220;
 
@@ -183,35 +193,41 @@ export default class SettingsScene extends Phaser.Scene {
       fontSize: '20px',
       color: '#ffd54f',
     });
-    this.musicVolumeText = this.add.text(sliderX - 18, checkY + 5, '', {
-      ...style,
-      fontSize: '14px',
-      color: '#ffffff',
-    }).setOrigin(1, 0);
+    this.musicVolumeText = this.add
+      .text(sliderX - 18, checkY + 5, '', {
+        ...style,
+        fontSize: '14px',
+        color: '#ffffff',
+      })
+      .setOrigin(1, 0);
     this.sfxTitle = this.add.text(x + 24, sfxTitleY, 'SOUND', {
       ...style,
       fontSize: '20px',
       color: '#ffd54f',
     });
-    this.sfxVolumeText = this.add.text(sliderX - 18, sfxCheckY + 5, '', {
-      ...style,
-      fontSize: '14px',
-      color: '#ffffff',
-    }).setOrigin(1, 0);
+    this.sfxVolumeText = this.add
+      .text(sliderX - 18, sfxCheckY + 5, '', {
+        ...style,
+        fontSize: '14px',
+        color: '#ffffff',
+      })
+      .setOrigin(1, 0);
 
-    this.musicToggleZone = this.add.zone(x + 24, titleY - 4, 150, 34)
+    this.musicToggleZone = this.add
+      .zone(x + 24, titleY - 4, 150, 34)
       .setOrigin(0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.toggleMusic());
 
     this.musicCheckBounds = new Phaser.Geom.Rectangle(checkX, checkY, 28, 28);
     this.musicSliderBounds = new Phaser.Geom.Rectangle(sliderX, checkY + 2, sliderWidth, 24);
-    this.musicSliderZone = this.add.zone(
-      this.musicSliderBounds.x,
-      this.musicSliderBounds.y - 8,
-      this.musicSliderBounds.width,
-      this.musicSliderBounds.height + 16,
-    )
+    this.musicSliderZone = this.add
+      .zone(
+        this.musicSliderBounds.x,
+        this.musicSliderBounds.y - 8,
+        this.musicSliderBounds.width,
+        this.musicSliderBounds.height + 16,
+      )
       .setOrigin(0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', (pointer) => this.setMusicVolumeFromPointer(pointer))
@@ -219,19 +235,21 @@ export default class SettingsScene extends Phaser.Scene {
         if (pointer.isDown) this.setMusicVolumeFromPointer(pointer);
       });
 
-    this.sfxToggleZone = this.add.zone(x + 24, sfxTitleY - 4, 150, 34)
+    this.sfxToggleZone = this.add
+      .zone(x + 24, sfxTitleY - 4, 150, 34)
       .setOrigin(0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.toggleSfx());
 
     this.sfxCheckBounds = new Phaser.Geom.Rectangle(checkX, sfxCheckY, 28, 28);
     this.sfxSliderBounds = new Phaser.Geom.Rectangle(sliderX, sfxCheckY + 2, sliderWidth, 24);
-    this.sfxSliderZone = this.add.zone(
-      this.sfxSliderBounds.x,
-      this.sfxSliderBounds.y - 8,
-      this.sfxSliderBounds.width,
-      this.sfxSliderBounds.height + 16,
-    )
+    this.sfxSliderZone = this.add
+      .zone(
+        this.sfxSliderBounds.x,
+        this.sfxSliderBounds.y - 8,
+        this.sfxSliderBounds.width,
+        this.sfxSliderBounds.height + 16,
+      )
       .setOrigin(0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', (pointer) => this.setSfxVolumeFromPointer(pointer))
@@ -311,7 +329,14 @@ export default class SettingsScene extends Phaser.Scene {
     const volume = Phaser.Math.Clamp(settings.musicVolume ?? 0.55, 0, 1);
 
     this.musicVolumeText.setText(`Volume ${Math.round(volume * 100)}%`);
-    this.drawAudioControl(this.musicCheck, this.musicSlider, this.musicCheckBounds, this.musicSliderBounds, enabled, volume);
+    this.drawAudioControl(
+      this.musicCheck,
+      this.musicSlider,
+      this.musicCheckBounds,
+      this.musicSliderBounds,
+      enabled,
+      volume,
+    );
   }
 
   refreshSfxControls() {
@@ -321,7 +346,14 @@ export default class SettingsScene extends Phaser.Scene {
     const volume = Phaser.Math.Clamp(settings.sfxVolume ?? 0.75, 0, 1);
 
     this.sfxVolumeText.setText(`Volume ${Math.round(volume * 100)}%`);
-    this.drawAudioControl(this.sfxCheck, this.sfxSlider, this.sfxCheckBounds, this.sfxSliderBounds, enabled, volume);
+    this.drawAudioControl(
+      this.sfxCheck,
+      this.sfxSlider,
+      this.sfxCheckBounds,
+      this.sfxSliderBounds,
+      enabled,
+      volume,
+    );
   }
 
   drawAudioControl(check, slider, checkBounds, sliderBounds, enabled, volume) {
@@ -345,7 +377,13 @@ export default class SettingsScene extends Phaser.Scene {
     slider.fillStyle(0x0b0f0b, 1);
     slider.fillRoundedRect(sliderBounds.x, sliderBounds.y + 8, sliderBounds.width, 8, 4);
     slider.fillStyle(enabled ? 0x69f0ae : 0x777777, 1);
-    slider.fillRoundedRect(sliderBounds.x, sliderBounds.y + 8, Math.max(6, knobX - sliderBounds.x), 8, 4);
+    slider.fillRoundedRect(
+      sliderBounds.x,
+      sliderBounds.y + 8,
+      Math.max(6, knobX - sliderBounds.x),
+      8,
+      4,
+    );
     slider.fillStyle(0xffffff, 1);
     slider.fillCircle(knobX, sliderBounds.y + 12, 10);
   }

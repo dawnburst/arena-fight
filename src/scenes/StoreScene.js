@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
+import { MODS, TIER_COLORS, TIERS, WEAPONS } from '../catalog.js';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
-import { WEAPONS, MODS, TIER_COLORS, TIERS } from '../catalog.js';
 
 const ROW_HEIGHT = 30;
 const HEADER_HEIGHT = 16;
@@ -53,13 +53,12 @@ export default class StoreScene extends Phaser.Scene {
       .image(50, CFG.arena.height - 54, itemIconKey(STORE_ITEMS[0].id))
       .setDisplaySize(48, 48)
       .setVisible(false);
-    this.descText = this.add
-      .text(90, CFG.arena.height - 78, '', {
-        ...style,
-        fontSize: '14px',
-        color: '#bbbbbb',
-        wordWrap: { width: CFG.arena.width - 110 },
-      });
+    this.descText = this.add.text(90, CFG.arena.height - 78, '', {
+      ...style,
+      fontSize: '14px',
+      color: '#bbbbbb',
+      wordWrap: { width: CFG.arena.width - 110 },
+    });
 
     this.hintText = this.add.text(
       20,
@@ -69,9 +68,12 @@ export default class StoreScene extends Phaser.Scene {
     );
 
     this.confirmText = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height / 2,
+      .text(
+        CFG.arena.width / 2,
+        CFG.arena.height / 2,
         'RESET SAVE — wipe wallet + items?\n  Y confirm  ·  N cancel',
-        { ...style, fontSize: '20px', color: '#ff5252', align: 'center' })
+        { ...style, fontSize: '20px', color: '#ff5252', align: 'center' },
+      )
       .setOrigin(0.5)
       .setVisible(false);
 
@@ -167,7 +169,8 @@ export default class StoreScene extends Phaser.Scene {
         });
       }
     }
-    if (this.selectedIndex >= this.entries.length) this.selectedIndex = Math.max(0, this.entries.length - 1);
+    if (this.selectedIndex >= this.entries.length)
+      this.selectedIndex = Math.max(0, this.entries.length - 1);
 
     this.listGroup.removeAll(true);
 
@@ -221,10 +224,19 @@ export default class StoreScene extends Phaser.Scene {
 
       let badge;
       let badgeColor = '#888';
-      if (e.owned) { badge = '[OWNED]'; badgeColor = '#4caf50'; }
-      else if (e.locked) { badge = '[WAVE 25]'; badgeColor = '#ab47bc'; }
-      else if (save.wallet < e.price) { badge = `[NEED ¢${e.price - save.wallet}]`; badgeColor = '#ef5350'; }
-      else { badge = '[BUY]'; badgeColor = '#ffd54f'; }
+      if (e.owned) {
+        badge = '[OWNED]';
+        badgeColor = '#4caf50';
+      } else if (e.locked) {
+        badge = '[WAVE 25]';
+        badgeColor = '#ab47bc';
+      } else if (save.wallet < e.price) {
+        badge = `[NEED ¢${e.price - save.wallet}]`;
+        badgeColor = '#ef5350';
+      } else {
+        badge = '[BUY]';
+        badgeColor = '#ffd54f';
+      }
       const badgeText = this.add.text(520, y + 7, badge, {
         fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
         fontSize: '14px',
@@ -237,7 +249,7 @@ export default class StoreScene extends Phaser.Scene {
 
     const cur = this.entries[this.selectedIndex];
     let desc = cur ? cur.description : '';
-    if (cur && cur.locked) desc += '  — Locked: reach wave 25 to unlock legendary items.';
+    if (cur?.locked) desc += '  — Locked: reach wave 25 to unlock legendary items.';
     this.descText.setText(desc);
     if (cur) {
       this.previewFrame.setVisible(true).setStrokeStyle(2, tierColorNumber(cur.tier), 1);

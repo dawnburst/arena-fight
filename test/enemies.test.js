@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { ENEMY_SPRITES, ENEMY_BESTIARY } from '../src/enemies.js';
+import { describe, expect, it } from 'vitest';
+import { ENEMY_BESTIARY, ENEMY_SPRITES } from '../src/enemies.js';
 
 describe('enemies', () => {
   it('should have enemy sprites and bestiary', () => {

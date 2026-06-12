@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
+import { MODS, MODS_BY_ID, TIER_COLORS, WEAPONS, WEAPONS_BY_ID } from '../catalog.js';
 import { CFG } from '../config.js';
 import { Save } from '../save.js';
-import { WEAPONS, MODS, WEAPONS_BY_ID, MODS_BY_ID, TIER_COLORS } from '../catalog.js';
 
 const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'EQUIPMENT 1', 'EQUIPMENT 2'];
 // Shares the StoreScene icon key scheme so textures are reused once loaded.
@@ -41,7 +41,9 @@ export default class LoadoutScene extends Phaser.Scene {
 
     this.add.text(20, 16, 'LOADOUT', { ...style, fontSize: '28px' });
     this.add.text(20, 56, 'pick up to 2 weapons and up to 2 equipment for your next run', {
-      ...style, fontSize: '14px', color: '#aaaaaa',
+      ...style,
+      fontSize: '14px',
+      color: '#aaaaaa',
     });
 
     this.slotTexts = [];
@@ -51,13 +53,25 @@ export default class LoadoutScene extends Phaser.Scene {
 
     for (let i = 0; i < SLOT_LABELS.length; i++) {
       const y = 120 + i * 84;
-      const label = this.add.text(40, y, SLOT_LABELS[i], { ...style, fontSize: '16px', color: '#888' });
+      const label = this.add.text(40, y, SLOT_LABELS[i], {
+        ...style,
+        fontSize: '16px',
+        color: '#888',
+      });
       const frame = this.add
         .rectangle(200, y + 14, 50, 50, 0x101010, 1)
         .setStrokeStyle(2, 0x444444, 1);
-      const icon = this.add.image(200, y + 14, '__DEFAULT').setDisplaySize(44, 44).setVisible(false);
+      const icon = this.add
+        .image(200, y + 14, '__DEFAULT')
+        .setDisplaySize(44, 44)
+        .setVisible(false);
       const value = this.add.text(255, y, '', { ...style, fontSize: '24px' });
-      const desc = this.add.text(255, y + 32, '', { ...style, fontSize: '13px', color: '#bbb', wordWrap: { width: 510 } });
+      const desc = this.add.text(255, y + 32, '', {
+        ...style,
+        fontSize: '13px',
+        color: '#bbb',
+        wordWrap: { width: 510 },
+      });
       this.slotTexts.push(label);
       this.slotIcons.push({ frame, icon });
       this.slotValues.push(value);
@@ -116,7 +130,9 @@ export default class LoadoutScene extends Phaser.Scene {
     if (this.slotIndex === 0 || this.slotIndex === 1) {
       const isPrimary = this.slotIndex === 0;
       const other = this.weaponIds[isPrimary ? 1 : 0];
-      const avail = (save.ownedWeapons.length ? save.ownedWeapons : ['pistol']).filter((w) => w !== other);
+      const avail = (save.ownedWeapons.length ? save.ownedWeapons : ['pistol']).filter(
+        (w) => w !== other,
+      );
       // The primary weapon is required; the secondary slot may be empty.
       const choices = isPrimary ? avail : [null, ...avail];
       if (!choices.length) return;
