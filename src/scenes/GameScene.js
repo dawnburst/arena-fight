@@ -33,12 +33,12 @@ export default class GameScene extends Phaser.Scene {
       for (const pose of PLAYER_POSES) {
         const key = this.playerFrameKey(direction, pose);
         if (!this.textures.exists(key)) {
-          this.load.image(key, `/assets/player/body/${direction}-${pose}.png`);
+          this.load.image(key, assetPath(`assets/player/body/${direction}-${pose}.png`));
         }
       }
     }
     if (!this.textures.exists('player-rifle')) {
-      this.load.image('player-rifle', '/assets/player/rifle.png');
+      this.load.image('player-rifle', assetPath('assets/player/rifle.png'));
     }
     for (const background of ARENA_BACKGROUNDS) {
       const key = backgroundKey(background.id);
@@ -2097,7 +2097,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onKeyDown(event) {
-    if (event.key === '`' || event.code === 'Backquote') {
+    if (CHEATS_ENABLED && (event.key === '`' || event.code === 'Backquote')) {
       event.preventDefault?.();
       if (this.cheatPromptActive) this.closeCheat();
       else this.openCheat();
