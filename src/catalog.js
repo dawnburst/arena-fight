@@ -74,7 +74,11 @@ export const WEAPONS = [
     tier: 'epic',
     price: 7200,
     description: 'Large blue boomerang that pierces. Click fire again to recall it faster.',
-    fire: { rateMs: 700, angles: [0], bulletMods: { returningAfterMs: 500, piercing: true, boomerang: true, sizeMult: 2.2 } },
+    fire: {
+      rateMs: 700,
+      angles: [0],
+      bulletMods: { returningAfterMs: 500, piercing: true, boomerang: true, sizeMult: 2.2 },
+    },
   },
   {
     id: 'beam',
@@ -114,7 +118,9 @@ export const MODS = [
     tier: 'common',
     price: 600,
     description: '-10% fire rate.',
-    apply: (ctx) => { ctx.fireRateMult *= 0.9; },
+    apply: (ctx) => {
+      ctx.fireRateMult *= 0.9;
+    },
   },
   {
     id: 'pocket-wallet',
@@ -122,7 +128,9 @@ export const MODS = [
     tier: 'common',
     price: 900,
     description: '+20% coin drops.',
-    apply: (ctx) => { ctx.coinDropMult *= 1.2; },
+    apply: (ctx) => {
+      ctx.coinDropMult *= 1.2;
+    },
   },
   {
     id: 'stride',
@@ -130,7 +138,9 @@ export const MODS = [
     tier: 'common',
     price: 650,
     description: '+10% move speed.',
-    apply: (ctx) => { ctx.moveSpeedMult *= 1.1; },
+    apply: (ctx) => {
+      ctx.moveSpeedMult *= 1.1;
+    },
   },
   {
     id: 'steel-plate',
@@ -138,7 +148,9 @@ export const MODS = [
     tier: 'uncommon',
     price: 1500,
     description: '+1 max HP.',
-    apply: (ctx) => { ctx.maxHpDelta += 1; },
+    apply: (ctx) => {
+      ctx.maxHpDelta += 1;
+    },
   },
   {
     id: 'rocket-boots',
@@ -146,7 +158,9 @@ export const MODS = [
     tier: 'uncommon',
     price: 1400,
     description: 'Dash 35% faster and farther.',
-    apply: (ctx) => { ctx.dashSpeedMult *= 1.35; },
+    apply: (ctx) => {
+      ctx.dashSpeedMult *= 1.35;
+    },
   },
   {
     id: 'combo-glove',
@@ -154,7 +168,9 @@ export const MODS = [
     tier: 'rare',
     price: 3000,
     description: 'Combo decay window +1s.',
-    apply: (ctx) => { ctx.comboResetMsDelta += 1000; },
+    apply: (ctx) => {
+      ctx.comboResetMsDelta += 1000;
+    },
   },
   {
     id: 'extra-dash',
@@ -162,7 +178,9 @@ export const MODS = [
     tier: 'rare',
     price: 3600,
     description: 'Dash cooldown -50%.',
-    apply: (ctx) => { ctx.dashCooldownMult *= 0.5; },
+    apply: (ctx) => {
+      ctx.dashCooldownMult *= 0.5;
+    },
   },
   {
     id: 'eagle-eye',
@@ -192,7 +210,9 @@ export const MODS = [
     tier: 'legendary',
     price: 15000,
     description: '10% chance for double coin drops.',
-    apply: (ctx) => { ctx.luckyChance = 0.1; },
+    apply: (ctx) => {
+      ctx.luckyChance = 0.1;
+    },
   },
   {
     id: 'phoenix',
@@ -200,7 +220,9 @@ export const MODS = [
     tier: 'legendary',
     price: 18000,
     description: 'Revive once per run with 1 HP + shield.',
-    apply: (ctx) => { ctx.phoenixCharges += 1; },
+    apply: (ctx) => {
+      ctx.phoenixCharges += 1;
+    },
   },
 ];
 
@@ -235,7 +257,7 @@ export function buildRuntimeStats(modIds) {
   };
   for (const id of modIds || []) {
     const mod = getMod(id);
-    if (mod && mod.apply) mod.apply(ctx);
+    if (mod?.apply) mod.apply(ctx);
   }
   return ctx;
 }

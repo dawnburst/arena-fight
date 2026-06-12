@@ -1,13 +1,27 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
-import { CFG } from '../config.js';
-import { Save } from '../save.js';
-import { getWeapon, buildRuntimeStats, MODS } from '../catalog.js';
-import { ARENA_BACKGROUNDS, backgroundKey, backgroundPath, resolveBackground } from '../backgrounds.js';
-import { ENEMY_SPRITES } from '../enemies.js';
 import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
+import {
+  ARENA_BACKGROUNDS,
+  backgroundKey,
+  backgroundPath,
+  resolveBackground,
+} from '../backgrounds.js';
+import { buildRuntimeStats, getWeapon, MODS } from '../catalog.js';
+import { CFG } from '../config.js';
+import { ENEMY_SPRITES } from '../enemies.js';
+import { Save } from '../save.js';
 
-const PLAYER_DIRECTIONS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+const PLAYER_DIRECTIONS = [
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+  'north',
+  'northeast',
+];
 const PLAYER_POSES = ['idle', 'walk1', 'walk2', 'dash', 'hit', 'death'];
 const PLAYER_BODY_SCALE = 0.78;
 const PLAYER_WEAPON_SCALE = 0.34;
@@ -20,7 +34,20 @@ const DASHER_MONSTER_SCALE = 0.64;
 const FIRECASTER_SCALE = 0.58;
 const DEFAULT_ENEMY_SCALE = 0.58;
 const ENEMY_HITBOX_MULT = 1.35;
-const ENEMY_TYPE_ORDER = ['sniper', 'teleporter', 'shielded', 'summoner', 'healer', 'slime', 'egg', 'bomber', 'splitter', 'tank', 'firecaster', 'dasher'];
+const ENEMY_TYPE_ORDER = [
+  'sniper',
+  'teleporter',
+  'shielded',
+  'summoner',
+  'healer',
+  'slime',
+  'egg',
+  'bomber',
+  'splitter',
+  'tank',
+  'firecaster',
+  'dasher',
+];
 const CHEATS_ENABLED = import.meta.env.DEV;
 
 export default class GameScene extends Phaser.Scene {
@@ -138,13 +165,7 @@ export default class GameScene extends Phaser.Scene {
     this.enemies = this.physics.add.group();
     this.coins = this.physics.add.group();
 
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.coins,
-      this.onPlayerCoin,
-      null,
-      this,
-    );
+    this.physics.add.overlap(this.player.sprite, this.coins, this.onPlayerCoin, null, this);
 
     this.keys = this.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -158,20 +179,8 @@ export default class GameScene extends Phaser.Scene {
     });
     this.cursors = this.input.keyboard.createCursorKeys();
 
-    this.physics.add.overlap(
-      this.bullets,
-      this.enemies,
-      this.onBulletHitEnemy,
-      null,
-      this,
-    );
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.enemies,
-      this.onPlayerHitEnemy,
-      null,
-      this,
-    );
+    this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitEnemy, null, this);
+    this.physics.add.overlap(this.player.sprite, this.enemies, this.onPlayerHitEnemy, null, this);
     this.physics.add.overlap(
       this.player.sprite,
       this.enemyProjectiles,
@@ -179,13 +188,7 @@ export default class GameScene extends Phaser.Scene {
       null,
       this,
     );
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.hazards,
-      this.onPlayerHitHazard,
-      null,
-      this,
-    );
+    this.physics.add.overlap(this.player.sprite, this.hazards, this.onPlayerHitHazard, null, this);
 
     this.createEnemyAnimations();
     this.createBoomerangTexture();
@@ -264,8 +267,12 @@ export default class GameScene extends Phaser.Scene {
     if (this.textures.exists('boomerang-bullet')) return;
     const g = this.add.graphics();
     const points = [
-      { x: 4, y: 7 }, { x: 16, y: 15 }, { x: 28, y: 7 },
-      { x: 25, y: 13 }, { x: 16, y: 22 }, { x: 7, y: 13 },
+      { x: 4, y: 7 },
+      { x: 16, y: 15 },
+      { x: 28, y: 7 },
+      { x: 25, y: 13 },
+      { x: 16, y: 22 },
+      { x: 7, y: 13 },
     ];
     g.fillStyle(0x29b6f6, 1);
     g.fillPoints(points, true);
@@ -304,16 +311,11 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     this.pauseText = this.add
-      .text(
-        CFG.arena.width / 2,
-        CFG.arena.height / 2 - 34,
-        'PAUSED\nP / Esc resume',
-        {
-          ...style,
-          fontSize: '28px',
-          align: 'center',
-        },
-      )
+      .text(CFG.arena.width / 2, CFG.arena.height / 2 - 34, 'PAUSED\nP / Esc resume', {
+        ...style,
+        fontSize: '28px',
+        align: 'center',
+      })
       .setOrigin(0.5)
       .setVisible(false);
     this.pauseExitButton = this.add
@@ -366,14 +368,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (CHEATS_ENABLED) {
       this.cheatBg = this.add
-        .rectangle(
-          CFG.arena.width / 2,
-          CFG.arena.height / 2,
-          460,
-          180,
-          0x000000,
-          0.85,
-        )
+        .rectangle(CFG.arena.width / 2, CFG.arena.height / 2, 460, 180, 0x000000, 0.85)
         .setStrokeStyle(2, 0xffd54f)
         .setVisible(false);
       this.cheatTitle = this.add
@@ -452,9 +447,15 @@ export default class GameScene extends Phaser.Scene {
           const dist = Math.hypot(dx, dy) || 1;
           const recallSpeed = bullet.bulletSpeed * 1.9;
           bullet.body.setVelocity((dx / dist) * recallSpeed, (dy / dist) * recallSpeed);
-          if (dist < 20) { bullet.destroy(); return; }
-        } else if (mods.returningAfterMs && !bullet.bulletReturned
-          && time - bullet.bulletBornAt >= mods.returningAfterMs) {
+          if (dist < 20) {
+            bullet.destroy();
+            return;
+          }
+        } else if (
+          mods.returningAfterMs &&
+          !bullet.bulletReturned &&
+          time - bullet.bulletBornAt >= mods.returningAfterMs
+        ) {
           bullet.bulletReturned = true;
           bullet.body.setVelocity(-bullet.body.velocity.x, -bullet.body.velocity.y);
         }
@@ -493,12 +494,15 @@ export default class GameScene extends Phaser.Scene {
     let bestD = Infinity;
     this.enemies.getChildren().forEach((e) => {
       const d = Phaser.Math.Distance.Squared(x, y, e.x, e.y);
-      if (d < bestD) { bestD = d; best = e; }
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
     });
     return best;
   }
 
-  updateCoins(time, delta) {
+  updateCoins(_time, _delta) {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
     const magnetRadius = this.runtime.magnetRadius;
@@ -522,10 +526,16 @@ export default class GameScene extends Phaser.Scene {
         vx += (targetVx - vx) * turn;
         vy += (targetVy - vy) * turn;
         const sp = Math.hypot(vx, vy);
-        if (sp > maxSpeed) { vx = (vx / sp) * maxSpeed; vy = (vy / sp) * maxSpeed; }
+        if (sp > maxSpeed) {
+          vx = (vx / sp) * maxSpeed;
+          vy = (vy / sp) * maxSpeed;
+        }
         coin.body.setVelocity(vx, vy);
       } else {
-        coin.body.setVelocity(coin.body.velocity.x * CFG.coin.drag, coin.body.velocity.y * CFG.coin.drag);
+        coin.body.setVelocity(
+          coin.body.velocity.x * CFG.coin.drag,
+          coin.body.velocity.y * CFG.coin.drag,
+        );
       }
     });
   }
@@ -654,7 +664,7 @@ export default class GameScene extends Phaser.Scene {
     if (time < this.player.nextFireAt) return;
 
     const weaponMods = weapon.fire.bulletMods;
-    if (weaponMods && weaponMods.hitscan) {
+    if (weaponMods?.hitscan) {
       this.fireLaser(time);
       this.player.nextFireAt = time + weapon.fire.rateMs * this.runtime.fireRateMult;
       return;
@@ -683,7 +693,7 @@ export default class GameScene extends Phaser.Scene {
     const targets = this.enemies.getChildren().slice();
     for (const enemy of targets) {
       if (!enemy.active) continue;
-      const r = (enemy.body && enemy.body.radius ? enemy.body.radius : 12) + pad;
+      const r = (enemy.body?.radius ? enemy.body.radius : 12) + pad;
       if (this.pointToSegmentDistance(enemy.x, enemy.y, px, py, ex, ey) <= r) {
         this.damageEnemy(enemy, px, py, 1);
       }
@@ -727,7 +737,12 @@ export default class GameScene extends Phaser.Scene {
     this.weaponDef = this.weapons[this.activeWeaponIndex];
     this.burstShotsRemaining = 0;
     this.player.nextFireAt = time;
-    this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, this.weaponDef.name, '#4fc3f7');
+    this.showFloatingText(
+      this.player.sprite.x,
+      this.player.sprite.y - 30,
+      this.weaponDef.name,
+      '#4fc3f7',
+    );
     this.updateHUD(time);
   }
 
@@ -777,7 +792,9 @@ export default class GameScene extends Phaser.Scene {
       const visual = this.add.image(spawnX, spawnY, 'boomerang-bullet').setDepth(4.7);
       visual.setScale((radius / 8) * 0.9);
       bullet.visual = visual;
-      bullet.once('destroy', () => { if (bullet.visual) bullet.visual.destroy(); });
+      bullet.once('destroy', () => {
+        if (bullet.visual) bullet.visual.destroy();
+      });
     }
   }
 
@@ -821,8 +838,10 @@ export default class GameScene extends Phaser.Scene {
     const side = Phaser.Math.Between(0, 3);
     const margin = 24;
     if (side === 0) return { x: Phaser.Math.Between(0, CFG.arena.width), y: -margin };
-    if (side === 1) return { x: CFG.arena.width + margin, y: Phaser.Math.Between(0, CFG.arena.height) };
-    if (side === 2) return { x: Phaser.Math.Between(0, CFG.arena.width), y: CFG.arena.height + margin };
+    if (side === 1)
+      return { x: CFG.arena.width + margin, y: Phaser.Math.Between(0, CFG.arena.height) };
+    if (side === 2)
+      return { x: Phaser.Math.Between(0, CFG.arena.width), y: CFG.arena.height + margin };
     return { x: -margin, y: Phaser.Math.Between(0, CFG.arena.height) };
   }
 
@@ -896,7 +915,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createDasher(x, y) {
-    const enemy = this.createEnemySprite(x, y, 'monster', CFG.dasher, DASHER_MONSTER_SCALE, CFG.dasher.color);
+    const enemy = this.createEnemySprite(
+      x,
+      y,
+      'monster',
+      CFG.dasher,
+      DASHER_MONSTER_SCALE,
+      CFG.dasher.color,
+    );
     enemy.speed = this.enemySpeedThisWave * CFG.dasher.walkSpeedFactor;
     enemy.hp = CFG.dasher.hp;
     enemy.maxHp = CFG.dasher.hp;
@@ -904,24 +930,23 @@ export default class GameScene extends Phaser.Scene {
     enemy.baseTint = CFG.dasher.color;
     enemy.windupEndsAt = 0;
     enemy.dashEndsAt = 0;
-    enemy.nextDashAt = this.time.now + Phaser.Math.Between(
-      CFG.dasher.dashCooldownMinMs,
-      CFG.dasher.dashCooldownMaxMs,
-    );
+    enemy.nextDashAt =
+      this.time.now +
+      Phaser.Math.Between(CFG.dasher.dashCooldownMinMs, CFG.dasher.dashCooldownMaxMs);
   }
 
   createFirecaster(x, y) {
     const enemy = this.createEnemySprite(x, y, 'firecaster', CFG.firecaster, FIRECASTER_SCALE);
-    enemy.speed = CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, this.wave - 1) * 0.45;
+    enemy.speed =
+      CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, this.wave - 1) * 0.45;
     enemy.hp = CFG.firecaster.hp;
     enemy.maxHp = CFG.firecaster.hp;
     enemy.type = 'firecaster';
     enemy.baseTint = 0xffffff;
     enemy.windupEndsAt = 0;
-    enemy.nextFireAt = this.time.now + Phaser.Math.Between(
-      CFG.firecaster.fireCooldownMinMs,
-      CFG.firecaster.fireCooldownMaxMs,
-    );
+    enemy.nextFireAt =
+      this.time.now +
+      Phaser.Math.Between(CFG.firecaster.fireCooldownMinMs, CFG.firecaster.fireCooldownMaxMs);
     enemy.strafeDir = Math.random() < 0.5 ? -1 : 1;
   }
 
@@ -942,9 +967,15 @@ export default class GameScene extends Phaser.Scene {
   }
 
   createSplitterChild(x, y) {
-    const enemy = this.createEnemySprite(x, y, 'splitter', {
-      radius: CFG.splitter.childRadius,
-    }, 0.38);
+    const enemy = this.createEnemySprite(
+      x,
+      y,
+      'splitter',
+      {
+        radius: CFG.splitter.childRadius,
+      },
+      0.38,
+    );
     enemy.speed = CFG.splitter.childSpeed;
     enemy.hp = CFG.splitter.childHp;
     enemy.maxHp = CFG.splitter.childHp;
@@ -1077,10 +1108,8 @@ export default class GameScene extends Phaser.Scene {
     }
     if (enemy.dashEndsAt !== 0) {
       enemy.dashEndsAt = 0;
-      enemy.nextDashAt = now + Phaser.Math.Between(
-        CFG.dasher.dashCooldownMinMs,
-        CFG.dasher.dashCooldownMaxMs,
-      );
+      enemy.nextDashAt =
+        now + Phaser.Math.Between(CFG.dasher.dashCooldownMinMs, CFG.dasher.dashCooldownMaxMs);
     }
     if (enemy.windupEndsAt > 0) {
       enemy.body.setVelocity(0, 0);
@@ -1120,16 +1149,16 @@ export default class GameScene extends Phaser.Scene {
 
     if (enemy.windupEndsAt > 0) {
       enemy.body.setVelocity(0, 0);
-      const flashOn = Math.floor((enemy.windupEndsAt - now) / CFG.firecaster.windupFlashMs) % 2 === 0;
+      const flashOn =
+        Math.floor((enemy.windupEndsAt - now) / CFG.firecaster.windupFlashMs) % 2 === 0;
       enemy.setTint(flashOn ? 0xfff176 : 0xff7043);
       if (now >= enemy.windupEndsAt) {
         enemy.windupEndsAt = 0;
         enemy.clearTint();
         this.fireEnemyFireball(enemy, nx, ny, now);
-        enemy.nextFireAt = now + Phaser.Math.Between(
-          CFG.firecaster.fireCooldownMinMs,
-          CFG.firecaster.fireCooldownMaxMs,
-        );
+        enemy.nextFireAt =
+          now +
+          Phaser.Math.Between(CFG.firecaster.fireCooldownMinMs, CFG.firecaster.fireCooldownMaxMs);
       }
       return;
     }
@@ -1192,8 +1221,16 @@ export default class GameScene extends Phaser.Scene {
       }
     });
     if (healed) {
-      const ring = this.add.circle(enemy.x, enemy.y, CFG.healer.healRadius, 0x69f0ae, 0.12).setDepth(3.5);
-      this.tweens.add({ targets: ring, alpha: 0, scale: 1.1, duration: 300, onComplete: () => ring.destroy() });
+      const ring = this.add
+        .circle(enemy.x, enemy.y, CFG.healer.healRadius, 0x69f0ae, 0.12)
+        .setDepth(3.5);
+      this.tweens.add({
+        targets: ring,
+        alpha: 0,
+        scale: 1.1,
+        duration: 300,
+        onComplete: () => ring.destroy(),
+      });
     }
   }
 
@@ -1203,13 +1240,16 @@ export default class GameScene extends Phaser.Scene {
     enemy.nextSummonAt = now + CFG.summoner.summonCooldownMs;
     for (let i = 0; i < CFG.summoner.summonCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      this.createSplitterChild(
-        enemy.x + Math.cos(angle) * 26,
-        enemy.y + Math.sin(angle) * 26,
-      );
+      this.createSplitterChild(enemy.x + Math.cos(angle) * 26, enemy.y + Math.sin(angle) * 26);
     }
     const flash = this.add.circle(enemy.x, enemy.y, 44, 0xab47bc, 0.18).setDepth(3.5);
-    this.tweens.add({ targets: flash, alpha: 0, scale: 1.35, duration: 360, onComplete: () => flash.destroy() });
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 1.35,
+      duration: 360,
+      onComplete: () => flash.destroy(),
+    });
   }
 
   updateShielded(enemy, px, py) {
@@ -1231,7 +1271,10 @@ export default class GameScene extends Phaser.Scene {
       enemy.setTint(flashOn ? 0xe040fb : 0x7c4dff);
       if (now >= enemy.windupEndsAt) {
         const angle = Math.random() * Math.PI * 2;
-        const dist = Phaser.Math.Between(CFG.teleporter.blinkMinDistance, CFG.teleporter.blinkMaxDistance);
+        const dist = Phaser.Math.Between(
+          CFG.teleporter.blinkMinDistance,
+          CFG.teleporter.blinkMaxDistance,
+        );
         enemy.x = Phaser.Math.Clamp(px + Math.cos(angle) * dist, 32, CFG.arena.width - 32);
         enemy.y = Phaser.Math.Clamp(py + Math.sin(angle) * dist, 32, CFG.arena.height - 32);
         enemy.clearTint();
@@ -1248,16 +1291,39 @@ export default class GameScene extends Phaser.Scene {
   }
 
   updateSniper(enemy, px, py, now) {
-    const { dx, dy, len, nx, ny } = this.keepRange(enemy, px, py, CFG.sniper.minRange, CFG.sniper.maxRange, enemy.speed);
+    const { dx, dy, len, nx, ny } = this.keepRange(
+      enemy,
+      px,
+      py,
+      CFG.sniper.minRange,
+      CFG.sniper.maxRange,
+      enemy.speed,
+    );
     if (enemy.aimEndsAt > 0) {
       enemy.body.setVelocity(0, 0);
       if (enemy.aimLine) {
         enemy.aimLine.clear();
         enemy.aimLine.lineStyle(2, 0xff1744, 0.65);
-        enemy.aimLine.lineBetween(enemy.x, enemy.y, enemy.x + enemy.aimDir.x * 900, enemy.y + enemy.aimDir.y * 900);
+        enemy.aimLine.lineBetween(
+          enemy.x,
+          enemy.y,
+          enemy.x + enemy.aimDir.x * 900,
+          enemy.y + enemy.aimDir.y * 900,
+        );
       }
       if (now >= enemy.aimEndsAt) {
-        this.fireEnemyShot(enemy, enemy.aimDir.x, enemy.aimDir.y, now, CFG.sniper.shotRadius, 0xff1744, 0xffebee, CFG.sniper.shotSpeed, CFG.sniper.shotLifetimeMs, CFG.sniper.shotDamage);
+        this.fireEnemyShot(
+          enemy,
+          enemy.aimDir.x,
+          enemy.aimDir.y,
+          now,
+          CFG.sniper.shotRadius,
+          0xff1744,
+          0xffebee,
+          CFG.sniper.shotSpeed,
+          CFG.sniper.shotLifetimeMs,
+          CFG.sniper.shotDamage,
+        );
         if (enemy.aimLine) enemy.aimLine.destroy();
         enemy.aimLine = null;
         enemy.aimEndsAt = 0;
@@ -1281,7 +1347,9 @@ export default class GameScene extends Phaser.Scene {
       this.createSplitterChild(enemy.x + Math.cos(angle) * 24, enemy.y + Math.sin(angle) * 24);
     }
     enemy.setTint(0xffd54f);
-    this.time.delayedCall(160, () => { if (enemy.active) this.applyDamageTint(enemy); });
+    this.time.delayedCall(160, () => {
+      if (enemy.active) this.applyDamageTint(enemy);
+    });
   }
 
   updateSlime(enemy, px, py, now) {
@@ -1343,7 +1411,13 @@ export default class GameScene extends Phaser.Scene {
 
   explodeEnemy(x, y, radius, damagesPlayer) {
     const blast = this.add.circle(x, y, radius, 0xff7043, 0.28).setDepth(4.2);
-    this.tweens.add({ targets: blast, alpha: 0, scale: 1.2, duration: 260, onComplete: () => blast.destroy() });
+    this.tweens.add({
+      targets: blast,
+      alpha: 0,
+      scale: 1.2,
+      duration: 260,
+      onComplete: () => blast.destroy(),
+    });
     if (damagesPlayer) {
       const d = Phaser.Math.Distance.Between(x, y, this.player.sprite.x, this.player.sprite.y);
       if (d <= radius) this.damagePlayer(CFG.bomber.explosionDamage);
@@ -1372,8 +1446,7 @@ export default class GameScene extends Phaser.Scene {
     this.wave += 1;
     const n = this.wave;
     const count = CFG.waves.baseCount + CFG.waves.growthPerWave * (n - 1);
-    this.enemySpeedThisWave =
-      CFG.enemy.speed + CFG.waves.enemySpeedGrowth * (n - 1);
+    this.enemySpeedThisWave = CFG.enemy.speed + CFG.waves.enemySpeedGrowth * (n - 1);
     this.pendingSpawns = count;
 
     this.activeSpawnEvent = this.time.addEvent({
@@ -1413,14 +1486,11 @@ export default class GameScene extends Phaser.Scene {
     this.payWaveClearBonus();
 
     this.nextWaveScheduled = true;
-    this.nextWaveDelayedCall = this.time.delayedCall(
-      CFG.waves.interWaveDelayMs,
-      () => {
-        this.nextWaveScheduled = false;
-        this.nextWaveDelayedCall = null;
-        this.startNextWave();
-      },
-    );
+    this.nextWaveDelayedCall = this.time.delayedCall(CFG.waves.interWaveDelayMs, () => {
+      this.nextWaveScheduled = false;
+      this.nextWaveDelayedCall = null;
+      this.startNextWave();
+    });
   }
 
   onBulletHitEnemy(bullet, enemy) {
@@ -1437,7 +1507,13 @@ export default class GameScene extends Phaser.Scene {
       const r = mods.aoeRadius;
       const rSq = r * r;
       const splash = this.add.circle(ex, ey, r, 0xff7043, 0.25);
-      this.tweens.add({ targets: splash, alpha: 0, scale: 1.2, duration: 200, onComplete: () => splash.destroy() });
+      this.tweens.add({
+        targets: splash,
+        alpha: 0,
+        scale: 1.2,
+        duration: 200,
+        onComplete: () => splash.destroy(),
+      });
       this.enemies.getChildren().forEach((e) => {
         const d = Phaser.Math.Distance.Squared(ex, ey, e.x, e.y);
         if (d <= rSq) {
@@ -1493,11 +1569,23 @@ export default class GameScene extends Phaser.Scene {
     if (!enemy.active) return;
     if (enemy.maxHp > 1 && enemy.hp > 0 && enemy.hp < enemy.maxHp) {
       const t = Phaser.Math.Clamp(1 - enemy.hp / enemy.maxHp, 0, 1);
-      const c = Phaser.Display.Color.Interpolate.RGBWithRGB(255, 255, 255, 140, 50, 40, 100, Math.round(t * 100));
+      const c = Phaser.Display.Color.Interpolate.RGBWithRGB(
+        255,
+        255,
+        255,
+        140,
+        50,
+        40,
+        100,
+        Math.round(t * 100),
+      );
       enemy.setTint(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
       return;
     }
-    if (enemy.type === 'dasher') { enemy.setTint(enemy.baseTint); return; }
+    if (enemy.type === 'dasher') {
+      enemy.setTint(enemy.baseTint);
+      return;
+    }
     enemy.clearTint();
   }
 
@@ -1519,10 +1607,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   killEnemyScoring(x, y) {
-    this.comboMultiplier = Math.min(
-      this.comboMultiplier + 1,
-      CFG.combo.maxMultiplier,
-    );
+    this.comboMultiplier = Math.min(this.comboMultiplier + 1, CFG.combo.maxMultiplier);
     this.lastKillAt = this.time.now;
     this.score += CFG.combo.scorePerKillBase * this.comboMultiplier;
     this.dropCoinsForKill(x, y);
@@ -1551,7 +1636,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  onPlayerCoin(playerSprite, coin) {
+  onPlayerCoin(_playerSprite, coin) {
     coin.destroy();
     this.coinsThisRun += 1;
     Save.addToWallet(1);
@@ -1559,7 +1644,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateHUD(this.time.now);
   }
 
-  onPlayerHitEnemy(playerSprite, enemy) {
+  onPlayerHitEnemy(_playerSprite, enemy) {
     if (this.time.now < this.player.invulnerableUntil) return;
 
     if (this.shieldActive) {
@@ -1606,7 +1691,12 @@ export default class GameScene extends Phaser.Scene {
         this.phoenixCharges -= 1;
         this.player.hp = 1;
         this.activateShield();
-        this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, 'PHOENIX', '#ffd54f');
+        this.showFloatingText(
+          this.player.sprite.x,
+          this.player.sprite.y - 30,
+          'PHOENIX',
+          '#ffd54f',
+        );
         this.maybeStartNextWave();
       } else {
         this.endGame();
@@ -1620,12 +1710,12 @@ export default class GameScene extends Phaser.Scene {
     return CFG[type]?.contactDamage || CFG.enemy.contactDamage;
   }
 
-  onPlayerHitEnemyProjectile(playerSprite, projectile) {
+  onPlayerHitEnemyProjectile(_playerSprite, projectile) {
     projectile.destroy();
     this.damagePlayer(projectile.damage || CFG.enemyFireball.damage);
   }
 
-  onPlayerHitHazard(playerSprite, hazard) {
+  onPlayerHitHazard(_playerSprite, hazard) {
     if (this.time.now < hazard.nextDamageAt) return;
     hazard.nextDamageAt = this.time.now + 650;
     this.damagePlayer(hazard.damage || 1);
@@ -1673,7 +1763,12 @@ export default class GameScene extends Phaser.Scene {
         this.phoenixCharges -= 1;
         this.player.hp = 1;
         this.activateShield();
-        this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, 'PHOENIX', '#ffd54f');
+        this.showFloatingText(
+          this.player.sprite.x,
+          this.player.sprite.y - 30,
+          'PHOENIX',
+          '#ffd54f',
+        );
       } else {
         this.endGame();
       }
@@ -1681,11 +1776,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   showFloatingText(x, y, text, color = '#ffffff') {
-    const t = this.add.text(x, y, text, {
-      fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
-      fontSize: '16px',
-      color,
-    }).setOrigin(0.5);
+    const t = this.add
+      .text(x, y, text, {
+        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+        fontSize: '16px',
+        color,
+      })
+      .setOrigin(0.5);
     this.tweens.add({
       targets: t,
       y: y - 40,
@@ -1738,10 +1835,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   maybeDecayCombo(time) {
-    if (
-      this.comboMultiplier > 1 &&
-      time - this.lastKillAt > this.runtime.comboResetMs
-    ) {
+    if (this.comboMultiplier > 1 && time - this.lastKillAt > this.runtime.comboResetMs) {
       this.comboMultiplier = 1;
     }
   }
@@ -1862,7 +1956,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  pickupShieldBonus(playerSprite, pickup) {
+  pickupShieldBonus(_playerSprite, pickup) {
     if (!this.shieldPickup || pickup !== this.shieldPickup) return;
 
     this.clearShieldPickupTimers();
@@ -1907,16 +2001,8 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.shieldRing) this.shieldRing.destroy();
     const ringRadius = Math.max(18, CFG.player.radius) + CFG.shieldBonus.ringRadiusPad;
-    this.shieldRing = this.add.circle(
-      this.player.sprite.x,
-      this.player.sprite.y,
-      ringRadius,
-    );
-    this.shieldRing.setStrokeStyle(
-      CFG.shieldBonus.ringWidth,
-      CFG.shieldBonus.ringColor,
-      0.9,
-    );
+    this.shieldRing = this.add.circle(this.player.sprite.x, this.player.sprite.y, ringRadius);
+    this.shieldRing.setStrokeStyle(CFG.shieldBonus.ringWidth, CFG.shieldBonus.ringColor, 0.9);
     this.shieldRing.setFillStyle();
     this.shieldHud.setVisible(true);
 
@@ -2001,19 +2087,16 @@ export default class GameScene extends Phaser.Scene {
       this,
     );
 
-    this.giftWarnEvent = this.time.delayedCall(
-      CFG.gift.lifetimeMs - CFG.gift.warnLastMs,
-      () => {
-        if (!this.giftPickup) return;
-        this.tweens.add({
-          targets: [this.giftPickup, ...this.giftPickup.ribbons],
-          alpha: { from: 1, to: 0.25 },
-          duration: 180,
-          yoyo: true,
-          repeat: -1,
-        });
-      },
-    );
+    this.giftWarnEvent = this.time.delayedCall(CFG.gift.lifetimeMs - CFG.gift.warnLastMs, () => {
+      if (!this.giftPickup) return;
+      this.tweens.add({
+        targets: [this.giftPickup, ...this.giftPickup.ribbons],
+        alpha: { from: 1, to: 0.25 },
+        duration: 180,
+        yoyo: true,
+        repeat: -1,
+      });
+    });
 
     this.giftDespawnEvent = this.time.delayedCall(CFG.gift.lifetimeMs, () => {
       this.despawnGift();
@@ -2021,7 +2104,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  pickupGift(playerSprite, pickup) {
+  pickupGift(_playerSprite, pickup) {
     if (!this.giftPickup || pickup !== this.giftPickup) return;
     this.clearGiftTimers();
     this.destroyGiftPickup();
@@ -2039,15 +2122,26 @@ export default class GameScene extends Phaser.Scene {
   destroyGiftPickup() {
     if (!this.giftPickup) return;
     this.giftPickup.pulseTween?.stop();
-    (this.giftPickup.ribbons || []).forEach((r) => r.destroy());
+    (this.giftPickup.ribbons || []).forEach((r) => {
+      r.destroy();
+    });
     this.giftPickup.destroy();
     this.giftPickup = null;
   }
 
   clearGiftTimers() {
-    if (this.giftDespawnEvent) { this.giftDespawnEvent.remove(false); this.giftDespawnEvent = null; }
-    if (this.giftWarnEvent) { this.giftWarnEvent.remove(false); this.giftWarnEvent = null; }
-    if (this.giftPickupOverlap) { this.giftPickupOverlap.destroy(); this.giftPickupOverlap = null; }
+    if (this.giftDespawnEvent) {
+      this.giftDespawnEvent.remove(false);
+      this.giftDespawnEvent = null;
+    }
+    if (this.giftWarnEvent) {
+      this.giftWarnEvent.remove(false);
+      this.giftWarnEvent = null;
+    }
+    if (this.giftPickupOverlap) {
+      this.giftPickupOverlap.destroy();
+      this.giftPickupOverlap = null;
+    }
   }
 
   // Grant a random mod the player is NOT already using (loadout or active gift).
@@ -2074,7 +2168,12 @@ export default class GameScene extends Phaser.Scene {
       this.tempPhoenixActive = true;
     }
     this.giftHud.setVisible(true);
-    this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, `+ ${mod.name}`, '#ff80ab');
+    this.showFloatingText(
+      this.player.sprite.x,
+      this.player.sprite.y - 30,
+      `+ ${mod.name}`,
+      '#ff80ab',
+    );
   }
 
   expireTempMod() {

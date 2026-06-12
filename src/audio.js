@@ -138,7 +138,7 @@ function startMusic(scene, manager) {
   scheduleCrossfade(scene, manager);
 }
 
-function stopMusic(scene, manager) {
+function stopMusic(_scene, manager) {
   if (manager.timer) {
     manager.timer.remove(false);
     manager.timer = null;
@@ -233,5 +233,4 @@ function crossfadeToNext(scene, manager, fadeMs = CROSSFADE_MS) {
       }
     },
   });
-
 }
