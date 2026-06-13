@@ -17,28 +17,52 @@ jobs:
       checks: write # Required for dorny/test-reporter
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check for source file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'test/**'
+              - 'public/**'
+              - 'index.html'
+              - 'vite.config.js'
+              - 'package*.json'
+
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
           cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
-      - name: Security Scan
-        run: npm audit --audit-level=high
+
       - name: Lint and Format
         run: npm run check
+
+      - name: Security Scan
+        if: steps.filter.outputs.src == 'true'
+        run: npm audit --audit-level=high
+
       - name: Build
+        if: steps.filter.outputs.src == 'true'
         run: npm run build
+
       - name: Run Tests
+        if: steps.filter.outputs.src == 'true'
         run: npm run test:run
+
       - name: Test Report
         uses: dorny/test-reporter@v3
-        if: always()
+        if: always() && steps.filter.outputs.src == 'true'
         with:
           name: Unit Tests
           path: junit.xml
           reporter: jest-junit
+
       - name: 'Report Coverage'
-        if: always()
+        if: always() && steps.filter.outputs.src == 'true'
         uses: davelosert/vitest-coverage-report-action@v2
