@@ -14,6 +14,7 @@ Follow these rules for all development tasks in this repository:
 - **Logical Commits:** Break your changes into small, logical units. Do not bundle unrelated changes into a single commit.
 - **Sign-off:** Every commit must include the Developer Certificate of Origin (DCO) sign-off flag. Use `git commit -s -m "..."`.
 - **Code Quality:** This project uses Biome for linting and formatting. Run `npm run check` before finishing any task.
+- **CI Maintenance:** If you add new directories or files that should trigger a full build/test, you MUST update the `src` filter in `.github/workflows/pr-build.yml` automatically.
 - **Security Best Practices:**
   - Never store sensitive data (PII, tokens) in `localStorage`.
   - Use `textContent` or `innerText` instead of `innerHTML` for user-controlled strings to prevent XSS.
