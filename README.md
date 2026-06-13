@@ -1,4 +1,9 @@
 # Arena Fight
+
+[![Build & Verification](https://github.com/dawnburst/arena-fight/actions/workflows/pr-build.yml/badge.svg)](https://github.com/dawnburst/arena-fight/actions/workflows/pr-build.yml)
+[![Live Deployment](https://github.com/dawnburst/arena-fight/actions/workflows/deploy.yml/badge.svg)](https://github.com/dawnburst/arena-fight/actions/workflows/deploy.yml)
+[![Current Version](https://img.shields.io/github/v/release/dawnburst/arena-fight)](https://github.com/dawnburst/arena-fight/releases)
+
 A browser-based retro arena shooter built with Phaser 3 and Vite. Survive escalating monster waves, collect coins, buy weapons and mods, tune your loadout, and push for a higher wave.
 
 See [`CODEBASE.md`](./CODEBASE.md) for the current implementation map.
@@ -19,7 +24,7 @@ npm run build
 npm run preview
 ```
 
-Production builds use the `/arena-fight/` base path for GitHub Pages. Pushes to `main` deploy `dist` through the GitHub Actions workflow in `.github/workflows/deploy.yml`; configure repository Pages to use `GitHub Actions` as the source.
+Production builds use the `/arena-fight/` base path for GitHub Pages. Deployments and official releases are triggered manually through the **"Deploy static content to Pages"** workflow in GitHub Actions. Ensure repository Pages are configured to use `GitHub Actions` as the source.
 
 ## Controls
 
