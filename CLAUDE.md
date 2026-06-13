@@ -34,6 +34,7 @@ npm run preview
 - **Commits:** Break changes into small, logical units and avoid unrelated refactors in the same commit.
 - **DCO Sign-off:** Every commit must include the sign-off flag (`git commit -s`).
 - **Formatting:** This project uses Biome. Run `npm run check` before committing to ensure code quality and consistent styling.
+- **CI Maintenance:** Automatically update the `src` filter in `.github/workflows/pr-build.yml` when adding new source files or configuration that require a full build/test cycle.
 - **Security:** Avoid storing sensitive tokens in `localStorage`. Sanitize all user-provided strings before DOM insertion.
 - Keep persistent player state in `src/save.js` and avoid creating new localStorage keys unless there is a migration plan.
 - Prefer changing `src/config.js` for gameplay tuning values such as wave timing, enemy appearance waves, prices, movement, and coin behavior.
