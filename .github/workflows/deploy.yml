@@ -1,8 +1,6 @@
 name: Deploy static content to Pages
 
 on:
-  push:
-    branches: ['main']
   workflow_dispatch:
     inputs:
       increment:
@@ -76,7 +74,7 @@ jobs:
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
           
-          # Use input from manual trigger, default to patch on push
+          # Use input from manual trigger, default to patch
           INCREMENT="${{ github.event.inputs.increment || 'patch' }}"
           
           if [ "$INCREMENT" == "major" ]; then
