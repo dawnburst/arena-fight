@@ -50,6 +50,7 @@ Follow these rules for all development tasks:
 - **Logical Commits:** Break your changes into small, logical units. Do not bundle unrelated changes into a single commit.
 - **Sign-off:** Every commit must include the Developer Certificate of Origin (DCO) sign-off. Use the `-s` flag with `git commit`.
 - **Code Formatting:** This project uses [Biome](https://biomejs.dev/). Before committing, ensure you run `npm run check` to format and lint your changes.
+- **CI Maintenance:** If you add new source directories or files that should trigger a full build/test run, ensure you update the `src` filter in `.github/workflows/pr-build.yml`.
 - **Security:** Do not store sensitive data in `localStorage`. Follow strict XSS prevention when manipulating the DOM. Validate all external inputs.
 
 ## Coding Guidelines
