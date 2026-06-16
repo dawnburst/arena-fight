@@ -219,4 +219,18 @@ export const ENEMY_BESTIARY = [
     power: 'Draws a warning line, then fires a fast shot.',
     counter: 'Watch the line and dodge sideways before the shot releases.',
   },
+  {
+    id: 'boss',
+    name: 'The Warden',
+    sprite: 'tank',
+    frame: 0,
+    tint: 0x9575cd,
+    firstWave: 'Every 10 waves',
+    movement:
+      'A huge shielded guardian that hovers near the top and tracks you, summoning minions.',
+    power:
+      'Energy shield blocks body hits and regenerates each phase; small orbiting weak points always damage it. Barrages projectiles, charges and ground-slams, and enrages across three phases.',
+    counter:
+      'Snipe the moving weak points to skip the shield, or break the shield then unload. Dodge the charge windup and stay out of slam range.',
+  },
 ];
