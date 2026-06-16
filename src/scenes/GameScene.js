@@ -2072,6 +2072,32 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // Phoenix revive: a gold shockwave that destroys nearby (non-boss) enemies.
+  phoenixBlast() {
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    const radius = CFG.player.phoenixBlastRadius;
+    const blast = this.add.circle(px, py, radius, 0xffd54f, 0.35).setDepth(4.3);
+    this.tweens.add({
+      targets: blast,
+      alpha: 0,
+      scale: 1.4,
+      duration: 320,
+      onComplete: () => blast.destroy(),
+    });
+    const rSq = radius * radius;
+    this.enemies
+      .getChildren()
+      .slice()
+      .forEach((e) => {
+        if (!e.active || e.type === 'boss') return;
+        if (Phaser.Math.Distance.Squared(px, py, e.x, e.y) <= rSq) {
+          this.damageEnemy(e, px, py, CFG.player.phoenixBlastDamage);
+        }
+      });
+    this.cameras.main.shake(160, 0.006);
+  }
+
   createPoisonPuddle(x, y, time) {
     const puddle = this.add.circle(x, y, CFG.slime.puddleRadius, 0x7cb342, 0.24).setDepth(2.5);
     this.physics.add.existing(puddle);
@@ -2380,6 +2406,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.phoenixCharges > 0) {
         this.phoenixCharges -= 1;
         this.player.hp = 1;
+        this.phoenixBlast();
         this.activateShield();
         this.showFloatingText(
           this.player.sprite.x,
@@ -2452,6 +2479,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.phoenixCharges > 0) {
         this.phoenixCharges -= 1;
         this.player.hp = 1;
+        this.phoenixBlast();
         this.activateShield();
         this.showFloatingText(
           this.player.sprite.x,
