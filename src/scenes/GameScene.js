@@ -1232,6 +1232,7 @@ export default class GameScene extends Phaser.Scene {
 
   updateBoss(boss, px, py, now) {
     this.positionBossParts(boss, now);
+    this.keepEnemiesOutsideBoss(boss);
     this.updateBossBar(boss);
 
     if (now < boss.phaseChangingUntil) {
@@ -1300,6 +1301,24 @@ export default class GameScene extends Phaser.Scene {
       }
       boss.powerNextAt[name] = now + this.bossPowerCooldown(boss, name);
     }
+  }
+
+  // Summoned minions must never sit inside the large boss body, where the
+  // player's shots would hit the boss first and leave them unreachable. Push
+  // any overlapping enemy out to the boss's edge each frame.
+  keepEnemiesOutsideBoss(boss) {
+    const minDist = CFG.boss.hitRadius + 16;
+    this.enemies.getChildren().forEach((e) => {
+      if (e === boss) return;
+      const dx = e.x - boss.x;
+      const dy = e.y - boss.y;
+      const d = Math.hypot(dx, dy);
+      if (d < minDist) {
+        const a = d < 1 ? Math.random() * Math.PI * 2 : Math.atan2(dy, dx);
+        e.x = boss.x + Math.cos(a) * minDist;
+        e.y = boss.y + Math.sin(a) * minDist;
+      }
+    });
   }
 
   castBossPower(boss, name, now) {
@@ -1421,7 +1440,7 @@ export default class GameScene extends Phaser.Scene {
     for (let i = 0; i < toSpawn; i++) {
       const type = pool[Math.floor(Math.random() * pool.length)];
       const a = Math.random() * Math.PI * 2;
-      const dist = CFG.boss.radius + 30 + Math.random() * 40;
+      const dist = CFG.boss.hitRadius + 20 + Math.random() * 40; // spawn outside the boss body
       const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 40, CFG.arena.width - 40);
       const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 40, CFG.arena.height - 40);
       this.createEnemyByType(type, x, y);
