@@ -765,7 +765,7 @@ export default class GameScene extends Phaser.Scene {
     this.activeWeaponIndex = this.activeWeaponIndex === 0 ? 1 : 0;
     this.weaponDef = this.weapons[this.activeWeaponIndex];
     this.burstShotsRemaining = 0;
-    this.player.nextFireAt = time;
+    this.player.nextFireAt = time + CFG.player.weaponSwapDelayMs;
     this.showFloatingText(
       this.player.sprite.x,
       this.player.sprite.y - 30,
