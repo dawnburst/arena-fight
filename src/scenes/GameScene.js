@@ -1665,11 +1665,10 @@ export default class GameScene extends Phaser.Scene {
   payBossReward(x, y) {
     const tier = this.boss?.bossTier || 1;
     const r = CFG.boss.reward;
-    const coins = r.baseCoins + r.coinsPerTier * (tier - 1);
-    this.coinsThisRun += coins;
-    Save.addToWallet(coins);
-    this.showFloatingText(x, y - 10, `BOSS DOWN  +${coins} ¢`, '#ffd54f');
-    this.updateHUD(this.time.now);
+    const value = r.baseCoins + r.coinsPerTier * (tier - 1);
+    // Drop the reward as one big coin the player must collect (not auto-credited).
+    this.spawnBigCoin(x, y, value);
+    this.showFloatingText(x, y - 30, 'BOSS DOWN', '#ffd54f');
   }
 
   showBossBar(boss) {
@@ -2323,6 +2322,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   dropCoinsForKill(x, y) {
+    // Enemies during a boss fight (the boss's own minions) drop no coins;
+    // the boss itself drops one big collectible coin instead (see payBossReward).
+    if (this.bossActive) return;
     const base = CFG.store.coinDropPerKillBase + (this.comboMultiplier - 1);
     let amount = Math.max(1, Math.round(base * this.runtime.coinDropMult));
     if (this.runtime.luckyChance > 0 && Math.random() < this.runtime.luckyChance) {
@@ -2342,14 +2344,40 @@ export default class GameScene extends Phaser.Scene {
       coin.body.setCircle(CFG.coin.radius);
       coin.body.setOffset(-CFG.coin.radius, -CFG.coin.radius);
       coin.body.setVelocity(Math.cos(angle) * sp, Math.sin(angle) * sp);
+      coin.value = 1;
     }
   }
 
+  // A single large coin carrying a coin value > 1 (boss reward). Collected like
+  // any coin, but credits its full value at once.
+  spawnBigCoin(x, y, value) {
+    const r = CFG.coin.bigRadius;
+    const coin = this.add.circle(x, y, r, CFG.coin.color);
+    coin.setStrokeStyle(3, 0xffffff, 0.95).setDepth(3.5);
+    this.physics.add.existing(coin);
+    this.coins.add(coin);
+    coin.body.setCircle(r);
+    coin.body.setOffset(-r, -r);
+    coin.value = value;
+    this.tweens.add({
+      targets: coin,
+      scale: { from: 0.8, to: 1.15 },
+      yoyo: true,
+      repeat: -1,
+      duration: 500,
+      ease: 'Sine.inOut',
+    });
+  }
+
   onPlayerCoin(_playerSprite, coin) {
+    const value = coin.value || 1;
     coin.destroy();
-    this.coinsThisRun += 1;
-    Save.addToWallet(1);
+    this.coinsThisRun += value;
+    Save.addToWallet(value);
     playSfx(this, 'coin');
+    if (value > 1) {
+      this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, `+${value} ¢`, '#ffd54f');
+    }
     this.updateHUD(this.time.now);
   }
 
