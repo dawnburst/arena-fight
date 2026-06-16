@@ -2866,7 +2866,8 @@ export default class GameScene extends Phaser.Scene {
   grantRandomMod() {
     const used = new Set((Save.get().loadout?.mods || []).filter(Boolean));
     if (this.tempMod) used.add(this.tempMod.id);
-    const pool = MODS.filter((m) => !used.has(m.id));
+    // In-game gifts never grant Legendary-tier mods.
+    const pool = MODS.filter((m) => !used.has(m.id) && m.tier !== 'legendary');
     if (!pool.length) {
       this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, 'GIFT!', '#ff80ab');
       return;
