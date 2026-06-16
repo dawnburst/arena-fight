@@ -264,7 +264,7 @@ export const CFG = {
 
     reward: {
       baseCoins: 350,
-      coinsPerTier: 220,
+      coinsPerTier: 100, // big-coin value = baseCoins + coinsPerTier * (tier - 1)
     },
     bar: {
       x: 400,
@@ -416,6 +416,7 @@ export const CFG = {
   },
   coin: {
     radius: 4,
+    bigRadius: 13, // large boss-reward coin (carries a value > 1)
     color: 0xffd54f,
     dropSpeed: 60,
     magnetRadius: 180,
