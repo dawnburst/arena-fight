@@ -188,6 +188,104 @@ export const CFG = {
     damage: 1,
     lifetimeMs: 2600,
   },
+  boss: {
+    everyNWaves: 10, // boss appears on waves 10, 20, 30, ...
+    radius: 46, // visual body radius (large)
+    hitRadius: 66, // physics overlap radius; covers the orbiting weak points
+    contactDamage: 1,
+    color: 0x4a148c, // deep purple body
+    coreColor: 0xff5252,
+    armorColor: 0x9575cd,
+    shieldColor: 0x40c4ff,
+    anchorY: 140, // resting height near the top of the arena
+    edgeMargin: 90, // keeps the tracked target x inside the arena
+    introMs: 1200, // entrance / first-attack delay
+    transitionMs: 700, // per-phase telegraph window (boss invulnerable-ish, idle)
+    pierceHitCooldownMs: 120, // throttles piercing bullets re-hitting the big body
+    clearAddsOnBossDeath: true, // boss death clears remaining summoned minions
+    baseHp: 120,
+    hpPerTier: 60, // + per subsequent boss appearance
+    baseShield: 60,
+    shieldPerTier: 30,
+    phaseThresholds: [0.66, 0.33], // enter phase 2 below 66% hp, phase 3 below 33%
+    weakPoint: {
+      orbitRadius: 58,
+      nodeRadius: 6, // visual size
+      hitRadius: 8, // small => skill shortcut; bullets here bypass the shield
+      color: 0xffeb3b,
+      damageMult: 2.5, // weak-point hits deal extra HP damage
+    },
+    barrage: {
+      radius: 7,
+      speed: 240,
+      lifetimeMs: 3000,
+      damage: 1,
+      color: 0xb388ff,
+      coreColor: 0xede7f6,
+    },
+    slamDamage: 1,
+    reward: {
+      baseCoins: 400,
+      coinsPerTier: 250,
+    },
+    bar: {
+      x: 400,
+      y: 92,
+      nameY: 70,
+      width: 560,
+      height: 16,
+    },
+    phases: [
+      {
+        moveSpeed: 30,
+        weakPoints: 2,
+        orbitSpeed: 55, // deg/s
+        summonCooldownMs: 6000,
+        summonCount: 3,
+        summonPool: ['swarmer', 'dasher'],
+        maxAdds: 8,
+        barrageCooldownMs: 4200,
+        barrageCount: 8,
+        charge: false,
+      },
+      {
+        moveSpeed: 46,
+        weakPoints: 2,
+        orbitSpeed: 95,
+        summonCooldownMs: 5000,
+        summonCount: 4,
+        summonPool: ['swarmer', 'dasher', 'firecaster'],
+        maxAdds: 10,
+        barrageCooldownMs: 3200,
+        barrageCount: 12,
+        charge: true,
+        chargeCooldownMs: 6500,
+        chargeWindupMs: 520,
+        chargeSpeed: 540,
+        chargeDurationMs: 650,
+        slamRadius: 115,
+      },
+      {
+        moveSpeed: 60,
+        weakPoints: 3,
+        orbitSpeed: 140,
+        summonCooldownMs: 3800,
+        summonCount: 5,
+        summonPool: ['swarmer', 'dasher', 'firecaster', 'bomber'],
+        maxAdds: 12,
+        barrageCooldownMs: 2300,
+        barrageCount: 16,
+        charge: true,
+        chargeCooldownMs: 4800,
+        chargeWindupMs: 420,
+        chargeSpeed: 620,
+        chargeDurationMs: 650,
+        slamRadius: 135,
+        shieldSlam: true,
+        shieldSlamCooldownMs: 9000,
+      },
+    ],
+  },
   waves: {
     baseCount: 5,
     growthPerWave: 3,
