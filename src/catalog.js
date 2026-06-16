@@ -209,9 +209,10 @@ export const MODS = [
     name: 'Lucky Charm',
     tier: 'legendary',
     price: 15000,
-    description: '10% chance for double coin drops.',
+    description: '10% chance for double coin drops, and gifts appear 10% more often.',
     apply: (ctx) => {
       ctx.luckyChance = 0.1;
+      ctx.giftRateMult *= 0.9; // shorter gift spawn delay => more frequent gifts
     },
   },
   {
@@ -253,6 +254,7 @@ export function buildRuntimeStats(modIds) {
     maxHpDelta: 0,
     comboResetMsDelta: 0,
     luckyChance: 0,
+    giftRateMult: 1,
     phoenixCharges: 0,
   };
   for (const id of modIds || []) {
