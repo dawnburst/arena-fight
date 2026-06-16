@@ -470,25 +470,23 @@ export default class GameScene extends Phaser.Scene {
       const mods = bullet.bulletMods;
       if (!mods) return;
       if (bullet.isBoomerang) {
-        if (bullet.recalled) {
+        const autoReturn =
+          mods.returningAfterMs && time - bullet.bulletBornAt >= mods.returningAfterMs;
+        // On recall or after the return delay, home back to the player's current
+        // position so the boomerang always comes back to the player.
+        if (bullet.recalled || autoReturn) {
+          bullet.bulletReturned = true;
           const px = this.player.sprite.x;
           const py = this.player.sprite.y;
           const dx = px - bullet.x;
           const dy = py - bullet.y;
           const dist = Math.hypot(dx, dy) || 1;
-          const recallSpeed = bullet.bulletSpeed * 1.9;
-          bullet.body.setVelocity((dx / dist) * recallSpeed, (dy / dist) * recallSpeed);
+          const returnSpeed = bullet.bulletSpeed * (bullet.recalled ? 1.9 : 1.2);
+          bullet.body.setVelocity((dx / dist) * returnSpeed, (dy / dist) * returnSpeed);
           if (dist < 20) {
             bullet.destroy();
             return;
           }
-        } else if (
-          mods.returningAfterMs &&
-          !bullet.bulletReturned &&
-          time - bullet.bulletBornAt >= mods.returningAfterMs
-        ) {
-          bullet.bulletReturned = true;
-          bullet.body.setVelocity(-bullet.body.velocity.x, -bullet.body.velocity.y);
         }
         if (bullet.visual) {
           bullet.visual.x = bullet.x;
@@ -2376,7 +2374,12 @@ export default class GameScene extends Phaser.Scene {
     Save.addToWallet(value);
     playSfx(this, 'coin');
     if (value > 1) {
-      this.showFloatingText(this.player.sprite.x, this.player.sprite.y - 30, `+${value} ¢`, '#ffd54f');
+      this.showFloatingText(
+        this.player.sprite.x,
+        this.player.sprite.y - 30,
+        `+${value} ¢`,
+        '#ffd54f',
+      );
     }
     this.updateHUD(this.time.now);
   }
