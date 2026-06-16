@@ -1100,19 +1100,50 @@ export default class GameScene extends Phaser.Scene {
     this.pendingSpawns = 0;
     this.activeSpawnEvent = null;
     const tier = Math.floor(n / CFG.boss.everyNWaves);
-    this.showWaveBanner('⚠ BOSS — THE WARDEN', '#ff5252', '30px');
+    const variant = this.bossVariant(tier);
+    const finalBoss = n >= CFG.boss.finalWave;
+    this.showWaveBanner(
+      `${finalBoss ? '☠ FINAL BOSS' : '⚠ BOSS'} — ${variant.name.toUpperCase()}`,
+      '#ff5252',
+      '30px',
+    );
     this.cameras.main.shake(250, 0.006);
     this.createBoss(tier);
   }
 
+  // Variant archetype for a boss tier (clamped; tiers past the last repeat the
+  // final boss, which keeps scaling up via the difficulty knobs).
+  bossVariant(tier) {
+    const v = CFG.boss.variants;
+    return v[Phaser.Math.Clamp(tier - 1, 0, v.length - 1)];
+  }
+
+  // Attack cooldowns shrink as the boss tier rises (floored).
+  bossCadence(tier) {
+    return Math.max(CFG.boss.cadenceScaleMin, 1 - CFG.boss.cadenceScalePerTier * (tier - 1));
+  }
+
+  bossProjSpeed(base, tier) {
+    return base + CFG.boss.projSpeedPerTier * (tier - 1);
+  }
+
+  bossPowerCooldown(boss, name) {
+    return (
+      CFG.boss.powers[name].cooldownMs *
+      this.bossCadence(boss.tier) *
+      CFG.boss.phaseCadenceScale[boss.phaseIndex]
+    );
+  }
+
   createBoss(tier) {
     const cfg = CFG.boss;
+    const variant = this.bossVariant(tier);
     const x = CFG.arena.width / 2;
     const y = cfg.anchorY;
     const now = this.time.now;
 
-    const boss = this.add.circle(x, y, cfg.radius, cfg.color);
-    boss.setStrokeStyle(5, cfg.armorColor, 0.95);
+    const boss = this.add.circle(x, y, cfg.radius, variant.body);
+    boss.setStrokeStyle(5, variant.accent, 0.95);
     boss.setDepth(4);
     this.physics.add.existing(boss);
     this.enemies.add(boss);
@@ -1120,7 +1151,10 @@ export default class GameScene extends Phaser.Scene {
     boss.body.setOffset(cfg.radius - cfg.hitRadius, cfg.radius - cfg.hitRadius);
 
     boss.type = 'boss';
-    boss.bossTier = tier;
+    boss.tier = tier;
+    boss.bossTier = tier; // kept for reward/back-compat
+    boss.variant = variant;
+    boss.wave = this.wave;
     boss.maxHp = cfg.baseHp + cfg.hpPerTier * (tier - 1);
     boss.hp = boss.maxHp;
     boss.maxShield = cfg.baseShield + cfg.shieldPerTier * (tier - 1);
@@ -1129,18 +1163,17 @@ export default class GameScene extends Phaser.Scene {
     boss.phaseIndex = 0;
     boss.phaseChangingUntil = now + cfg.introMs;
     boss.speed = 0;
+    boss.spiralPhase = 0;
 
-    boss.core = this.add.circle(x, y, 18, cfg.coreColor, 0.95).setDepth(4.3);
+    boss.core = this.add.circle(x, y, 18, variant.core, 0.95).setDepth(4.3);
     boss.shieldRingGfx = this.add.circle(x, y, cfg.hitRadius - 2).setDepth(4.1);
     boss.shieldRingGfx.setStrokeStyle(3, cfg.shieldColor, 0.85);
     boss.shieldRingGfx.setFillStyle(cfg.shieldColor, 0.08);
     boss.weakPoints = [];
     boss.telegraph = null;
 
-    boss.nextSummonAt = now + cfg.introMs + 800;
-    boss.nextBarrageAt = now + cfg.introMs + 1500;
-    boss.nextChargeAt = now + cfg.introMs + 3000;
-    boss.nextShieldSlamAt = now + cfg.introMs + 5000;
+    boss.powerNextAt = {};
+    this.resetBossPowerTimers(boss, now + cfg.introMs);
     boss.chargeWindupUntil = 0;
     boss.chargeEndsAt = 0;
     boss.chargeDir = { x: 0, y: 0 };
@@ -1164,8 +1197,25 @@ export default class GameScene extends Phaser.Scene {
     return boss;
   }
 
+  // Stagger each power's first/next cast so the boss doesn't unload everything
+  // on the same frame. Only powers the variant uses ever fire (gated per phase).
+  resetBossPowerTimers(boss, from) {
+    const offsets = {
+      summon: 800,
+      barrage: 1500,
+      spiral: 1200,
+      aimedVolley: 1800,
+      charge: 3000,
+      nova: 2400,
+      shieldSlam: 5000,
+    };
+    for (const name of Object.keys(CFG.boss.powers)) {
+      boss.powerNextAt[name] = from + (offsets[name] || 1000);
+    }
+  }
+
   configureBossPhase(boss) {
-    const want = CFG.boss.phases[boss.phaseIndex].weakPoints;
+    const want = boss.variant.weakPointsByPhase[boss.phaseIndex];
     while (boss.weakPoints.length < want) {
       const node = this.add
         .circle(boss.x, boss.y, CFG.boss.weakPoint.nodeRadius, CFG.boss.weakPoint.color)
@@ -1187,14 +1237,14 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    const phase = CFG.boss.phases[boss.phaseIndex];
+    const charge = CFG.boss.powers.charge;
 
     // Mid-charge: keep the launched velocity, do nothing else.
     if (now < boss.chargeEndsAt) return;
     if (boss.chargeEndsAt !== 0) {
       boss.chargeEndsAt = 0;
-      this.bossSlam(boss, phase);
-      boss.nextChargeAt = now + phase.chargeCooldownMs;
+      this.bossSlam(boss);
+      boss.powerNextAt.charge = now + this.bossPowerCooldown(boss, 'charge');
     }
 
     // Charge windup: stand still and telegraph, then launch.
@@ -1210,49 +1260,62 @@ export default class GameScene extends Phaser.Scene {
         const dx = px - boss.x;
         const dy = py - boss.y;
         const len = Math.hypot(dx, dy) || 1;
+        const speed = this.bossProjSpeed(charge.speed, boss.tier);
         boss.chargeDir = { x: dx / len, y: dy / len };
-        boss.body.setVelocity(
-          boss.chargeDir.x * phase.chargeSpeed,
-          boss.chargeDir.y * phase.chargeSpeed,
-        );
-        boss.chargeEndsAt = now + phase.chargeDurationMs;
+        boss.body.setVelocity(boss.chargeDir.x * speed, boss.chargeDir.y * speed);
+        boss.chargeEndsAt = now + charge.durationMs;
       }
       return;
     }
 
     // Drift toward the top, tracking the player horizontally.
+    const moveSpeed =
+      CFG.boss.phaseMoveSpeed[boss.phaseIndex] + CFG.boss.moveSpeedPerTier * (boss.tier - 1);
     const tx = Phaser.Math.Clamp(px, CFG.boss.edgeMargin, CFG.arena.width - CFG.boss.edgeMargin);
     const ty = CFG.boss.anchorY;
     const dx = tx - boss.x;
     const dy = ty - boss.y;
     const len = Math.hypot(dx, dy) || 1;
-    if (len > 6) boss.body.setVelocity((dx / len) * phase.moveSpeed, (dy / len) * phase.moveSpeed);
+    if (len > 6) boss.body.setVelocity((dx / len) * moveSpeed, (dy / len) * moveSpeed);
     else boss.body.setVelocity(0, 0);
 
-    if (now >= boss.nextSummonAt) {
-      this.bossSummon(boss, phase);
-      boss.nextSummonAt = now + phase.summonCooldownMs;
+    // Cast whichever powers this variant uses in the current phase.
+    for (const name of boss.variant.phasePowers[boss.phaseIndex]) {
+      if (now < (boss.powerNextAt[name] ?? 0)) continue;
+      if (name === 'charge') {
+        boss.chargeWindupUntil = now + charge.windupMs;
+        boss.powerNextAt.charge = now + this.bossPowerCooldown(boss, 'charge'); // reset on slam
+        return;
+      }
+      if (name === 'shieldSlam') {
+        if (boss.shieldUp) {
+          boss.powerNextAt.shieldSlam = now + 1000; // retry soon once the shield is down
+          continue;
+        }
+        this.bossShieldSlam(boss);
+      } else {
+        this.castBossPower(boss, name, now);
+      }
+      boss.powerNextAt[name] = now + this.bossPowerCooldown(boss, name);
     }
-    if (now >= boss.nextBarrageAt) {
-      this.bossBarrage(boss, phase, now);
-      boss.nextBarrageAt = now + phase.barrageCooldownMs;
-    }
-    if (phase.charge && now >= boss.nextChargeAt) {
-      boss.chargeWindupUntil = now + phase.chargeWindupMs;
-    }
-    if (phase.shieldSlam && !boss.shieldUp && now >= boss.nextShieldSlamAt) {
-      this.bossShieldSlam(boss);
-      boss.nextShieldSlamAt = now + phase.shieldSlamCooldownMs;
-    }
+  }
+
+  castBossPower(boss, name, now) {
+    if (name === 'summon') return this.bossSummon(boss);
+    if (name === 'barrage') return this.bossBarrage(boss, now);
+    if (name === 'spiral') return this.bossSpiral(boss, now);
+    if (name === 'aimedVolley') return this.bossAimedVolley(boss, now);
+    if (name === 'nova') return this.bossNova(boss);
   }
 
   positionBossParts(boss, now) {
     boss.core.setPosition(boss.x, boss.y);
     boss.shieldRingGfx.setPosition(boss.x, boss.y);
     boss.shieldRingGfx.setVisible(boss.shieldUp);
-    const phase = CFG.boss.phases[boss.phaseIndex];
     const wp = CFG.boss.weakPoint;
-    const baseAngle = (now / 1000) * phase.orbitSpeed * (Math.PI / 180);
+    const orbitSpeed =
+      CFG.boss.phaseOrbitSpeed[boss.phaseIndex] + CFG.boss.orbitSpeedPerTier * (boss.tier - 1);
+    const baseAngle = (now / 1000) * orbitSpeed * (Math.PI / 180);
     const n = Math.max(1, boss.weakPoints.length);
     boss.weakPoints.forEach((node, i) => {
       const a = baseAngle + (i / n) * Math.PI * 2;
@@ -1288,7 +1351,7 @@ export default class GameScene extends Phaser.Scene {
       return amount;
     } else {
       boss.hp -= amount;
-      this.bossHitFx(sourceX, sourceY, CFG.boss.coreColor);
+      this.bossHitFx(sourceX, sourceY, boss.variant.core);
     }
 
     if (boss.hp <= 0) {
@@ -1321,29 +1384,47 @@ export default class GameScene extends Phaser.Scene {
       boss.telegraph.destroy();
       boss.telegraph = null;
     }
-    boss.nextSummonAt = now + CFG.boss.transitionMs + 400;
-    boss.nextBarrageAt = now + CFG.boss.transitionMs + 900;
-    boss.nextChargeAt = now + CFG.boss.transitionMs + 1600;
-    boss.nextShieldSlamAt = now + CFG.boss.transitionMs + 3000;
+    this.resetBossPowerTimers(boss, now + CFG.boss.transitionMs);
     this.cameras.main.flash(220, 120, 30, 160);
     this.cameras.main.shake(220, 0.006);
   }
 
-  bossSummon(boss, phase) {
+  // Enemy types the boss may summon: only kinds that have already appeared in
+  // earlier waves (appearFromWave strictly below the boss's own wave). So a
+  // wave-20 boss can summon wave-1..19 enemies, but nothing from wave 20+.
+  bossSummonPool(wave) {
+    const candidates = [
+      'swarmer',
+      'tank',
+      'firecaster',
+      'splitter',
+      'bomber',
+      'slime',
+      'teleporter',
+      'shielded',
+      'sniper',
+      'dasher',
+    ];
+    const pool = candidates.filter((t) => (CFG[t]?.appearFromWave ?? 1) < wave);
+    return pool.length ? pool : ['swarmer'];
+  }
+
+  bossSummon(boss) {
+    const p = CFG.boss.powers.summon;
+    const pool = this.bossSummonPool(boss.wave);
     const adds = this.enemies.getChildren().filter((e) => e !== boss).length;
-    const room = Math.max(0, phase.maxAdds - adds);
-    const toSpawn = Math.min(phase.summonCount, room);
+    const room = Math.max(0, p.maxAdds - adds);
+    const want = p.count + Math.floor((boss.tier - 1) / 3); // a few more at higher tiers
+    const toSpawn = Math.min(want, room);
     for (let i = 0; i < toSpawn; i++) {
-      const type = phase.summonPool[Math.floor(Math.random() * phase.summonPool.length)];
+      const type = pool[Math.floor(Math.random() * pool.length)];
       const a = Math.random() * Math.PI * 2;
       const dist = CFG.boss.radius + 30 + Math.random() * 40;
       const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 40, CFG.arena.width - 40);
       const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 40, CFG.arena.height - 40);
       this.createEnemyByType(type, x, y);
     }
-    const flash = this.add
-      .circle(boss.x, boss.y, CFG.boss.radius + 20, 0xab47bc, 0.18)
-      .setDepth(3.5);
+    const flash = this.add.circle(boss.x, boss.y, CFG.boss.radius + 20, p.glow, 0.18).setDepth(3.5);
     this.tweens.add({
       targets: flash,
       alpha: 0,
@@ -1353,25 +1434,109 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  bossBarrage(boss, phase, now) {
-    const b = CFG.boss.barrage;
+  // Full-circle radial spread. Bullet count and speed grow with tier.
+  bossBarrage(boss, now) {
+    const p = CFG.boss.powers.barrage;
+    const count = p.count + (boss.tier - 1);
+    const speed = this.bossProjSpeed(p.speed, boss.tier);
     const baseAngle = Math.random() * Math.PI * 2;
-    for (let i = 0; i < phase.barrageCount; i++) {
-      const a = baseAngle + (i / phase.barrageCount) * Math.PI * 2;
+    for (let i = 0; i < count; i++) {
+      const a = baseAngle + (i / count) * Math.PI * 2;
       this.fireEnemyShot(
         boss,
         Math.cos(a),
         Math.sin(a),
         now,
-        b.radius,
-        b.color,
-        b.coreColor,
-        b.speed,
-        b.lifetimeMs,
-        b.damage,
+        p.radius,
+        boss.variant.proj,
+        0xffffff,
+        speed,
+        p.lifetimeMs,
+        p.damage,
       );
     }
-    const flash = this.add.circle(boss.x, boss.y, CFG.boss.radius, b.color, 0.22).setDepth(4.2);
+    this.bossMuzzleFlash(boss, boss.variant.proj);
+  }
+
+  // Rotating arms: each cast steps the emission angle, so repeated casts trace a
+  // spiral the player must weave through.
+  bossSpiral(boss, now) {
+    const p = CFG.boss.powers.spiral;
+    boss.spiralPhase += p.stepDeg * (Math.PI / 180);
+    const speed = this.bossProjSpeed(p.speed, boss.tier);
+    for (let i = 0; i < p.count; i++) {
+      const a = boss.spiralPhase + (i / p.count) * Math.PI * 2;
+      this.fireEnemyShot(
+        boss,
+        Math.cos(a),
+        Math.sin(a),
+        now,
+        p.radius,
+        boss.variant.accent,
+        boss.variant.proj,
+        speed,
+        p.lifetimeMs,
+        p.damage,
+      );
+    }
+    this.bossMuzzleFlash(boss, boss.variant.accent);
+  }
+
+  // Tight fan of fast shots aimed at the player's current position.
+  bossAimedVolley(boss, now) {
+    const p = CFG.boss.powers.aimedVolley;
+    const aim = Math.atan2(this.player.sprite.y - boss.y, this.player.sprite.x - boss.x);
+    const speed = this.bossProjSpeed(p.speed, boss.tier);
+    const spread = p.spreadDeg * (Math.PI / 180);
+    for (let i = 0; i < p.count; i++) {
+      const t = p.count > 1 ? i / (p.count - 1) - 0.5 : 0;
+      const a = aim + t * spread;
+      this.fireEnemyShot(
+        boss,
+        Math.cos(a),
+        Math.sin(a),
+        now,
+        p.radius,
+        boss.variant.core,
+        0xfff8e1,
+        speed,
+        p.lifetimeMs,
+        p.damage,
+      );
+    }
+    this.bossMuzzleFlash(boss, boss.variant.core);
+  }
+
+  // Telegraphed area-denial blast centred on the boss: an expanding outline,
+  // then a damaging shockwave after a short windup.
+  bossNova(boss) {
+    const p = CFG.boss.powers.nova;
+    const cx = boss.x;
+    const cy = boss.y;
+    const tele = this.add
+      .circle(cx, cy, p.radius, 0xff5252, 0.06)
+      .setStrokeStyle(3, 0xff5252, 0.6)
+      .setDepth(4.15);
+    this.tweens.add({ targets: tele, scale: { from: 0.2, to: 1 }, duration: p.windupMs });
+    this.time.delayedCall(p.windupMs, () => {
+      tele.destroy();
+      if (this.gameOver) return;
+      const burst = this.add.circle(cx, cy, p.radius, 0xff5252, 0.22).setDepth(4.2);
+      this.tweens.add({
+        targets: burst,
+        alpha: 0,
+        scale: 1.15,
+        duration: 260,
+        onComplete: () => burst.destroy(),
+      });
+      const d = Phaser.Math.Distance.Between(cx, cy, this.player.sprite.x, this.player.sprite.y);
+      if (d <= p.radius) this.damagePlayer(p.damage);
+      this.cameras.main.shake(120, 0.006);
+    });
+  }
+
+  bossMuzzleFlash(boss, color) {
+    const flash = this.add.circle(boss.x, boss.y, CFG.boss.radius, color, 0.22).setDepth(4.2);
     this.tweens.add({
       targets: flash,
       alpha: 0,
@@ -1396,8 +1561,9 @@ export default class GameScene extends Phaser.Scene {
     );
   }
 
-  bossSlam(boss, phase) {
-    const r = phase.slamRadius;
+  bossSlam(boss) {
+    const charge = CFG.boss.powers.charge;
+    const r = charge.slamRadius;
     const ring = this.add.circle(boss.x, boss.y, r, CFG.boss.shieldColor, 0.22).setDepth(4.2);
     this.tweens.add({
       targets: ring,
@@ -1412,7 +1578,7 @@ export default class GameScene extends Phaser.Scene {
       this.player.sprite.x,
       this.player.sprite.y,
     );
-    if (d <= r) this.damagePlayer(CFG.boss.slamDamage);
+    if (d <= r) this.damagePlayer(charge.slamDamage);
     this.cameras.main.shake(150, 0.008);
   }
 
@@ -1461,9 +1627,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   bossDeathBurst(x, y) {
+    const accent = this.boss?.variant?.core ?? 0xff5252;
     for (let i = 0; i < 3; i++) {
       const ring = this.add
-        .circle(x, y, 30 + i * 24, i % 2 ? CFG.boss.shieldColor : CFG.boss.coreColor, 0.3)
+        .circle(x, y, 30 + i * 24, i % 2 ? CFG.boss.shieldColor : accent, 0.3)
         .setDepth(4.5);
       this.tweens.add({
         targets: ring,
@@ -1506,7 +1673,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   showBossBar(boss) {
-    this.bossName.setText(`THE WARDEN  ·  LV ${boss.bossTier}`);
+    this.bossName.setText(`${boss.variant.name.toUpperCase()}  ·  LV ${boss.bossTier}`);
     this.bossBarBg.setVisible(true);
     this.bossHpFill.setVisible(true);
     this.bossShieldFill.setVisible(true);
