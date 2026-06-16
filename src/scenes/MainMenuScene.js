@@ -164,12 +164,12 @@ export default class MainMenuScene extends Phaser.Scene {
         .setOrigin(0.5);
 
       container.add([bg, label, shortcut]);
-      container
-        .setSize(width, height)
-        .setInteractive(
-          new Phaser.Geom.Rectangle(0, 0, width, height),
-          Phaser.Geom.Rectangle.Contains,
-        )
+      // Use a dedicated Zone matching the button's exact on-screen rectangle so
+      // hover/click hit-testing is accurate (independent of container scaling).
+      this.add
+        .zone(x, top, width, height)
+        .setOrigin(0, 0)
+        .setInteractive({ useHandCursor: true })
         .on('pointerover', () => {
           this.input.setDefaultCursor('pointer');
           this.selectAction(index);
