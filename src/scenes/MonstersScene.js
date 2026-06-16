@@ -152,6 +152,19 @@ export default class MonstersScene extends Phaser.Scene {
       wordWrap: { width: 370 },
     });
 
+    // "Demo" button under the portrait (hidden for bosses).
+    this.demoBtnBg = this.add.graphics();
+    this.demoBtnLabel = this.add
+      .text(190, 404, '▶ DEMO', { ...STYLE, fontSize: '18px', color: '#0b0f0b' })
+      .setOrigin(0.5);
+    this.demoButton = this.add
+      .zone(110, 384, 160, 40)
+      .setOrigin(0, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerover', () => this.input.setDefaultCursor('pointer'))
+      .on('pointerout', () => this.input.setDefaultCursor('default'))
+      .on('pointerdown', () => this.openDemo());
+
     this.detail.add([
       this.detailBg,
       this.detailPortrait,
@@ -161,7 +174,20 @@ export default class MonstersScene extends Phaser.Scene {
       this.detailMovement,
       this.detailPower,
       this.detailCounter,
+      this.demoBtnBg,
+      this.demoBtnLabel,
+      this.demoButton,
     ]);
+  }
+
+  openDemo() {
+    const enemy = ENEMY_BESTIARY[this.selectedIndex];
+    if (!enemy || enemy.id === 'boss') return;
+    this.scene.start('GameScene', {
+      demo: true,
+      demoEnemyId: enemy.id,
+      returnScene: 'MonstersScene',
+    });
   }
 
   onKey(event) {
@@ -236,10 +262,23 @@ export default class MonstersScene extends Phaser.Scene {
     this.detailMovement.setText(`Movement\n${enemy.movement}`);
     this.detailPower.setText(`Special Power\n${enemy.power}`);
     this.detailCounter.setText(`How to Fight\n${enemy.counter}`);
+
+    // Bosses cannot be demoed; everything else gets a working Demo button.
+    const isBoss = enemy.id === 'boss';
+    this.demoBtnBg.clear();
+    this.demoBtnLabel.setVisible(!isBoss);
+    if (isBoss) {
+      this.demoButton.disableInteractive();
+    } else {
+      this.demoBtnBg.fillStyle(0xffd54f, 1);
+      this.demoBtnBg.fillRoundedRect(110, 384, 160, 40, 8);
+      this.demoButton.setInteractive({ useHandCursor: true });
+    }
   }
 
   showGallery() {
     this.mode = 'gallery';
+    this.demoButton.disableInteractive();
     for (const z of this.cardZones) z.setInteractive({ useHandCursor: true });
     this.gallery.setVisible(true);
     this.detail.setVisible(false);

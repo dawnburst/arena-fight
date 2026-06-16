@@ -85,7 +85,10 @@ export default class GameScene extends Phaser.Scene {
     preloadSfx(this);
   }
 
-  create() {
+  create(data = {}) {
+    this.demo = !!data.demo;
+    this.demoEnemyId = data.demoEnemyId || 'swarmer';
+    this.demoReturn = data.returnScene || 'MonstersScene';
     syncMusic(this);
     this.physics.world.setBounds(0, 0, CFG.arena.width, CFG.arena.height);
 
@@ -205,9 +208,39 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown', this.onKeyDown, this);
     this.input.on('pointerdown', this.onPointerDown, this);
 
-    this.startNextWave();
-    this.scheduleNextShieldBonus();
-    this.scheduleNextGift();
+    if (this.demo) {
+      this.startDemo();
+    } else {
+      this.startNextWave();
+      this.scheduleNextShieldBonus();
+      this.scheduleNextGift();
+    }
+  }
+
+  // Monsters-menu sandbox: spawn one of a chosen monster so the player can watch
+  // it. Player takes no damage, no coins/score, and the monster respawns on death.
+  startDemo() {
+    this.wave = 1;
+    this.enemySpeedThisWave = CFG.enemy.speed;
+    this.add
+      .text(CFG.arena.width / 2, 16, `DEMO: ${this.demoEnemyId.toUpperCase()}  ·  Esc to exit`, {
+        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+        fontSize: '14px',
+        color: '#b9d7b3',
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(30);
+    this.spawnDemoEnemy();
+  }
+
+  spawnDemoEnemy() {
+    if (this.gameOver || !this.demo) return;
+    const { x, y } = this.pickSpawnEdge();
+    this.createEnemyByType(this.demoEnemyId, x, y);
+  }
+
+  scheduleDemoRespawn() {
+    this.time.delayedCall(700, () => this.spawnDemoEnemy());
   }
 
   // Builds this.modStats and this.runtime from the equipped mods, optionally
@@ -445,6 +478,10 @@ export default class GameScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.keys.pauseP) ||
       Phaser.Input.Keyboard.JustDown(this.keys.pauseEsc)
     ) {
+      if (this.demo) {
+        this.scene.start(this.demoReturn);
+        return;
+      }
       this.togglePause();
     }
 
@@ -2494,6 +2531,7 @@ export default class GameScene extends Phaser.Scene {
 
   maybeStartNextWave() {
     if (this.gameOver) return;
+    if (this.demo) return; // sandbox: no wave progression
     if (this.bossSpawning) return; // a boss shadow is telegraphing; hold the wave
     if (this.pendingSpawns > 0) return;
     if (this.enemies.countActive(true) > 0) return;
@@ -2627,6 +2665,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onEnemyKilled(type, x, y) {
+    if (this.demo) {
+      this.scheduleDemoRespawn();
+      return;
+    }
     this.killEnemyScoring(x, y);
     if (type === 'splitter') {
       for (let i = 0; i < CFG.splitter.childCount; i++) {
@@ -2653,7 +2695,7 @@ export default class GameScene extends Phaser.Scene {
   dropCoinsForKill(x, y) {
     // Enemies during a boss fight (the boss's own minions) drop no coins;
     // the boss itself drops one big collectible coin instead (see payBossReward).
-    if (this.bossActive) return;
+    if (this.bossActive || this.demo) return;
     const base = CFG.store.coinDropPerKillBase + (this.comboMultiplier - 1);
     let amount = Math.max(1, Math.round(base * this.runtime.coinDropMult));
     if (this.runtime.luckyChance > 0 && Math.random() < this.runtime.luckyChance) {
@@ -2716,6 +2758,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onPlayerHitEnemy(_playerSprite, enemy) {
+    if (this.demo) return; // sandbox: contact does nothing, keep the monster alive
     if (this.time.now < this.player.invulnerableUntil) return;
 
     // The boss is never destroyed by contact; it just damages the player.
@@ -2804,6 +2847,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   damagePlayer(amount) {
+    if (this.demo) return; // sandbox: the player is invulnerable
     if (this.time.now < this.player.invulnerableUntil) return;
 
     if (this.shieldActive) {
