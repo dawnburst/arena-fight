@@ -84,7 +84,7 @@ export const CFG = {
     radius: 13,
     hp: 2,
     contactDamage: 1,
-    speed: 95,
+    speed: 60,
     appearFromWave: 25,
     spawnRatio: 0.12,
     maxAlive: 4,
