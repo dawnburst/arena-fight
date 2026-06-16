@@ -125,6 +125,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.shieldActive = false;
     this.shieldHitsRemaining = 0;
+    this.shieldFromPickup = false; // gold-star shield (rewards unused hits) vs Phoenix shield
     this.shieldEndsAt = 0;
     this.shieldRing = null;
     this.shieldPickup = null;
@@ -2730,7 +2731,7 @@ export default class GameScene extends Phaser.Scene {
     this.shieldPickup = null;
     playSfx(this, 'gift');
 
-    this.activateShield();
+    this.activateShield(true);
     this.scheduleNextShieldBonus();
   }
 
@@ -2758,8 +2759,9 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  activateShield() {
+  activateShield(fromPickup = false) {
     this.shieldActive = true;
+    this.shieldFromPickup = fromPickup;
     this.shieldHitsRemaining = CFG.shieldBonus.maxHits;
     this.shieldEndsAt = this.time.now + CFG.shieldBonus.durationMs;
 
@@ -2780,6 +2782,20 @@ export default class GameScene extends Phaser.Scene {
   }
 
   endShield() {
+    // Reward leftover protection: the gold-star pickup shield pays coins for
+    // each unused hit when it ends (the Phoenix shield does not).
+    if (this.shieldFromPickup && this.shieldHitsRemaining > 0) {
+      const reward = this.shieldHitsRemaining * CFG.shieldBonus.coinsPerUnusedHit;
+      this.coinsThisRun += reward;
+      Save.addToWallet(reward);
+      this.showFloatingText(
+        this.player.sprite.x,
+        this.player.sprite.y - 36,
+        `SHIELD +${reward} ¢`,
+        '#ffd54f',
+      );
+    }
+    this.shieldFromPickup = false;
     this.shieldActive = false;
     this.shieldHitsRemaining = 0;
     this.shieldEndsAt = 0;

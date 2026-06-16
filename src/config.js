@@ -456,6 +456,7 @@ export const CFG = {
     edgePadding: 60,
     durationMs: 20000,
     maxHits: 5,
+    coinsPerUnusedHit: 30, // coins awarded per unused hit when a pickup shield ends
     ringColor: 0xffd54f,
     ringWidth: 3,
     ringRadiusPad: 6,
