@@ -50,7 +50,7 @@ export const WEAPONS = [
     tier: 'uncommon',
     price: 1800,
     description: '3 bullets at ±25° and 0°.',
-    fire: { rateMs: 600, angles: [-25, 0, 25] },
+    fire: { rateMs: 510, angles: [-25, 0, 25] },
   },
   {
     id: 'rapid',
