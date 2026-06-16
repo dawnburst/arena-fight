@@ -966,8 +966,8 @@ export default class GameScene extends Phaser.Scene {
 
   createFirecaster(x, y) {
     const enemy = this.createEnemySprite(x, y, 'firecaster', CFG.firecaster, FIRECASTER_SCALE);
-    enemy.speed =
-      CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, this.wave - 1) * 0.45;
+    const speedWave = Math.min(this.wave, CFG.waves.speedCapWave);
+    enemy.speed = CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, speedWave - 1) * 0.45;
     enemy.hp = CFG.firecaster.hp;
     enemy.maxHp = CFG.firecaster.hp;
     enemy.type = 'firecaster';
@@ -2116,7 +2116,9 @@ export default class GameScene extends Phaser.Scene {
   startNextWave() {
     this.wave += 1;
     const n = this.wave;
-    this.enemySpeedThisWave = CFG.enemy.speed + CFG.waves.enemySpeedGrowth * (n - 1);
+    // Enemy speed scales with the wave but stops growing past speedCapWave.
+    const speedWave = Math.min(n, CFG.waves.speedCapWave);
+    this.enemySpeedThisWave = CFG.enemy.speed + CFG.waves.enemySpeedGrowth * (speedWave - 1);
 
     if (this.isBossWave(n)) {
       this.startBossWave(n);
