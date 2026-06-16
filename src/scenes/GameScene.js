@@ -967,7 +967,8 @@ export default class GameScene extends Phaser.Scene {
   createFirecaster(x, y) {
     const enemy = this.createEnemySprite(x, y, 'firecaster', CFG.firecaster, FIRECASTER_SCALE);
     const speedWave = Math.min(this.wave, CFG.waves.speedCapWave);
-    enemy.speed = CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, speedWave - 1) * 0.45;
+    enemy.speed =
+      CFG.firecaster.speed + CFG.waves.enemySpeedGrowth * Math.max(0, speedWave - 1) * 0.45;
     enemy.hp = CFG.firecaster.hp;
     enemy.maxHp = CFG.firecaster.hp;
     enemy.type = 'firecaster';
@@ -1841,7 +1842,7 @@ export default class GameScene extends Phaser.Scene {
       const flashOn = Math.floor((enemy.explodingAt - now) / CFG.bomber.flashMs) % 2 === 0;
       enemy.setTint(flashOn ? 0xfff176 : 0xff5252);
       if (now >= enemy.explodingAt) {
-        this.explodeEnemy(enemy.x, enemy.y, CFG.bomber.explosionRadius, true);
+        this.explodeEnemy(enemy.x, enemy.y, CFG.bomber.explosionRadius, true, enemy);
         enemy.destroy();
         this.maybeStartNextWave();
       }
@@ -2054,7 +2055,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  explodeEnemy(x, y, radius, damagesPlayer) {
+  explodeEnemy(x, y, radius, damagesPlayer, source = null) {
     const blast = this.add.circle(x, y, radius, 0xff7043, 0.28).setDepth(4.2);
     this.tweens.add({
       targets: blast,
@@ -2067,6 +2068,17 @@ export default class GameScene extends Phaser.Scene {
       const d = Phaser.Math.Distance.Between(x, y, this.player.sprite.x, this.player.sprite.y);
       if (d <= radius) this.damagePlayer(CFG.bomber.explosionDamage);
     }
+    // The blast also damages other enemies within range (the boss is immune).
+    const rSq = radius * radius;
+    this.enemies
+      .getChildren()
+      .slice()
+      .forEach((e) => {
+        if (e === source || !e.active || e.type === 'boss') return;
+        if (Phaser.Math.Distance.Squared(x, y, e.x, e.y) <= rSq) {
+          this.damageEnemy(e, x, y, CFG.bomber.explosionDamage);
+        }
+      });
   }
 
   // Phoenix revive: a gold shockwave that destroys nearby (non-boss) enemies.
