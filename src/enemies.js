@@ -221,15 +221,15 @@ export const ENEMY_BESTIARY = [
   },
   {
     id: 'boss',
-    name: 'The Warden',
+    name: 'Bosses',
     sprite: 'tank',
     frame: 0,
     tint: 0x9575cd,
     firstWave: 'Every 10 waves',
     movement:
-      'A huge shielded guardian that hovers near the top and tracks you, summoning minions.',
+      'A huge shielded boss hovers near the top and tracks you, summoning its own minions. A different boss appears each boss wave (The Warden at 10 up to The Annihilator at 100), tougher the deeper you go.',
     power:
-      'Energy shield blocks body hits and regenerates each phase; small orbiting weak points always damage it. Barrages projectiles, charges and ground-slams, and enrages across three phases.',
+      'Energy shield blocks body hits and regenerates each phase; small orbiting weak points always take extra damage. Across three escalating phases it draws from radial barrages, spiraling fire, aimed volleys, charges and ground-slams, area blasts, and shield re-raises.',
     counter:
       'Snipe the moving weak points to skip the shield, or break the shield then unload. Dodge the charge windup and stay out of slam range.',
   },
