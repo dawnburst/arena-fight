@@ -219,7 +219,7 @@ export const MODS = [
     name: 'Phoenix',
     tier: 'legendary',
     price: 18000,
-    description: 'Revive once per run with 1 HP + shield.',
+    description: 'Revive once per run: a blast destroys nearby enemies, plus a 20s shield.',
     apply: (ctx) => {
       ctx.phoenixCharges += 1;
     },
