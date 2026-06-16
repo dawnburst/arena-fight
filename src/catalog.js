@@ -21,8 +21,8 @@ export const WEAPONS = [
     name: 'Pistol',
     tier: 'common',
     price: 0,
-    description: 'Default sidearm. 1 bullet, 500ms.',
-    fire: { rateMs: 500, angles: [0] },
+    description: 'Default sidearm. 1 bullet, 455ms.',
+    fire: { rateMs: 455, angles: [0] },
   },
   {
     id: 'burst',
