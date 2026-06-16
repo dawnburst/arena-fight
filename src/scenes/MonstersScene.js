@@ -74,6 +74,7 @@ export default class MonstersScene extends Phaser.Scene {
     const rowGap = 16;
     const columns = 5;
 
+    this.cardZones = [];
     this.cards = ENEMY_BESTIARY.map((enemy, index) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
@@ -106,20 +107,22 @@ export default class MonstersScene extends Phaser.Scene {
         .setOrigin(0.5);
 
       container.add([bg, portrait, name, wave, hp]);
-      container
-        .setSize(cardW, cardH)
-        .setInteractive(
-          new Phaser.Geom.Rectangle(0, 0, cardW, cardH),
-          Phaser.Geom.Rectangle.Contains,
-        )
+      this.gallery.add(container);
+
+      // Dedicated Zone matching the card's exact on-screen rectangle so the
+      // cursor always selects the card it is actually over.
+      const zone = this.add
+        .zone(x, y, cardW, cardH)
+        .setOrigin(0, 0)
+        .setInteractive({ useHandCursor: true })
         .on('pointerover', () => {
           this.input.setDefaultCursor('pointer');
           this.select(index);
         })
         .on('pointerout', () => this.input.setDefaultCursor('default'))
         .on('pointerdown', () => this.openDetail(index));
+      this.cardZones.push(zone);
 
-      this.gallery.add(container);
       return { container, bg, portrait, name, wave };
     });
   }
@@ -210,6 +213,7 @@ export default class MonstersScene extends Phaser.Scene {
     const spriteDef = ENEMY_SPRITES[enemy.sprite];
 
     this.mode = 'detail';
+    for (const z of this.cardZones) z.disableInteractive();
     this.gallery.setVisible(false);
     this.detail.setVisible(true);
     this.subtitle.setText('monster details');
@@ -236,6 +240,7 @@ export default class MonstersScene extends Phaser.Scene {
 
   showGallery() {
     this.mode = 'gallery';
+    for (const z of this.cardZones) z.setInteractive({ useHandCursor: true });
     this.gallery.setVisible(true);
     this.detail.setVisible(false);
     this.subtitle.setText('select a monster to inspect its power');
