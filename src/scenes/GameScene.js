@@ -149,6 +149,7 @@ export default class GameScene extends Phaser.Scene {
     this.bossSpawning = false;
     this.bossShadow = null;
     this.bossShadowEvent = null;
+    this.bossEffects = []; // timed boss attacks (beam sweep, gravity well, red dots)
 
     this.player = {
       sprite: null,
@@ -458,6 +459,7 @@ export default class GameScene extends Phaser.Scene {
     this.handleFire(time);
     this.updatePlayerVisuals(time);
     this.updateEnemies();
+    this.updateBossEffects(time);
     this.updateBullets(time);
     this.updateEnemyProjectiles(time);
     this.updateHazards(time);
@@ -1367,6 +1369,11 @@ export default class GameScene extends Phaser.Scene {
     if (name === 'spiral') return this.bossSpiral(boss, now);
     if (name === 'aimedVolley') return this.bossAimedVolley(boss, now);
     if (name === 'nova') return this.bossNova(boss);
+    if (name === 'beamSweep') return this.bossBeamSweep(boss, now);
+    if (name === 'mirrorClones') return this.bossMirrorClones(boss, now);
+    if (name === 'gravityWell') return this.bossGravityWell(boss, now);
+    if (name === 'dotField') return this.bossDotField();
+    if (name === 'missiles') return this.bossMissiles(boss, now);
   }
 
   positionBossParts(boss, now) {
@@ -1596,6 +1603,243 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // Timed boss attacks register here and are ticked each frame until done.
+  updateBossEffects(time) {
+    if (!this.bossEffects.length) return;
+    this.bossEffects = this.bossEffects.filter((eff) => {
+      const done = eff.tick(time);
+      if (done) eff.destroy?.();
+      return !done;
+    });
+  }
+
+  clearBossEffects() {
+    for (const eff of this.bossEffects) eff.destroy?.();
+    this.bossEffects = [];
+  }
+
+  // Hexweaver phase 1: long beams that rotate around the boss; standing in one hurts.
+  bossBeamSweep(boss, now) {
+    const p = CFG.boss.powers.beamSweep;
+    const gfx = this.add.graphics().setDepth(3.9);
+    const start = now;
+    const startAngle = Math.random() * Math.PI * 2;
+    const sweepRad = p.sweepDegPerSec * (Math.PI / 180);
+    const len = CFG.arena.width + CFG.arena.height;
+    this.bossEffects.push({
+      tick: (t) => {
+        if (!boss.active || t - start >= p.durationMs) return true;
+        const b = boss;
+        const ang = startAngle + ((t - start) / 1000) * sweepRad;
+        const px = this.player.sprite.x;
+        const py = this.player.sprite.y;
+        gfx.clear();
+        for (let k = 0; k < p.beams; k++) {
+          const a = ang + (k / p.beams) * Math.PI * 2;
+          const ex = b.x + Math.cos(a) * len;
+          const ey = b.y + Math.sin(a) * len;
+          gfx.lineStyle(4, b.variant.accent, 0.85);
+          gfx.lineBetween(b.x, b.y, ex, ey);
+          if (this.pointToSegmentDistance(px, py, b.x, b.y, ex, ey) <= p.hitWidth) {
+            this.damagePlayer(p.damage);
+          }
+        }
+        return false;
+      },
+      destroy: () => gfx.destroy(),
+    });
+  }
+
+  // Hexweaver phase 3: a vortex at the player's position that drags them toward
+  // its damaging core for a few seconds; the player can fight the pull.
+  bossGravityWell(boss, now) {
+    const p = CFG.boss.powers.gravityWell;
+    const cx = this.player.sprite.x;
+    const cy = this.player.sprite.y;
+    const ring = this.add
+      .circle(cx, cy, p.radius, boss.variant.accent, 0.12)
+      .setStrokeStyle(3, boss.variant.accent, 0.7)
+      .setDepth(3.7);
+    const core = this.add.circle(cx, cy, 16, boss.variant.core, 0.55).setDepth(3.75);
+    const start = now;
+    this.bossEffects.push({
+      tick: (t) => {
+        if (t - start >= p.durationMs) return true;
+        core.rotation += 0.2;
+        const px = this.player.sprite.x;
+        const py = this.player.sprite.y;
+        const dx = cx - px;
+        const dy = cy - py;
+        const d = Math.hypot(dx, dy) || 1;
+        this.player.sprite.body.velocity.x += (dx / d) * p.pullSpeed;
+        this.player.sprite.body.velocity.y += (dy / d) * p.pullSpeed;
+        if (d <= p.damageRadius) this.damagePlayer(p.damage);
+        return false;
+      },
+      destroy: () => {
+        ring.destroy();
+        core.destroy();
+      },
+    });
+  }
+
+  // Phantom phase 3: 4 dots in a square around the player. They warn (transparent)
+  // then flash red and damage for a short window.
+  bossDotField() {
+    const p = CFG.boss.powers.dotField;
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    const offsets = [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ];
+    for (const [ox, oy] of offsets) {
+      const x = Phaser.Math.Clamp(px + ox * p.spread, 30, CFG.arena.width - 30);
+      const y = Phaser.Math.Clamp(py + oy * p.spread, 30, CFG.arena.height - 30);
+      this.spawnDot(x, y);
+    }
+  }
+
+  spawnDot(x, y) {
+    const p = CFG.boss.powers.dotField;
+    const dot = this.add
+      .circle(x, y, p.radius, 0xff1744, 0.12)
+      .setStrokeStyle(2, 0xff1744, 0.45)
+      .setDepth(3.7);
+    this.time.delayedCall(p.telegraphMs, () => {
+      if (!this.bossActive) {
+        dot.destroy();
+        return;
+      }
+      dot.setFillStyle(0xff1744, 0.6);
+      dot.setStrokeStyle(2, 0xff5252, 0.95);
+      const start = this.time.now;
+      this.bossEffects.push({
+        tick: (t) => {
+          if (!this.bossActive || t - start >= p.activeMs) return true;
+          const d = Phaser.Math.Distance.Between(x, y, this.player.sprite.x, this.player.sprite.y);
+          if (d <= p.radius) this.damagePlayer(p.damage);
+          return false;
+        },
+        destroy: () => dot.destroy(),
+      });
+    });
+  }
+
+  // Hexweaver phase 2: illusory clones that fire and vanish when shot or after a
+  // few seconds. Only the real boss takes HP damage.
+  bossMirrorClones(boss, now) {
+    const p = CFG.boss.powers.mirrorClones;
+    for (let i = 0; i < p.count; i++) {
+      const a = (i / p.count) * Math.PI * 2 + Math.random();
+      const dist = CFG.boss.hitRadius + 40;
+      const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 60, CFG.arena.width - 60);
+      const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 60, CFG.arena.height - 60);
+      this.createDecoy(x, y, boss, now);
+    }
+    this.bossMuzzleFlash(boss, boss.variant.accent);
+  }
+
+  createDecoy(x, y, boss, now) {
+    const p = CFG.boss.powers.mirrorClones;
+    const decoy = this.add.circle(x, y, p.radius, boss.variant.body);
+    decoy.setStrokeStyle(3, boss.variant.accent, 0.9).setDepth(4);
+    this.physics.add.existing(decoy);
+    this.enemies.add(decoy);
+    decoy.body.setCircle(p.radius);
+    decoy.body.setOffset(-p.radius, -p.radius);
+    decoy.type = 'decoy';
+    decoy.hp = 1;
+    decoy.maxHp = 1;
+    decoy.speed = 70;
+    decoy.proj = boss.variant.proj;
+    decoy.expiresAt = now + p.lifetimeMs;
+    decoy.nextFireAt = now + p.fireCooldownMs;
+    this.tweens.add({
+      targets: decoy,
+      alpha: { from: 0.5, to: 0.95 },
+      yoyo: true,
+      repeat: -1,
+      duration: 500,
+    });
+  }
+
+  updateDecoy(decoy, px, py, now) {
+    if (now >= decoy.expiresAt) {
+      decoy.destroy();
+      this.maybeStartNextWave();
+      return;
+    }
+    this.keepRange(decoy, px, py, 150, 260, decoy.speed);
+    if (now >= decoy.nextFireAt) {
+      decoy.nextFireAt = now + CFG.boss.powers.mirrorClones.fireCooldownMs;
+      const aim = Math.atan2(py - decoy.y, px - decoy.x);
+      this.fireEnemyShot(
+        decoy,
+        Math.cos(aim),
+        Math.sin(aim),
+        now,
+        6,
+        decoy.proj,
+        0xffffff,
+        230,
+        2600,
+        1,
+      );
+    }
+  }
+
+  // Overlord: homing missiles with a capped turn rate (out-maneuverable), each
+  // destroyed by a single shot.
+  bossMissiles(boss, now) {
+    const p = CFG.boss.powers.missiles;
+    const baseAngle = Math.atan2(this.player.sprite.y - boss.y, this.player.sprite.x - boss.x);
+    for (let i = 0; i < p.count; i++) {
+      const spread = ((i - (p.count - 1) / 2) * 40 * Math.PI) / 180;
+      this.createMissile(boss, baseAngle + spread, now);
+    }
+    this.bossMuzzleFlash(boss, boss.variant.core);
+  }
+
+  createMissile(boss, angle, now) {
+    const p = CFG.boss.powers.missiles;
+    const x = boss.x + Math.cos(angle) * (CFG.boss.hitRadius + 8);
+    const y = boss.y + Math.sin(angle) * (CFG.boss.hitRadius + 8);
+    const missile = this.add.circle(x, y, p.radius, boss.variant.core);
+    missile.setStrokeStyle(2, 0xffffff, 0.9).setDepth(4);
+    this.physics.add.existing(missile);
+    this.enemies.add(missile);
+    missile.body.setCircle(p.radius);
+    missile.body.setOffset(-p.radius, -p.radius);
+    missile.type = 'missile';
+    missile.hp = 1;
+    missile.maxHp = 1;
+    missile.angle2 = angle;
+    missile.expiresAt = now + p.lifetimeMs;
+    missile.body.setVelocity(Math.cos(angle) * p.speed, Math.sin(angle) * p.speed);
+  }
+
+  updateMissile(missile, px, py, now) {
+    if (now >= missile.expiresAt) {
+      missile.destroy();
+      this.maybeStartNextWave();
+      return;
+    }
+    const p = CFG.boss.powers.missiles;
+    const dt = this.game.loop.delta / 1000;
+    const desired = Math.atan2(py - missile.y, px - missile.x);
+    const maxStep = p.turnDegPerSec * (Math.PI / 180) * dt;
+    const diff = Phaser.Math.Angle.Wrap(desired - missile.angle2);
+    missile.angle2 += Phaser.Math.Clamp(diff, -maxStep, maxStep);
+    missile.body.setVelocity(
+      Math.cos(missile.angle2) * p.speed,
+      Math.sin(missile.angle2) * p.speed,
+    );
+    missile.rotation = missile.angle2;
+  }
+
   bossMuzzleFlash(boss, color) {
     const flash = this.add.circle(boss.x, boss.y, CFG.boss.radius, color, 0.22).setDepth(4.2);
     this.tweens.add({
@@ -1762,6 +2006,7 @@ export default class GameScene extends Phaser.Scene {
 
   teardownBossState() {
     this.clearBossShadow();
+    this.clearBossEffects();
     this.boss = null;
     this.bossActive = false;
     this.hideBossBar();
@@ -1774,6 +2019,14 @@ export default class GameScene extends Phaser.Scene {
     this.enemies.getChildren().forEach((enemy) => {
       if (enemy.type === 'boss') {
         this.updateBoss(enemy, px, py, now);
+        return;
+      }
+      if (enemy.type === 'missile') {
+        this.updateMissile(enemy, px, py, now);
+        return;
+      }
+      if (enemy.type === 'decoy') {
+        this.updateDecoy(enemy, px, py, now);
         return;
       }
       enemy.setFlipX(px < enemy.x);

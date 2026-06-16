@@ -261,6 +261,50 @@ export const CFG = {
         slamDamage: 1,
       },
       nova: { cooldownMs: 5200, radius: 150, damage: 1, windupMs: 430 },
+      // Hexweaver kit (one per phase).
+      beamSweep: {
+        cooldownMs: 4200,
+        beams: 3,
+        durationMs: 3000,
+        sweepDegPerSec: 60,
+        hitWidth: 16,
+        damage: 1,
+      },
+      mirrorClones: {
+        cooldownMs: 6500,
+        count: 2,
+        lifetimeMs: 6000,
+        fireCooldownMs: 1400,
+        radius: 26,
+      },
+      gravityWell: {
+        cooldownMs: 5500,
+        durationMs: 3000,
+        pullSpeed: 130,
+        damageRadius: 36,
+        damage: 1,
+        radius: 150,
+      },
+      // Phantom phase-3 red-dot field.
+      dotField: {
+        cooldownMs: 2600,
+        count: 4,
+        spread: 90,
+        telegraphMs: 1000,
+        activeMs: 500,
+        radius: 26,
+        damage: 1,
+      },
+      // Overlord homing missiles (replaces summon).
+      missiles: {
+        cooldownMs: 3200,
+        count: 3,
+        speed: 170,
+        turnDegPerSec: 180,
+        radius: 7,
+        lifetimeMs: 6000,
+        damage: 1,
+      },
       shieldSlam: { cooldownMs: 9000 },
     },
 
@@ -305,7 +349,8 @@ export const CFG = {
         core: 0x80d8ff,
         proj: 0x64b5f6,
         weakPointsByPhase: [2, 3, 3],
-        phasePowers: [['spiral'], ['spiral', 'summon'], ['spiral', 'summon', 'nova']],
+        // Unique kit, one ability per phase (no overlap with other bosses).
+        phasePowers: [['beamSweep'], ['mirrorClones'], ['gravityWell']],
       },
       {
         name: 'The Bombardier',
@@ -330,7 +375,7 @@ export const CFG = {
         phasePowers: [
           ['barrage', 'nova'],
           ['barrage', 'nova'],
-          ['barrage', 'nova', 'charge'],
+          ['barrage', 'nova', 'charge', 'dotField'],
         ],
       },
       {
@@ -340,10 +385,11 @@ export const CFG = {
         core: 0xffca28,
         proj: 0xff5252,
         weakPointsByPhase: [2, 3, 3],
+        // Summons homing missiles instead of enemies.
         phasePowers: [
-          ['summon', 'barrage'],
-          ['summon', 'barrage', 'charge'],
-          ['summon', 'barrage', 'charge', 'nova'],
+          ['missiles', 'barrage'],
+          ['missiles', 'barrage', 'charge'],
+          ['missiles', 'barrage', 'charge', 'nova'],
         ],
       },
       {
