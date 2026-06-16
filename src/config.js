@@ -190,12 +190,10 @@ export const CFG = {
   },
   boss: {
     everyNWaves: 10, // boss appears on waves 10, 20, 30, ...
+    finalWave: 100, // The Annihilator (final boss) appears here; beyond it repeats, harder
     radius: 46, // visual body radius (large)
     hitRadius: 66, // physics overlap radius; covers the orbiting weak points
     contactDamage: 1,
-    color: 0x4a148c, // deep purple body
-    coreColor: 0xff5252,
-    armorColor: 0x9575cd,
     shieldColor: 0x40c4ff,
     anchorY: 140, // resting height near the top of the arena
     edgeMargin: 90, // keeps the tracked target x inside the arena
@@ -203,11 +201,23 @@ export const CFG = {
     transitionMs: 700, // per-phase telegraph window (boss invulnerable-ish, idle)
     pierceHitCooldownMs: 120, // throttles piercing bullets re-hitting the big body
     clearAddsOnBossDeath: true, // boss death clears remaining summoned minions
-    baseHp: 120,
-    hpPerTier: 60, // + per subsequent boss appearance
-    baseShield: 60,
+
+    // Difficulty scales with tier (tier = wave / everyNWaves; 1 at wave 10 .. 10 at wave 100).
+    baseHp: 90,
+    hpPerTier: 75, // + per subsequent boss appearance
+    baseShield: 45,
     shieldPerTier: 30,
+    cadenceScalePerTier: 0.05, // attack cooldowns shrink with tier ...
+    cadenceScaleMin: 0.45, // ... down to this floor
+    projSpeedPerTier: 14, // projectiles get faster with tier
+    moveSpeedPerTier: 4,
+    orbitSpeedPerTier: 8,
+
     phaseThresholds: [0.66, 0.33], // enter phase 2 below 66% hp, phase 3 below 33%
+    phaseMoveSpeed: [28, 42, 56], // by phase index
+    phaseOrbitSpeed: [55, 95, 140], // deg/s by phase index
+    phaseCadenceScale: [1, 0.8, 0.62], // later phases attack faster
+
     weakPoint: {
       orbitRadius: 58,
       nodeRadius: 6, // visual size
@@ -215,18 +225,44 @@ export const CFG = {
       color: 0xffeb3b,
       damageMult: 2.5, // weak-point hits deal extra HP damage
     },
-    barrage: {
-      radius: 7,
-      speed: 240,
-      lifetimeMs: 3000,
-      damage: 1,
-      color: 0xb388ff,
-      coreColor: 0xede7f6,
+
+    // Move / "weapon" library. Cooldowns are scaled by tier and current phase.
+    powers: {
+      summon: { cooldownMs: 6000, count: 3, maxAdds: 9, glow: 0xab47bc },
+      barrage: { cooldownMs: 4200, count: 9, radius: 7, speed: 240, lifetimeMs: 3000, damage: 1 },
+      spiral: {
+        cooldownMs: 2600,
+        count: 5,
+        stepDeg: 26,
+        radius: 6,
+        speed: 235,
+        lifetimeMs: 3200,
+        damage: 1,
+      },
+      aimedVolley: {
+        cooldownMs: 3200,
+        count: 5,
+        spreadDeg: 24,
+        radius: 6,
+        speed: 320,
+        lifetimeMs: 2600,
+        damage: 1,
+      },
+      charge: {
+        cooldownMs: 6500,
+        windupMs: 500,
+        speed: 540,
+        durationMs: 650,
+        slamRadius: 120,
+        slamDamage: 1,
+      },
+      nova: { cooldownMs: 5200, radius: 150, damage: 1, windupMs: 430 },
+      shieldSlam: { cooldownMs: 9000 },
     },
-    slamDamage: 1,
+
     reward: {
-      baseCoins: 400,
-      coinsPerTier: 250,
+      baseCoins: 350,
+      coinsPerTier: 220,
     },
     bar: {
       x: 400,
@@ -235,54 +271,128 @@ export const CFG = {
       width: 560,
       height: 16,
     },
-    phases: [
+
+    // One archetype per boss wave (index 0 = wave 10 ... index 9 = wave 100 final).
+    // Each has distinct colours, weak-point counts, and a per-phase power set, so
+    // every boss fights differently. Difficulty also scales continuously by tier.
+    variants: [
       {
-        moveSpeed: 30,
-        weakPoints: 2,
-        orbitSpeed: 55, // deg/s
-        summonCooldownMs: 6000,
-        summonCount: 3,
-        summonPool: ['swarmer', 'dasher'],
-        maxAdds: 8,
-        barrageCooldownMs: 4200,
-        barrageCount: 8,
-        charge: false,
+        name: 'The Warden',
+        body: 0x4a148c,
+        accent: 0x9575cd,
+        core: 0xff5252,
+        proj: 0xb388ff,
+        weakPointsByPhase: [2, 2, 3],
+        phasePowers: [['summon'], ['summon', 'barrage'], ['summon', 'barrage']],
       },
       {
-        moveSpeed: 46,
-        weakPoints: 2,
-        orbitSpeed: 95,
-        summonCooldownMs: 5000,
-        summonCount: 4,
-        summonPool: ['swarmer', 'dasher', 'firecaster'],
-        maxAdds: 10,
-        barrageCooldownMs: 3200,
-        barrageCount: 12,
-        charge: true,
-        chargeCooldownMs: 6500,
-        chargeWindupMs: 520,
-        chargeSpeed: 540,
-        chargeDurationMs: 650,
-        slamRadius: 115,
+        name: 'The Juggernaut',
+        body: 0x1b5e20,
+        accent: 0x66bb6a,
+        core: 0xffee58,
+        proj: 0x9ccc65,
+        weakPointsByPhase: [2, 2, 3],
+        phasePowers: [['barrage'], ['barrage', 'charge'], ['barrage', 'charge']],
       },
       {
-        moveSpeed: 60,
-        weakPoints: 3,
-        orbitSpeed: 140,
-        summonCooldownMs: 3800,
-        summonCount: 5,
-        summonPool: ['swarmer', 'dasher', 'firecaster', 'bomber'],
-        maxAdds: 12,
-        barrageCooldownMs: 2300,
-        barrageCount: 16,
-        charge: true,
-        chargeCooldownMs: 4800,
-        chargeWindupMs: 420,
-        chargeSpeed: 620,
-        chargeDurationMs: 650,
-        slamRadius: 135,
-        shieldSlam: true,
-        shieldSlamCooldownMs: 9000,
+        name: 'The Hexweaver',
+        body: 0x0d47a1,
+        accent: 0x42a5f5,
+        core: 0x80d8ff,
+        proj: 0x64b5f6,
+        weakPointsByPhase: [2, 3, 3],
+        phasePowers: [['spiral'], ['spiral', 'summon'], ['spiral', 'summon', 'nova']],
+      },
+      {
+        name: 'The Bombardier',
+        body: 0xbf360c,
+        accent: 0xff8a65,
+        core: 0xffd54f,
+        proj: 0xff7043,
+        weakPointsByPhase: [2, 2, 3],
+        phasePowers: [
+          ['aimedVolley'],
+          ['aimedVolley', 'barrage'],
+          ['aimedVolley', 'barrage', 'charge'],
+        ],
+      },
+      {
+        name: 'The Phantom',
+        body: 0x004d40,
+        accent: 0x4db6ac,
+        core: 0xb2ff59,
+        proj: 0x1de9b6,
+        weakPointsByPhase: [3, 3, 3],
+        phasePowers: [
+          ['barrage', 'nova'],
+          ['barrage', 'nova'],
+          ['barrage', 'nova', 'charge'],
+        ],
+      },
+      {
+        name: 'The Overlord',
+        body: 0xb71c1c,
+        accent: 0xef5350,
+        core: 0xffca28,
+        proj: 0xff5252,
+        weakPointsByPhase: [2, 3, 3],
+        phasePowers: [
+          ['summon', 'barrage'],
+          ['summon', 'barrage', 'charge'],
+          ['summon', 'barrage', 'charge', 'nova'],
+        ],
+      },
+      {
+        name: 'The Tempest',
+        body: 0x006064,
+        accent: 0x26c6da,
+        core: 0xe0f7fa,
+        proj: 0x00e5ff,
+        weakPointsByPhase: [3, 3, 4],
+        phasePowers: [
+          ['spiral', 'aimedVolley'],
+          ['spiral', 'aimedVolley', 'charge'],
+          ['spiral', 'aimedVolley', 'charge', 'nova'],
+        ],
+      },
+      {
+        name: 'The Colossus',
+        body: 0x37474f,
+        accent: 0x90a4ae,
+        core: 0xff8a65,
+        proj: 0xb0bec5,
+        weakPointsByPhase: [2, 3, 4],
+        phasePowers: [
+          ['charge', 'barrage'],
+          ['charge', 'barrage', 'shieldSlam'],
+          ['charge', 'barrage', 'shieldSlam', 'spiral'],
+        ],
+      },
+      {
+        name: 'The Voidcaller',
+        body: 0x4a0072,
+        accent: 0xce93d8,
+        core: 0xea80fc,
+        proj: 0xe040fb,
+        weakPointsByPhase: [3, 3, 4],
+        phasePowers: [
+          ['spiral', 'summon', 'nova'],
+          ['spiral', 'summon', 'nova', 'aimedVolley'],
+          ['spiral', 'summon', 'nova', 'aimedVolley', 'charge'],
+        ],
+      },
+      {
+        name: 'The Annihilator',
+        body: 0x311b92,
+        accent: 0xffd740,
+        core: 0xff1744,
+        proj: 0xffea00,
+        weakPointsByPhase: [3, 4, 4],
+        phasePowers: [
+          ['barrage', 'spiral', 'aimedVolley'],
+          ['barrage', 'spiral', 'aimedVolley', 'charge', 'summon'],
+          ['barrage', 'spiral', 'aimedVolley', 'charge', 'summon', 'nova', 'shieldSlam'],
+        ],
       },
     ],
   },
