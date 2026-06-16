@@ -9,6 +9,8 @@ export const CFG = {
     dashDurationMs: 150,
     dashCooldownMs: 800,
     hitFlashMs: 200,
+    phoenixBlastRadius: 150, // Phoenix revive: blast radius that clears nearby enemies
+    phoenixBlastDamage: 99, // high enough to destroy any non-boss enemy
   },
   bullet: {
     speed: 520,
