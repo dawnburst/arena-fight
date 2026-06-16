@@ -65,8 +65,8 @@ export const WEAPONS = [
     name: 'Sniper',
     tier: 'rare',
     price: 3800,
-    description: 'Fires an instant laser line that pierces every enemy in its path.',
-    fire: { rateMs: 900, angles: [0], bulletMods: { hitscan: true, piercing: true } },
+    description: 'Fires an instant laser line that pierces every enemy in its path for 3 damage.',
+    fire: { rateMs: 900, angles: [0], bulletMods: { hitscan: true, piercing: true, damage: 3 } },
   },
   {
     id: 'boomerang',
