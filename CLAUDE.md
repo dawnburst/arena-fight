@@ -60,3 +60,4 @@ At minimum, check whether `CODEBASE.md`, `README.md`, `CLAUDE.md`, and `AGENTS.m
 - Store, loadout, settings, and monsters are separate scenes reached from the main menu.
 - Background music and gameplay sound effects are loaded through `src/audio.js`; music and sound-effect enabled state and volume persist in `Save.settings`.
 - The saved wallet should survive death; avoid double-crediting coins at game over.
+- Every `CFG.boss.everyNWaves`th wave (default 10) is a boss wave: `GameScene.startBossWave()` spawns **The Warden** (a large, 3-phase, shielded boss with orbiting weak points that summons its own minions) instead of the normal spawn cadence. Boss tuning lives in `CFG.boss`; the boss is created only by `startBossWave()` and is not part of `ENEMY_TYPE_ORDER`. The Phase 1 boss is a primitive composite; sprite-generation prompts are in `plan_docs/plan-boss.md`.

@@ -520,6 +520,20 @@ On lethal hit (HP reaches 0 in the unshielded path of `onPlayerHitEnemy`):
 
 This is the only mod with non-stat-mutating behavior.
 
+### 6.19 Boss: The Warden
+
+A large, multi-phase boss that appears on every boss wave (`CFG.boss.everyNWaves`, default 10 → waves 10, 20, 30, …). Tuned in `CFG.boss`.
+
+- **Wave flow:** `startNextWave()` calls `isBossWave(n)`; on a boss wave it calls `startBossWave(n)` instead of the normal spawn cadence — no edge spawns happen, the boss summons its own adds. `bossTier = floor(n / everyNWaves)` scales HP, shield, and coin reward. The wave does not advance until the boss (and its adds) are cleared, which works for free because `maybeStartNextWave()` already gates on `enemies.countActive() > 0` and the boss is a normal member of `this.enemies`.
+- **Composite (primitive, Phase 1):** the boss "enemy" is a large `Arc` body (visual radius `CFG.boss.radius`, larger physics `hitRadius` covering the orbiting weak points). Code-drawn overlays follow it each frame: a translucent `shieldRingGfx`, a bright `core`, and small orbiting weak-point nodes (`weakPoints`). A dedicated top-screen HP/shield bar (`bossBar*` HUD) shows name + red HP fill + cyan shield gauge + phase. Image-generation prompts for replacing the primitive with sprites live in `plan_docs/plan-boss.md`.
+- **Damage model (`damageBoss`, dispatched from `damageEnemy` for `type === 'boss'`):** a hit within a weak point's `hitRadius` always damages HP directly (×`weakPoint.damageMult`), bypassing the shield. Otherwise, if `shieldUp`, the hit chips the shield (shatters at 0); once the shield is down, hits damage HP. The shield is restored to full at each new phase. Piercing bullets are throttled per-bullet (`pierceHitCooldownMs`) so they don't multi-hit the big body every frame.
+- **Phases (3, escalating):** `bossTryPhaseChange` advances at the `phaseThresholds` HP fractions (default 66% / 33%). Each phase (`CFG.boss.phases[i]`) sets move speed, weak-point count + orbit speed, summon/barrage cadences, and unlocks charge (phase 2) and shield-slam (phase 3). On transition: restore shield, brief idle window (`transitionMs`), camera flash/shake, reset attack timers.
+- **Powers (`updateBoss` state machine):** drift toward the top tracking the player's x; `bossSummon` spawns adds from the phase's `summonPool` via `createEnemyByType` (capped by `maxAdds`); `bossBarrage` fires a radial `fireEnemyShot` spread; `bossCharge` windup → telegraphed lunge → `bossSlam` shockwave (damages the player in radius); `bossShieldSlam` re-raises a broken shield in phase 3.
+- **Contact:** `onPlayerHitEnemy` never destroys the boss — it only damages the player (boss is exempt from the suicide-on-contact path).
+- **Death:** routes through `damageEnemy → killBoss → onEnemyKilled('boss')`, which pays the scaled coin reward (`payBossReward`), plays a death burst, clears remaining adds (`clearBossAdds` if `clearAddsOnBossDeath`), and tears down boss state/HUD (`teardownBossState`). `jumpToWave` also calls `teardownBossState` so cheat jumps clean up an active boss.
+
+The boss is **not** in `ENEMY_TYPE_ORDER`, so `pickEnemyType()` never spawns it during normal waves; it is only created by `startBossWave()`. A bestiary entry exists in `src/enemies.js` (placeholder tinted sprite until boss art is added).
+
 ---
 
 ## 7. Catalog: weapons & mods
