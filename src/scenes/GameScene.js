@@ -2476,6 +2476,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onPlayerHitEnemyProjectile(_playerSprite, projectile) {
+    // While invulnerable (e.g. dashing), let projectiles pass through instead of
+    // being consumed harmlessly, so dashing doesn't delete incoming shots.
+    if (this.time.now < this.player.invulnerableUntil) return;
     projectile.destroy();
     this.damagePlayer(projectile.damage || CFG.enemyFireball.damage);
   }
