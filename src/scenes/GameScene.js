@@ -226,6 +226,7 @@ export default class GameScene extends Phaser.Scene {
       magnetRadius: CFG.coin.magnetRadius * m.magnetRangeMult,
       comboResetMs: CFG.combo.resetMs + m.comboResetMsDelta,
       luckyChance: m.luckyChance,
+      giftRateMult: m.giftRateMult,
     };
   }
 
@@ -2826,7 +2827,8 @@ export default class GameScene extends Phaser.Scene {
 
   scheduleNextGift() {
     if (this.gameOver) return;
-    const delay = Phaser.Math.Between(CFG.gift.spawnDelayMinMs, CFG.gift.spawnDelayMaxMs);
+    const base = Phaser.Math.Between(CFG.gift.spawnDelayMinMs, CFG.gift.spawnDelayMaxMs);
+    const delay = base * (this.runtime.giftRateMult ?? 1);
     this.time.delayedCall(delay, () => this.spawnGift());
   }
 
