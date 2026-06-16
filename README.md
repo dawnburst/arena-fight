@@ -52,9 +52,22 @@ The Settings menu lets you choose the arena background and control the looping b
 
 Survive escalating waves of monsters. Each kill builds your score, coins persist in your wallet, and store upgrades help future runs.
 
-## Boss: The Warden
+## Bosses
 
-Every 10th wave is a boss fight against **The Warden** — a large, shielded guardian that summons minions instead of a normal wave. Its energy shield blocks body hits and regenerates each phase, but small weak points orbiting its body always take damage (and take extra), so you can snipe them to bypass the shield or break the shield then unload. It barrages projectiles, charges and ground-slams, and enrages across three phases as its health drops. Beating it pays a large coin bonus that scales with the boss number.
+Every 10th wave is a boss fight. Each boss wave brings a different giant
+shielded boss with its own colours and moves — from **The Warden** at wave 10 up
+to the final boss, **The Annihilator**, at wave 100 — and they get tougher the
+deeper you go. A boss summons its own minions instead of a normal wave, and can
+only summon monster types that have already appeared in earlier waves.
+
+Every boss shares the same core rules: an energy shield blocks body hits and
+regenerates each phase, while small weak points orbiting its body always take
+damage (and take extra) — so you can snipe the weak points to bypass the shield,
+or break the shield then unload. Across three escalating phases a boss draws from
+a pool of attacks (radial barrages, spiraling fire, aimed volleys, charges and
+ground-slams, area-denial blasts, shield re-raises), with different bosses
+favouring different moves. Beating one pays a large coin bonus that scales with
+the boss number.
 
 <img width="813" height="600" alt="image" src="https://github.com/user-attachments/assets/33332e4e-fafd-4932-b616-7071bdfd1b82" />
 
