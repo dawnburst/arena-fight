@@ -11,6 +11,7 @@ export const CFG = {
     hitFlashMs: 200,
     phoenixBlastRadius: 150, // Phoenix revive: blast radius that clears nearby enemies
     phoenixBlastDamage: 99, // high enough to destroy any non-boss enemy
+    weaponSwapDelayMs: 500, // cannot fire for this long after switching weapons
   },
   bullet: {
     speed: 520,
