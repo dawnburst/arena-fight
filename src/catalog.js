@@ -37,10 +37,10 @@ export const WEAPONS = [
     name: 'Shotgun',
     tier: 'uncommon',
     price: 1600,
-    description: '8-pellet burst in a tight ±12° cone. Short range.',
+    description: '6-pellet burst in a tight ±12° cone. Short range.',
     fire: {
       rateMs: 800,
-      angles: [-12, -8.5, -5, -1.5, 1.5, 5, 8.5, 12],
+      angles: [-12, -7.2, -2.4, 2.4, 7.2, 12],
       bulletMods: { lifetimeMsOverride: 350 },
     },
   },
