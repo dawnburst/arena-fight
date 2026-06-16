@@ -13,7 +13,7 @@ Important files:
 - `src/main.js` registers Phaser scenes.
 - `src/scenes/IntroScene.js` shows the first-load intro.
 - `src/scenes/MainMenuScene.js` owns the main menu and game-over details.
-- `src/scenes/GameScene.js` owns gameplay, including the boss fight ("The Warden") that replaces every `CFG.boss.everyNWaves`th wave (default 10) — a large, 3-phase, shielded boss with orbiting weak points that summons its own minions. Boss tuning is in `CFG.boss`; see `plan_docs/plan-boss.md` for the design and the sprite-generation prompts.
+- `src/scenes/GameScene.js` owns gameplay, including the boss fights that replace every `CFG.boss.everyNWaves`th wave (default 10) — large, 3-phase, shielded bosses with orbiting weak points that summon their own minions. Each boss wave uses a different archetype from `CFG.boss.variants` (distinct colours/powers, difficulty scaling with the wave; final boss at wave 100), and bosses only summon enemy types from earlier waves. See `plan_docs/plan-boss.md` for the design and `plan_docs/boss-image-prompts.md` for per-wave sprite prompts.
 - `src/scenes/StoreScene.js`, `LoadoutScene.js`, `SettingsScene.js`, and `MonstersScene.js` own secondary screens.
 - `src/config.js` contains gameplay tuning.
 - `src/catalog.js` contains weapons and mods.
