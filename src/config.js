@@ -200,6 +200,7 @@ export const CFG = {
     shieldColor: 0x40c4ff,
     anchorY: 140, // resting height near the top of the arena
     edgeMargin: 90, // keeps the tracked target x inside the arena
+    shadowMs: 1500, // harmless shadow telegraph shown before the boss materializes
     introMs: 1200, // entrance / first-attack delay
     transitionMs: 700, // per-phase telegraph window (boss invulnerable-ish, idle)
     pierceHitCooldownMs: 120, // throttles piercing bullets re-hitting the big body

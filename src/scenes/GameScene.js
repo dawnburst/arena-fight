@@ -146,6 +146,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.boss = null;
     this.bossActive = false;
+    this.bossSpawning = false;
+    this.bossShadow = null;
+    this.bossShadowEvent = null;
 
     this.player = {
       sprite: null,
@@ -1110,7 +1113,44 @@ export default class GameScene extends Phaser.Scene {
       '30px',
     );
     this.cameras.main.shake(250, 0.006);
-    this.createBoss(tier);
+    this.showBossShadow(tier);
+  }
+
+  // Telegraph the boss with a harmless shadow at its spawn spot, giving the
+  // player time to move away before the boss materializes there.
+  showBossShadow(tier) {
+    this.bossSpawning = true;
+    const x = CFG.arena.width / 2;
+    const y = CFG.boss.anchorY;
+    const shadow = this.add.circle(x, y, CFG.boss.radius, 0x000000, 0.45).setDepth(3.6);
+    shadow.setStrokeStyle(3, 0x000000, 0.7);
+    this.tweens.add({
+      targets: shadow,
+      alpha: { from: 0.15, to: 0.5 },
+      scale: { from: 0.7, to: 1.05 },
+      duration: 360,
+      yoyo: true,
+      repeat: -1,
+    });
+    this.bossShadow = shadow;
+    this.bossShadowEvent = this.time.delayedCall(CFG.boss.shadowMs, () => {
+      this.bossShadowEvent = null;
+      this.clearBossShadow();
+      if (this.gameOver) return;
+      this.createBoss(tier);
+    });
+  }
+
+  clearBossShadow() {
+    this.bossSpawning = false;
+    if (this.bossShadowEvent) {
+      this.bossShadowEvent.remove(false);
+      this.bossShadowEvent = null;
+    }
+    if (this.bossShadow) {
+      this.bossShadow.destroy();
+      this.bossShadow = null;
+    }
   }
 
   // Variant archetype for a boss tier (clamped; tiers past the last repeat the
@@ -1721,6 +1761,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   teardownBossState() {
+    this.clearBossShadow();
     this.boss = null;
     this.bossActive = false;
     this.hideBossBar();
@@ -2200,6 +2241,7 @@ export default class GameScene extends Phaser.Scene {
 
   maybeStartNextWave() {
     if (this.gameOver) return;
+    if (this.bossSpawning) return; // a boss shadow is telegraphing; hold the wave
     if (this.pendingSpawns > 0) return;
     if (this.enemies.countActive(true) > 0) return;
     if (this.nextWaveScheduled) return;
