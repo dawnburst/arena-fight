@@ -718,13 +718,14 @@ export default class GameScene extends Phaser.Scene {
 
     this.player.shootUntil = time + 90;
 
+    const dmg = this.weaponDef.fire.bulletMods?.damage || 1;
     const pad = CFG.bullet.radius + 4;
     const targets = this.enemies.getChildren().slice();
     for (const enemy of targets) {
       if (!enemy.active) continue;
       const r = (enemy.body?.radius ? enemy.body.radius : 12) + pad;
       if (this.pointToSegmentDistance(enemy.x, enemy.y, px, py, ex, ey) <= r) {
-        this.damageEnemy(enemy, px, py, 1);
+        this.damageEnemy(enemy, px, py, dmg);
       }
     }
     this.maybeStartNextWave();
