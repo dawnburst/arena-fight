@@ -13,6 +13,7 @@ const DEFAULTS = () => ({
     sfxEnabled: true,
     sfxVolume: 0.75,
     touchControls: 'auto',
+    fullscreen: true,
   },
   stats: { runsPlayed: 0, bestWave: 0, bestScore: 0, totalCoinsEarned: 0 },
 });
@@ -132,6 +133,12 @@ export const Save = {
     return this.set((s) => ({
       ...s,
       settings: { ...(s.settings || {}), touchControls },
+    }));
+  },
+  setFullscreen(fullscreen) {
+    return this.set((s) => ({
+      ...s,
+      settings: { ...(s.settings || {}), fullscreen },
     }));
   },
   recordRun({ wave, score, coinsEarned, persistCoins = true }) {
