@@ -16,9 +16,10 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - Sound effects are loaded from `public/assets/sounds/*.wav` through `src/audio.js` and played from `GameScene` gameplay hooks.
 - Music settings persist in `Save.settings` as `musicEnabled` and `musicVolume`.
 - Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
-- `SettingsScene` controls arena background, music on/off and volume, sound-effect on/off and volume, and the touch-controls mode (Auto / On / Off).
+- `SettingsScene` controls arena background, music on/off and volume, sound-effect on/off and volume, the touch-controls mode (Auto / On / Off), and the fullscreen toggle (On / Off).
 - Touch/mobile mode persists in `Save.settings` as `touchControls` (`'auto' | 'on' | 'off'`); resolved at boot by `src/input/touchMode.js`.
 - Static generated assets live under `public/assets/...`; Phaser code resolves them through `src/assetPath.js` so builds work at `/arena-fight/` on GitHub Pages. Windows `*:Zone.Identifier` sidecars are ignored.
+- `src/viewport.js` owns the responsive scale strategy. **Desktop windowed** stays `Scale.NONE` 800×600 (unchanged); **desktop fullscreen** switches to `Scale.FIT` (4:3 scaled up, centered) and back to 800×600 on exit; **mobile/touch** uses `Scale.FIT` with a fixed logical height (600) and a width set to `round(600 × innerW/innerH)` (clamped 600–1400) so the canvas fills the device with no letterbox bars — the arena simply gets wider. On mobile, window resize/rotate recomputes that width via `game.scale.setGameSize(w, 600)`, which emits Phaser's `RESIZE` event. `GameScene` reflows live on resize (`handleResize` updates `this.arenaW/arenaH`, world bounds, background fit, HUD via `layoutHud()`, and touch-control anchors) with **no scene restart**; menu scenes rebuild via restart-on-resize. Fullscreen defaults on (`Save.settings.fullscreen`), auto-enters on the first Intro tap, and toggles with `F` or the Settings row. Shared cover-fit background helper: `src/scenes/sceneUtils.js` → `coverBackground(scene, key, existing?)`.
 
 ---
 
@@ -92,6 +93,7 @@ npm run preview  # serves built ./dist
 | Aim | Mouse |
 | Fire (hold) | Left mouse button |
 | Dash | `Space` (brief invulnerability, cooldown-gated) |
+| Fullscreen | `F` |
 | Pause / Resume | `P` or `Esc` |
 | Restart (Game Over) | `R` |
 | Open Store (Game Over) | `S` |

@@ -6,7 +6,7 @@ These instructions apply to the entire repository. Follow them when working as a
 
 ## Project Overview
 
-Arena Fight is a Phaser 3 + Vite browser game using JavaScript ES modules. The canvas is fixed at `800x600`. The main code lives in `src/`, while browser-served assets live in `public/assets/`.
+Arena Fight is a Phaser 3 + Vite browser game using JavaScript ES modules. The desktop windowed canvas is fixed at `800x600`; on mobile/touch the game is responsive (fixed height 600, width grows to match the device aspect via `Scale.FIT`) and fullscreen-capable — see `src/viewport.js`. The main code lives in `src/`, while browser-served assets live in `public/assets/`.
 
 Important files:
 
@@ -95,6 +95,6 @@ For code changes:
 
 For visual changes:
 
-1. Check the affected screen at the fixed `800x600` canvas.
+1. Check the affected screen at the desktop `800x600` canvas, and (for layout work) confirm it still reflows on a wider mobile canvas — use `this.scale.width/height` (or `GameScene.arenaW/arenaH`) instead of hard-coded `CFG.arena.width/height`.
 2. Ensure text is readable and does not overlap important UI or gameplay.
 3. Keep the retro game feel unless the user explicitly asks for a different style.
