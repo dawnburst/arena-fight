@@ -96,12 +96,13 @@ export default class SettingsScene extends Phaser.Scene {
     });
 
     this.createMusicControls(style);
+    this.createTouchControlsRow(style);
 
     this.hintText = this.add
       .text(
         CFG.arena.width / 2,
-        CFG.arena.height - 38,
-        '←/→ select  •  enter apply  •  M music  •  S sound  •  B / Esc back',
+        CFG.arena.height - 26,
+        '←/→ select  •  enter apply  •  M music  •  S sound  •  T touch  •  B / Esc back',
         { ...style, fontSize: '13px', color: '#cccccc' },
       )
       .setOrigin(0.5);
@@ -144,6 +145,11 @@ export default class SettingsScene extends Phaser.Scene {
     if (event.key === 's' || event.key === 'S') {
       event.preventDefault?.();
       this.toggleSfx();
+      return;
+    }
+    if (event.key === 't' || event.key === 'T') {
+      event.preventDefault?.();
+      this.cycleTouchControls();
       return;
     }
     if (event.key === '+' || event.key === '=') {
@@ -263,6 +269,30 @@ export default class SettingsScene extends Phaser.Scene {
     this.audioFrame.strokeRoundedRect(x, y, width, height, 8);
   }
 
+  createTouchControlsRow(style) {
+    const y = 534;
+    this.add.text(60, y, 'TOUCH', { ...style, fontSize: '20px', color: '#ffd54f' });
+    this.touchValueText = this.add.text(170, y + 3, '', { ...style, fontSize: '16px' });
+    this.add.text(300, y + 5, '(applies on reload)', {
+      ...style,
+      fontSize: '12px',
+      color: '#9e9e9e',
+    });
+    this.add
+      .zone(56, y - 4, 380, 30)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.cycleTouchControls());
+  }
+
+  cycleTouchControls() {
+    const order = ['auto', 'on', 'off'];
+    const current = Save.get().settings?.touchControls ?? 'auto';
+    const next = order[(order.indexOf(current) + 1) % order.length];
+    Save.setTouchControls(next);
+    this.refresh();
+  }
+
   toggleMusic() {
     const enabled = Save.get().settings?.musicEnabled !== false;
     Save.setMusicEnabled(!enabled);
@@ -320,6 +350,11 @@ export default class SettingsScene extends Phaser.Scene {
 
     this.refreshMusicControls();
     this.refreshSfxControls();
+
+    if (this.touchValueText) {
+      const mode = Save.get().settings?.touchControls ?? 'auto';
+      this.touchValueText.setText(mode.toUpperCase());
+    }
   }
 
   refreshMusicControls() {
