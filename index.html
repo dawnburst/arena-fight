@@ -4,7 +4,10 @@
     <meta charset="utf-8" />
     <title>Arena Fight</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <style>
       html, body {
         margin: 0;
@@ -23,14 +26,50 @@
       #game {
         box-shadow: 0 0 24px rgba(255, 255, 255, 0.08);
         line-height: 0;
+        touch-action: none;
+        overscroll-behavior: none;
       }
       #game canvas {
         display: block;
+      }
+      #rotate-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        background: #000;
+        color: #ddd;
+      }
+      #rotate-overlay:not([hidden]) {
+        display: flex;
+      }
+      #rotate-overlay .rotate-icon {
+        font-size: 64px;
+        animation: rotate-hint 1.6s ease-in-out infinite;
+      }
+      #rotate-overlay p {
+        font-size: 18px;
+        margin-top: 16px;
+        padding: 0 24px;
+      }
+      @keyframes rotate-hint {
+        0%, 60% { transform: rotate(0deg); }
+        100% { transform: rotate(90deg); }
       }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate-overlay" hidden>
+      <div class="rotate-inner">
+        <div class="rotate-icon">⟳</div>
+        <p>Rotate your device to landscape</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
