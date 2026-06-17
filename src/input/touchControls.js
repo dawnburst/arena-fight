@@ -1,18 +1,13 @@
 // On-screen twin-stick controls for touch devices. Left stick drives movement,
 // right stick drives aim + auto-fire while held, plus dash / weapon-switch / pause
 // buttons. GameScene reads intents through the getX()/consumeX() API so its
-// gameplay logic stays input-agnostic. Anchored in the fixed 800x600 space; the
-// Scale.FIT manager maps that to the device. Touch-mode only — never built on
-// desktop, so the mouse/keyboard path is untouched.
+// gameplay logic stays input-agnostic. Anchors are computed from the live logical
+// canvas size (sticks in the bottom corners, buttons on the edges, left/right
+// split at width/2) and recomputed via layout() on resize. Touch-mode only —
+// never built on desktop, so the mouse/keyboard path is untouched.
 
 const STICK_R = 70;
 const DEADZONE = STICK_R * 0.2;
-const LEFT_BASE = { x: 130, y: 470 };
-const RIGHT_BASE = { x: 670, y: 470 };
-const DASH_BTN = { x: 686, y: 300, r: 36, label: 'DASH' };
-const SWITCH_BTN = { x: 114, y: 300, r: 30, label: 'SW' };
-const PAUSE_BTN = { x: 762, y: 34, r: 24, label: '||' };
-const BUTTONS = [DASH_BTN, SWITCH_BTN, PAUSE_BTN];
 
 const DEPTH = 1000;
 
@@ -39,7 +34,11 @@ export default class TouchControls {
       fontSize: '14px',
       color: '#ffffff',
     };
-    this.labels = BUTTONS.map((btn) =>
+    this.dashBtn = { x: 0, y: 0, r: 36, label: 'DASH', key: 'dash' };
+    this.switchBtn = { x: 0, y: 0, r: 30, label: 'SW', key: 'switch' };
+    this.pauseBtn = { x: 0, y: 0, r: 24, label: '||', key: 'pause' };
+    this.buttons = [this.dashBtn, this.switchBtn, this.pauseBtn];
+    this.labels = this.buttons.map((btn) =>
       scene.add
         .text(btn.x, btn.y, btn.label, labelStyle)
         .setOrigin(0.5)
@@ -47,6 +46,8 @@ export default class TouchControls {
         .setScrollFactor(0)
         .setAlpha(0.7),
     );
+
+    this.layout();
 
     this.onDown = this.handleDown.bind(this);
     this.onMove = this.handleMove.bind(this);
@@ -59,15 +60,38 @@ export default class TouchControls {
     this.draw();
   }
 
+  // Anchors derived from the live logical canvas size, so the controls hug the
+  // corners/edges on any resolution. Called from the constructor and from
+  // GameScene.handleResize.
+  layout() {
+    const w = this.scene.scale.width;
+    const h = this.scene.scale.height;
+    this.leftBase = { x: 130, y: h - 130 };
+    this.rightBase = { x: w - 130, y: h - 130 };
+    this.dashBtn.x = w - 114;
+    this.dashBtn.y = h - 300;
+    this.switchBtn.x = 114;
+    this.switchBtn.y = h - 300;
+    this.pauseBtn.x = w - 38;
+    this.pauseBtn.y = 34;
+    this.split = w / 2;
+    if (this.labels) {
+      this.labels.forEach((label, i) => {
+        label.setPosition(this.buttons[i].x, this.buttons[i].y);
+      });
+    }
+    this.draw();
+  }
+
   hitButton(x, y) {
-    for (const btn of BUTTONS) {
+    for (const btn of this.buttons) {
       if (Math.hypot(x - btn.x, y - btn.y) <= btn.r) return btn;
     }
     return null;
   }
 
   setStickFromPointer(side, px, py) {
-    const base = side === 'left' ? LEFT_BASE : RIGHT_BASE;
+    const base = side === 'left' ? this.leftBase : this.rightBase;
     let dx = px - base.x;
     let dy = py - base.y;
     const len = Math.hypot(dx, dy);
@@ -84,12 +108,12 @@ export default class TouchControls {
     const btn = this.hitButton(x, y);
     if (btn) {
       this.pressed.set(pointer.id, btn);
-      if (btn === DASH_BTN) this.dashLatched = true;
-      else if (btn === PAUSE_BTN) this.pauseLatched = true;
-      else if (btn === SWITCH_BTN) this.switchLatched = true;
+      if (btn === this.dashBtn) this.dashLatched = true;
+      else if (btn === this.pauseBtn) this.pauseLatched = true;
+      else if (btn === this.switchBtn) this.switchLatched = true;
       return;
     }
-    if (x < 400) {
+    if (x < this.split) {
       if (this.leftId === null) {
         this.leftId = pointer.id;
         this.setStickFromPointer('left', x, y);
@@ -163,12 +187,13 @@ export default class TouchControls {
 
   draw() {
     const g = this.gfx;
+    if (!g || !this.leftBase) return;
     g.clear();
 
-    this.drawStick(g, LEFT_BASE, this.leftId !== null ? this.leftVec : null);
-    this.drawStick(g, RIGHT_BASE, this.rightId !== null ? this.rightVec : null);
+    this.drawStick(g, this.leftBase, this.leftId !== null ? this.leftVec : null);
+    this.drawStick(g, this.rightBase, this.rightId !== null ? this.rightVec : null);
 
-    for (const btn of BUTTONS) {
+    for (const btn of this.buttons) {
       const held = [...this.pressed.values()].includes(btn);
       g.fillStyle(held ? 0x69f0ae : 0x222a22, 0.6);
       g.fillCircle(btn.x, btn.y, btn.r);
