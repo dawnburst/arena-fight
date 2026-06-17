@@ -37,6 +37,12 @@ Production builds use the `/arena-fight/` base path for GitHub Pages. Deployment
 | Pause / Resume | `P` or `Esc` |
 | Menu navigation | Mouse or arrow keys + `Enter` |
 
+On phones and tablets the game switches to on-screen **twin-stick** controls: the
+left stick moves, the right stick aims and fires automatically, and there are
+on-screen dash, pause, and weapon-switch buttons. Play in **landscape** — held in
+portrait, the game pauses and asks you to rotate. Desktop play is unchanged. Touch
+mode is detected automatically and can be forced on or off in Settings.
+
 ## Settings
 
 The Settings menu lets you choose the arena background and control the looping background music:
@@ -45,7 +51,8 @@ The Settings menu lets you choose the arena background and control the looping b
 - Volume slider.
 - Sound effects on/off toggle.
 - Sound effects volume slider.
-- Keyboard shortcuts: `M` toggles music, `+` / `-` adjusts volume.
+- Touch controls mode: Auto / On / Off (applies on reload).
+- Keyboard shortcuts: `M` toggles music, `S` toggles sound, `T` cycles touch controls, `+` / `-` adjusts volume.
 - Gameplay sound effects play for coins, dash, gifts, game over, and Beam/Plasma shots.
 
 ## Goal
