@@ -13,6 +13,8 @@ import { ENEMY_SPRITES } from '../enemies.js';
 import TouchControls from '../input/touchControls.js';
 import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
+import { toggleFullscreen } from '../viewport.js';
+import { coverBackground } from './sceneUtils.js';
 
 const PLAYER_DIRECTIONS = [
   'east',
@@ -92,11 +94,15 @@ export default class GameScene extends Phaser.Scene {
     this.demoEnemyId = data.demoEnemyId || 'swarmer';
     this.demoReturn = data.returnScene || 'MonstersScene';
     syncMusic(this);
-    this.physics.world.setBounds(0, 0, CFG.arena.width, CFG.arena.height);
+    // Live arena dimensions: 800x600 on desktop, wider (height fixed at 600) on
+    // mobile. Spawn/clamp/HUD code reads these so it self-adjusts after a resize.
+    this.arenaW = this.scale.width;
+    this.arenaH = this.scale.height;
+    this.physics.world.setBounds(0, 0, this.arenaW, this.arenaH);
 
     const save = Save.get();
     const selectedBackground = resolveBackground(save.settings?.backgroundId);
-    this.add.image(0, 0, backgroundKey(selectedBackground.id)).setOrigin(0).setDepth(-20);
+    this.bgImage = coverBackground(this, backgroundKey(selectedBackground.id)).setDepth(-20);
     const weaponIds = save.loadout?.weapons || [save.loadout?.weapon || 'pistol', null];
     this.weapons = [
       getWeapon(weaponIds[0] || 'pistol'),
@@ -196,7 +202,14 @@ export default class GameScene extends Phaser.Scene {
     // below falls back to keyboard/mouse exactly as before.
     this.touchMode = touchActive();
     this.touch = this.touchMode ? new TouchControls(this) : null;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.touch?.destroy());
+
+    // Reflow live (no restart) when the canvas resizes — mobile rotate or a
+    // fullscreen toggle. Cleaned up on shutdown so it never fires on a dead scene.
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.touch?.destroy();
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+    });
 
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitEnemy, null, this);
     this.physics.add.overlap(this.player.sprite, this.enemies, this.onPlayerHitEnemy, null, this);
@@ -231,7 +244,7 @@ export default class GameScene extends Phaser.Scene {
     this.wave = 1;
     this.enemySpeedThisWave = CFG.enemy.speed;
     this.add
-      .text(CFG.arena.width / 2, 16, `DEMO: ${this.demoEnemyId.toUpperCase()}  ·  Esc to exit`, {
+      .text(this.arenaW / 2, 16, `DEMO: ${this.demoEnemyId.toUpperCase()}  ·  Esc to exit`, {
         fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
         fontSize: '14px',
         color: '#b9d7b3',
@@ -276,8 +289,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   spawnPlayer() {
-    const cx = CFG.arena.width / 2;
-    const cy = CFG.arena.height / 2;
+    const cx = this.arenaW / 2;
+    const cy = this.arenaH / 2;
 
     const sprite = this.add.sprite(cx, cy, this.playerFrameKey('south', 'idle'));
     sprite.setScale(PLAYER_BODY_SCALE);
@@ -357,14 +370,14 @@ export default class GameScene extends Phaser.Scene {
     };
     this.hudHp = this.add.text(10, 8, '', style);
     this.hudScore = this.add.text(10, 28, '', style);
-    this.hudWave = this.add.text(CFG.arena.width - 10, 8, '', style).setOrigin(1, 0);
-    this.hudCombo = this.add.text(CFG.arena.width - 10, 28, '', style).setOrigin(1, 0);
+    this.hudWave = this.add.text(this.arenaW - 10, 8, '', style).setOrigin(1, 0);
+    this.hudCombo = this.add.text(this.arenaW - 10, 28, '', style).setOrigin(1, 0);
     this.hudCoins = this.add
-      .text(CFG.arena.width / 2, 8, '', { ...style, color: '#ffd54f' })
+      .text(this.arenaW / 2, 8, '', { ...style, color: '#ffd54f' })
       .setOrigin(0.5, 0);
 
     this.pauseText = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height / 2 - 34, 'PAUSED\nP / Esc resume', {
+      .text(this.arenaW / 2, this.arenaH / 2 - 34, 'PAUSED\nP / Esc resume', {
         ...style,
         fontSize: '28px',
         align: 'center',
@@ -372,7 +385,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setVisible(false);
     this.pauseExitButton = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height / 2 + 78, 'EXIT TO MENU   [M]', {
+      .text(this.arenaW / 2, this.arenaH / 2 + 78, 'EXIT TO MENU   [M]', {
         ...style,
         fontSize: '20px',
         color: '#ffd54f',
@@ -386,7 +399,7 @@ export default class GameScene extends Phaser.Scene {
     this.pauseExitButton.disableInteractive();
 
     this.dashCdText = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height - 18, '', {
+      .text(this.arenaW / 2, this.arenaH - 18, '', {
         ...style,
         fontSize: '12px',
         color: '#ffd54f',
@@ -394,7 +407,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 1);
 
     this.hudWeapon = this.add
-      .text(10, CFG.arena.height - 8, '', {
+      .text(10, this.arenaH - 8, '', {
         ...style,
         fontSize: '12px',
         color: '#bbbbbb',
@@ -402,7 +415,7 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     this.shieldHud = this.add
-      .text(CFG.arena.width / 2, 38, '', {
+      .text(this.arenaW / 2, 38, '', {
         ...style,
         fontSize: '14px',
         color: '#ffd54f',
@@ -411,7 +424,7 @@ export default class GameScene extends Phaser.Scene {
       .setVisible(false);
 
     this.giftHud = this.add
-      .text(CFG.arena.width / 2, 58, '', {
+      .text(this.arenaW / 2, 58, '', {
         ...style,
         fontSize: '14px',
         color: '#ff80ab',
@@ -449,11 +462,11 @@ export default class GameScene extends Phaser.Scene {
 
     if (CHEATS_ENABLED) {
       this.cheatBg = this.add
-        .rectangle(CFG.arena.width / 2, CFG.arena.height / 2, 460, 180, 0x000000, 0.85)
+        .rectangle(this.arenaW / 2, this.arenaH / 2, 460, 180, 0x000000, 0.85)
         .setStrokeStyle(2, 0xffd54f)
         .setVisible(false);
       this.cheatTitle = this.add
-        .text(CFG.arena.width / 2, CFG.arena.height / 2 - 52, 'CHEAT CONSOLE', {
+        .text(this.arenaW / 2, this.arenaH / 2 - 52, 'CHEAT CONSOLE', {
           ...style,
           fontSize: '22px',
           color: '#ffd54f',
@@ -461,7 +474,7 @@ export default class GameScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setVisible(false);
       this.cheatInput = this.add
-        .text(CFG.arena.width / 2, CFG.arena.height / 2, '_', {
+        .text(this.arenaW / 2, this.arenaH / 2, '_', {
           ...style,
           fontSize: '24px',
         })
@@ -469,8 +482,8 @@ export default class GameScene extends Phaser.Scene {
         .setVisible(false);
       this.cheatHint = this.add
         .text(
-          CFG.arena.width / 2,
-          CFG.arena.height / 2 + 52,
+          this.arenaW / 2,
+          this.arenaH / 2 + 52,
           'wave 10  ·  coins 500  ·  enter confirm  ·  esc cancel',
           { ...style, fontSize: '12px', color: '#999' },
         )
@@ -478,7 +491,54 @@ export default class GameScene extends Phaser.Scene {
         .setVisible(false);
     }
 
+    this.layoutHud();
     this.updateHUD();
+  }
+
+  // Repositions every center/right/bottom-anchored HUD element from the live
+  // arena size. Left-anchored items (HP/score at x=10) never move. Called once at
+  // the end of createHUD and again from handleResize so the HUD reflows on a
+  // mobile rotate / fullscreen toggle without rebuilding anything.
+  layoutHud() {
+    const w = this.arenaW;
+    const h = this.arenaH;
+    this.hudWave?.setPosition(w - 10, 8);
+    this.hudCombo?.setPosition(w - 10, 28);
+    this.hudCoins?.setPosition(w / 2, 8);
+    this.pauseText?.setPosition(w / 2, h / 2 - 34);
+    this.pauseExitButton?.setPosition(w / 2, h / 2 + 78);
+    this.dashCdText?.setPosition(w / 2, h - 18);
+    this.hudWeapon?.setPosition(10, h - 8);
+    this.shieldHud?.setPosition(w / 2, 38);
+    this.giftHud?.setPosition(w / 2, 58);
+
+    const bar = CFG.boss.bar;
+    const barLeft = w / 2 - bar.width / 2;
+    this.bossBarBg?.setPosition(w / 2, bar.y);
+    this.bossHpFill?.setPosition(barLeft, bar.y);
+    this.bossShieldFill?.setPosition(barLeft, bar.y - bar.height / 2 - 4);
+    this.bossName?.setPosition(w / 2, bar.nameY);
+    this.bossPips?.setPosition(w / 2 + bar.width / 2, bar.nameY);
+
+    if (this.cheatBg) {
+      this.cheatBg.setPosition(w / 2, h / 2);
+      this.cheatTitle.setPosition(w / 2, h / 2 - 52);
+      this.cheatInput.setPosition(w / 2, h / 2);
+      this.cheatHint.setPosition(w / 2, h / 2 + 52);
+    }
+    this.waveBanner?.setPosition(w / 2, 60);
+  }
+
+  // Live resize handler (mobile rotate / fullscreen toggle). Updates the arena
+  // dimensions, world bounds, background fit, HUD and touch-control anchors in
+  // place — no scene restart, so an in-progress run is never lost.
+  handleResize() {
+    this.arenaW = this.scale.width;
+    this.arenaH = this.scale.height;
+    this.physics.world.setBounds(0, 0, this.arenaW, this.arenaH);
+    if (this.bgImage) coverBackground(this, this.bgImage.texture.key, this.bgImage);
+    this.layoutHud();
+    this.touch?.layout();
   }
 
   update(time, delta) {
@@ -786,7 +846,7 @@ export default class GameScene extends Phaser.Scene {
     const angle = this.aimAngle;
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
-    const reach = CFG.arena.width + CFG.arena.height;
+    const reach = this.arenaW + this.arenaH;
     const ex = px + dirX * reach;
     const ey = py + dirY * reach;
 
@@ -907,9 +967,9 @@ export default class GameScene extends Phaser.Scene {
       if (
         time >= bullet.expiresAt ||
         bullet.x < -20 ||
-        bullet.x > CFG.arena.width + 20 ||
+        bullet.x > this.arenaW + 20 ||
         bullet.y < -20 ||
-        bullet.y > CFG.arena.height + 20
+        bullet.y > this.arenaH + 20
       ) {
         bullet.destroy();
       }
@@ -921,9 +981,9 @@ export default class GameScene extends Phaser.Scene {
       if (
         time >= projectile.expiresAt ||
         projectile.x < -30 ||
-        projectile.x > CFG.arena.width + 30 ||
+        projectile.x > this.arenaW + 30 ||
         projectile.y < -30 ||
-        projectile.y > CFG.arena.height + 30
+        projectile.y > this.arenaH + 30
       ) {
         projectile.destroy();
       }
@@ -941,12 +1001,10 @@ export default class GameScene extends Phaser.Scene {
   pickSpawnEdge() {
     const side = Phaser.Math.Between(0, 3);
     const margin = 24;
-    if (side === 0) return { x: Phaser.Math.Between(0, CFG.arena.width), y: -margin };
-    if (side === 1)
-      return { x: CFG.arena.width + margin, y: Phaser.Math.Between(0, CFG.arena.height) };
-    if (side === 2)
-      return { x: Phaser.Math.Between(0, CFG.arena.width), y: CFG.arena.height + margin };
-    return { x: -margin, y: Phaser.Math.Between(0, CFG.arena.height) };
+    if (side === 0) return { x: Phaser.Math.Between(0, this.arenaW), y: -margin };
+    if (side === 1) return { x: this.arenaW + margin, y: Phaser.Math.Between(0, this.arenaH) };
+    if (side === 2) return { x: Phaser.Math.Between(0, this.arenaW), y: this.arenaH + margin };
+    return { x: -margin, y: Phaser.Math.Between(0, this.arenaH) };
   }
 
   spawnEnemy() {
@@ -1147,8 +1205,8 @@ export default class GameScene extends Phaser.Scene {
 
   createEgg(x, y) {
     const pad = 70;
-    const sx = Phaser.Math.Clamp(x, pad, CFG.arena.width - pad);
-    const sy = Phaser.Math.Clamp(y, pad, CFG.arena.height - pad);
+    const sx = Phaser.Math.Clamp(x, pad, this.arenaW - pad);
+    const sy = Phaser.Math.Clamp(y, pad, this.arenaH - pad);
     const enemy = this.createEnemySprite(sx, sy, 'egg', CFG.egg, 0.7);
     enemy.speed = 0;
     enemy.hp = CFG.egg.hp;
@@ -1189,7 +1247,7 @@ export default class GameScene extends Phaser.Scene {
   // player time to move away before the boss materializes there.
   showBossShadow(tier) {
     this.bossSpawning = true;
-    const x = CFG.arena.width / 2;
+    const x = this.arenaW / 2;
     const y = CFG.boss.anchorY;
     const shadow = this.add.circle(x, y, CFG.boss.radius, 0x000000, 0.45).setDepth(3.6);
     shadow.setStrokeStyle(3, 0x000000, 0.7);
@@ -1249,7 +1307,7 @@ export default class GameScene extends Phaser.Scene {
   createBoss(tier) {
     const cfg = CFG.boss;
     const variant = this.bossVariant(tier);
-    const x = CFG.arena.width / 2;
+    const x = this.arenaW / 2;
     const y = cfg.anchorY;
     const now = this.time.now;
 
@@ -1383,7 +1441,7 @@ export default class GameScene extends Phaser.Scene {
     // Drift toward the top, tracking the player horizontally.
     const moveSpeed =
       CFG.boss.phaseMoveSpeed[boss.phaseIndex] + CFG.boss.moveSpeedPerTier * (boss.tier - 1);
-    const tx = Phaser.Math.Clamp(px, CFG.boss.edgeMargin, CFG.arena.width - CFG.boss.edgeMargin);
+    const tx = Phaser.Math.Clamp(px, CFG.boss.edgeMargin, this.arenaW - CFG.boss.edgeMargin);
     const ty = CFG.boss.anchorY;
     const dx = tx - boss.x;
     const dy = ty - boss.y;
@@ -1555,8 +1613,8 @@ export default class GameScene extends Phaser.Scene {
       const type = pool[Math.floor(Math.random() * pool.length)];
       const a = Math.random() * Math.PI * 2;
       const dist = CFG.boss.hitRadius + 20 + Math.random() * 40; // spawn outside the boss body
-      const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 40, CFG.arena.width - 40);
-      const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 40, CFG.arena.height - 40);
+      const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 40, this.arenaW - 40);
+      const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 40, this.arenaH - 40);
       this.createEnemyByType(type, x, y);
     }
     const flash = this.add.circle(boss.x, boss.y, CFG.boss.radius + 20, p.glow, 0.18).setDepth(3.5);
@@ -1692,7 +1750,7 @@ export default class GameScene extends Phaser.Scene {
     const start = now;
     const startAngle = Math.random() * Math.PI * 2;
     const sweepRad = p.sweepDegPerSec * (Math.PI / 180);
-    const len = CFG.arena.width + CFG.arena.height;
+    const len = this.arenaW + this.arenaH;
     this.bossEffects.push({
       tick: (t) => {
         if (!boss.active || t - start >= p.durationMs) return true;
@@ -1763,8 +1821,8 @@ export default class GameScene extends Phaser.Scene {
       [1, 1],
     ];
     for (const [ox, oy] of offsets) {
-      const x = Phaser.Math.Clamp(px + ox * p.spread, 30, CFG.arena.width - 30);
-      const y = Phaser.Math.Clamp(py + oy * p.spread, 30, CFG.arena.height - 30);
+      const x = Phaser.Math.Clamp(px + ox * p.spread, 30, this.arenaW - 30);
+      const y = Phaser.Math.Clamp(py + oy * p.spread, 30, this.arenaH - 30);
       this.spawnDot(x, y);
     }
   }
@@ -1802,8 +1860,8 @@ export default class GameScene extends Phaser.Scene {
     for (let i = 0; i < p.count; i++) {
       const a = (i / p.count) * Math.PI * 2 + Math.random();
       const dist = CFG.boss.hitRadius + 40;
-      const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 60, CFG.arena.width - 60);
-      const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 60, CFG.arena.height - 60);
+      const x = Phaser.Math.Clamp(boss.x + Math.cos(a) * dist, 60, this.arenaW - 60);
+      const y = Phaser.Math.Clamp(boss.y + Math.sin(a) * dist, 60, this.arenaH - 60);
       this.createDecoy(x, y, boss, now);
     }
     this.bossMuzzleFlash(boss, boss.variant.accent);
@@ -2304,8 +2362,8 @@ export default class GameScene extends Phaser.Scene {
           CFG.teleporter.blinkMinDistance,
           CFG.teleporter.blinkMaxDistance,
         );
-        enemy.x = Phaser.Math.Clamp(px + Math.cos(angle) * dist, 32, CFG.arena.width - 32);
-        enemy.y = Phaser.Math.Clamp(py + Math.sin(angle) * dist, 32, CFG.arena.height - 32);
+        enemy.x = Phaser.Math.Clamp(px + Math.cos(angle) * dist, 32, this.arenaW - 32);
+        enemy.y = Phaser.Math.Clamp(py + Math.sin(angle) * dist, 32, this.arenaH - 32);
         enemy.clearTint();
         enemy.windupEndsAt = 0;
         enemy.blinkAt = now + CFG.teleporter.blinkCooldownMs;
@@ -2535,7 +2593,7 @@ export default class GameScene extends Phaser.Scene {
   showWaveBanner(text, color = '#ffffff', fontSize = '32px') {
     if (this.waveBanner) this.waveBanner.destroy();
     this.waveBanner = this.add
-      .text(CFG.arena.width / 2, 60, text, {
+      .text(this.arenaW / 2, 60, text, {
         fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
         fontSize,
         color,
@@ -3053,8 +3111,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.shieldPickup) return;
 
     const pad = CFG.shieldBonus.edgePadding;
-    const x = Phaser.Math.Between(pad, CFG.arena.width - pad);
-    const y = Phaser.Math.Between(pad, CFG.arena.height - pad);
+    const x = Phaser.Math.Between(pad, this.arenaW - pad);
+    const y = Phaser.Math.Between(pad, this.arenaH - pad);
 
     const points = this.buildStarPoints(
       CFG.shieldBonus.outerRadius,
@@ -3228,8 +3286,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.giftPickup) return;
 
     const pad = CFG.gift.edgePadding;
-    const x = Phaser.Math.Between(pad, CFG.arena.width - pad);
-    const y = Phaser.Math.Between(pad, CFG.arena.height - pad);
+    const x = Phaser.Math.Between(pad, this.arenaW - pad);
+    const y = Phaser.Math.Between(pad, this.arenaH - pad);
     const size = CFG.gift.radius * 2;
 
     const box = this.add.rectangle(x, y, size, size, CFG.gift.color);
@@ -3376,6 +3434,11 @@ export default class GameScene extends Phaser.Scene {
       event.preventDefault?.();
       if (this.cheatPromptActive) this.closeCheat();
       else this.openCheat();
+      return;
+    }
+    if (!this.cheatPromptActive && (event.key === 'f' || event.key === 'F')) {
+      event.preventDefault?.();
+      toggleFullscreen(this);
       return;
     }
     if (this.paused && !this.cheatPromptActive && (event.key === 'm' || event.key === 'M')) {
