@@ -6,8 +6,9 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
-import { CFG } from '../config.js';
 import { Save } from '../save.js';
+import { toggleFullscreen } from '../viewport.js';
+import { coverBackground } from './sceneUtils.js';
 
 export default class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -36,8 +37,8 @@ export default class SettingsScene extends Phaser.Scene {
       ARENA_BACKGROUNDS.findIndex((bg) => bg.id === current.id),
     );
 
-    this.add.image(0, 0, backgroundKey(current.id)).setOrigin(0).setDepth(-20);
-    this.add.rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x000000, 0.48).setOrigin(0);
+    coverBackground(this, backgroundKey(current.id)).setDepth(-20);
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.48).setOrigin(0);
 
     this.add.text(26, 18, 'SETTINGS', { ...style, fontSize: '30px', color: '#ffffff' });
     this.add.text(28, 58, 'choose arena background', {
@@ -97,24 +98,31 @@ export default class SettingsScene extends Phaser.Scene {
 
     this.createMusicControls(style);
     this.createTouchControlsRow(style);
+    this.createFullscreenRow(style);
 
     this.hintText = this.add
       .text(
-        CFG.arena.width / 2,
-        CFG.arena.height - 26,
-        '←/→ select  •  enter apply  •  M music  •  S sound  •  T touch  •  B / Esc back',
+        this.scale.width / 2,
+        this.scale.height - 26,
+        '←/→ select  •  enter apply  •  M music  •  S sound  •  T touch  •  F fullscreen  •  B / Esc back',
         { ...style, fontSize: '13px', color: '#cccccc' },
       )
       .setOrigin(0.5);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     this.input.keyboard.on('keydown', this.onKey, this);
+
+    // Stateless settings: rebuild on a mobile rotate / fullscreen toggle.
+    this.onResize = () => this.scene.restart();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+
     this.refresh();
   }
 
   shutdown() {
     this.input.setDefaultCursor('default');
     this.input.keyboard.off('keydown', this.onKey, this);
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
   }
 
   onKey(event) {
@@ -150,6 +158,11 @@ export default class SettingsScene extends Phaser.Scene {
     if (event.key === 't' || event.key === 'T') {
       event.preventDefault?.();
       this.cycleTouchControls();
+      return;
+    }
+    if (event.key === 'f' || event.key === 'F') {
+      event.preventDefault?.();
+      this.toggleFullscreenSetting();
       return;
     }
     if (event.key === '+' || event.key === '=') {
@@ -293,6 +306,27 @@ export default class SettingsScene extends Phaser.Scene {
     this.refresh();
   }
 
+  createFullscreenRow(style) {
+    const y = 534;
+    const x = 520;
+    this.add.text(x, y, 'FULLSCREEN', { ...style, fontSize: '20px', color: '#ffd54f' });
+    this.fullscreenValueText = this.add.text(x + 168, y + 3, '', { ...style, fontSize: '16px' });
+    this.add
+      .zone(x - 4, y - 4, 260, 30)
+      .setOrigin(0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.toggleFullscreenSetting());
+  }
+
+  // Persist the preference and apply it immediately — toggling here is itself a
+  // user gesture, so the browser allows entering/leaving fullscreen now.
+  toggleFullscreenSetting() {
+    const enabled = Save.get().settings?.fullscreen !== false;
+    Save.setFullscreen(!enabled);
+    toggleFullscreen(this);
+    this.refresh();
+  }
+
   toggleMusic() {
     const enabled = Save.get().settings?.musicEnabled !== false;
     Save.setMusicEnabled(!enabled);
@@ -354,6 +388,11 @@ export default class SettingsScene extends Phaser.Scene {
     if (this.touchValueText) {
       const mode = Save.get().settings?.touchControls ?? 'auto';
       this.touchValueText.setText(mode.toUpperCase());
+    }
+
+    if (this.fullscreenValueText) {
+      const on = Save.get().settings?.fullscreen !== false;
+      this.fullscreenValueText.setText(on ? 'ON' : 'OFF');
     }
   }
 
