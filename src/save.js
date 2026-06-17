@@ -12,6 +12,7 @@ const DEFAULTS = () => ({
     musicVolume: 0.55,
     sfxEnabled: true,
     sfxVolume: 0.75,
+    touchControls: 'auto',
   },
   stats: { runsPlayed: 0, bestWave: 0, bestScore: 0, totalCoinsEarned: 0 },
 });
@@ -125,6 +126,12 @@ export const Save = {
     return this.set((s) => ({
       ...s,
       settings: { ...(s.settings || {}), sfxVolume },
+    }));
+  },
+  setTouchControls(touchControls) {
+    return this.set((s) => ({
+      ...s,
+      settings: { ...(s.settings || {}), touchControls },
     }));
   },
   recordRun({ wave, score, coinsEarned, persistCoins = true }) {
