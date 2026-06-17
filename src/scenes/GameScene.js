@@ -10,6 +10,8 @@ import {
 import { buildRuntimeStats, getWeapon, MODS } from '../catalog.js';
 import { CFG } from '../config.js';
 import { ENEMY_SPRITES } from '../enemies.js';
+import TouchControls from '../input/touchControls.js';
+import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
 
 const PLAYER_DIRECTIONS = [
@@ -190,6 +192,12 @@ export default class GameScene extends Phaser.Scene {
     });
     this.cursors = this.input.keyboard.createCursorKeys();
 
+    // Touch controls: built only on touch devices. When null, every input path
+    // below falls back to keyboard/mouse exactly as before.
+    this.touchMode = touchActive();
+    this.touch = this.touchMode ? new TouchControls(this) : null;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.touch?.destroy());
+
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitEnemy, null, this);
     this.physics.add.overlap(this.player.sprite, this.enemies, this.onPlayerHitEnemy, null, this);
     this.physics.add.overlap(
@@ -325,6 +333,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onPointerDown() {
+    // On touch, taps drive the virtual sticks/buttons; don't also recall
+    // boomerangs (they auto-return via returningAfterMs).
+    if (this.touchMode) return;
     if (this.paused || this.gameOver || this.cheatPromptActive) return;
     this.recallBoomerangs();
   }
@@ -474,9 +485,12 @@ export default class GameScene extends Phaser.Scene {
     if (this.gameOver) return;
     if (this.cheatPromptActive) return;
 
+    this.touch?.update();
+
     if (
       Phaser.Input.Keyboard.JustDown(this.keys.pauseP) ||
-      Phaser.Input.Keyboard.JustDown(this.keys.pauseEsc)
+      Phaser.Input.Keyboard.JustDown(this.keys.pauseEsc) ||
+      this.touch?.consumePause()
     ) {
       if (this.demo) {
         this.scene.start(this.demoReturn);
@@ -487,7 +501,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.paused) return;
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.switchWeapon)) {
+    if (Phaser.Input.Keyboard.JustDown(this.keys.switchWeapon) || this.touch?.consumeSwitch()) {
       this.switchWeapon(time);
     }
 
@@ -614,10 +628,18 @@ export default class GameScene extends Phaser.Scene {
   }
 
   updateAim() {
-    const ptr = this.input.activePointer;
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
-    this.aimAngle = Math.atan2(ptr.worldY - py, ptr.worldX - px);
+    if (this.touch) {
+      // Aim comes from the right stick only; keep the last angle when released.
+      // (activePointer is ambiguous under multitouch.)
+      const angle = this.touch.getAim();
+      if (angle != null) this.aimAngle = angle;
+      else if (this.aimAngle == null) this.aimAngle = 0;
+    } else {
+      const ptr = this.input.activePointer;
+      this.aimAngle = Math.atan2(ptr.worldY - py, ptr.worldX - px);
+    }
     this.player.barrel.x = px + Math.cos(this.aimAngle) * PLAYER_WEAPON_OFFSET;
     this.player.barrel.y = py + Math.sin(this.aimAngle) * PLAYER_WEAPON_OFFSET + 1;
     this.player.barrel.rotation = this.aimAngle;
@@ -651,15 +673,22 @@ export default class GameScene extends Phaser.Scene {
   }
 
   handleMovementAndDash(time) {
-    const k = this.keys;
-    const c = this.cursors;
-    const left = k.left.isDown || c.left.isDown;
-    const right = k.right.isDown || c.right.isDown;
-    const up = k.up.isDown || c.up.isDown;
-    const down = k.down.isDown || c.down.isDown;
-
-    let vx = (right ? 1 : 0) - (left ? 1 : 0);
-    let vy = (down ? 1 : 0) - (up ? 1 : 0);
+    let vx;
+    let vy;
+    if (this.touch) {
+      const m = this.touch.getMove();
+      vx = m.x;
+      vy = m.y;
+    } else {
+      const k = this.keys;
+      const c = this.cursors;
+      const left = k.left.isDown || c.left.isDown;
+      const right = k.right.isDown || c.right.isDown;
+      const up = k.up.isDown || c.up.isDown;
+      const down = k.down.isDown || c.down.isDown;
+      vx = (right ? 1 : 0) - (left ? 1 : 0);
+      vy = (down ? 1 : 0) - (up ? 1 : 0);
+    }
 
     if (vx !== 0 || vy !== 0) {
       const len = Math.hypot(vx, vy);
@@ -668,7 +697,7 @@ export default class GameScene extends Phaser.Scene {
       this.lastMoveDir = { x: vx, y: vy };
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.dash)) {
+    if (Phaser.Input.Keyboard.JustDown(this.keys.dash) || this.touch?.consumeDash()) {
       this.tryDash(time, vx, vy);
     }
 
@@ -710,7 +739,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   handleFire(time) {
-    if (!this.input.activePointer.isDown && this.burstShotsRemaining === 0) return;
+    const firing = this.touch ? this.touch.isFiring() : this.input.activePointer.isDown;
+    if (!firing && this.burstShotsRemaining === 0) return;
 
     const weapon = this.weaponDef;
     const burst = weapon.fire.burst;
@@ -727,7 +757,7 @@ export default class GameScene extends Phaser.Scene {
         }
         return;
       }
-      if (!this.input.activePointer.isDown) return;
+      if (!firing) return;
       if (time < this.player.nextFireAt) return;
       this.burstShotsRemaining = burst.count;
       this.burstNextAt = time;
