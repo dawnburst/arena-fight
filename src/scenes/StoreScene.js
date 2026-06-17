@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
 import { MODS, TIER_COLORS, TIERS, WEAPONS } from '../catalog.js';
-import { CFG } from '../config.js';
 import { Save } from '../save.js';
 
 const ROW_HEIGHT = 30;
@@ -38,7 +37,7 @@ export default class StoreScene extends Phaser.Scene {
 
     this.add.text(20, 16, 'STORE', { ...style, fontSize: '28px' });
     this.walletText = this.add
-      .text(CFG.arena.width - 20, 22, '', { ...style, fontSize: '18px', color: '#ffd54f' })
+      .text(this.scale.width - 20, 22, '', { ...style, fontSize: '18px', color: '#ffd54f' })
       .setOrigin(1, 0);
 
     this.tabWeapons = this.add.text(20, 60, '[ WEAPONS ]', { ...style, fontSize: '16px' });
@@ -47,30 +46,30 @@ export default class StoreScene extends Phaser.Scene {
     this.listGroup = this.add.container(0, 0);
 
     this.previewFrame = this.add
-      .rectangle(50, CFG.arena.height - 54, 54, 54, 0x101010, 1)
+      .rectangle(50, this.scale.height - 54, 54, 54, 0x101010, 1)
       .setStrokeStyle(2, 0x666666, 1);
     this.previewIcon = this.add
-      .image(50, CFG.arena.height - 54, itemIconKey(STORE_ITEMS[0].id))
+      .image(50, this.scale.height - 54, itemIconKey(STORE_ITEMS[0].id))
       .setDisplaySize(48, 48)
       .setVisible(false);
-    this.descText = this.add.text(90, CFG.arena.height - 78, '', {
+    this.descText = this.add.text(90, this.scale.height - 78, '', {
       ...style,
       fontSize: '14px',
       color: '#bbbbbb',
-      wordWrap: { width: CFG.arena.width - 110 },
+      wordWrap: { width: this.scale.width - 110 },
     });
 
     this.hintText = this.add.text(
       20,
-      CFG.arena.height - 24,
+      this.scale.height - 24,
       '↑/↓ select  •  enter to buy  •  tab/←→ switch  •  B back  •  R reset',
       { ...style, fontSize: '12px', color: '#666' },
     );
 
     this.confirmText = this.add
       .text(
-        CFG.arena.width / 2,
-        CFG.arena.height / 2,
+        this.scale.width / 2,
+        this.scale.height / 2,
         'RESET SAVE — wipe wallet + items?\n  Y confirm  ·  N cancel',
         { ...style, fontSize: '20px', color: '#ff5252', align: 'center' },
       )
@@ -80,11 +79,16 @@ export default class StoreScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     this.input.keyboard.on('keydown', this.onKey, this);
 
+    // Stateless layout: rebuild on a mobile rotate / fullscreen toggle.
+    this.onResize = () => this.scene.restart(this.scene.settings.data);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+
     this.refresh();
   }
 
   shutdown() {
     this.input.keyboard.off('keydown', this.onKey, this);
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
   }
 
   onKey(event) {

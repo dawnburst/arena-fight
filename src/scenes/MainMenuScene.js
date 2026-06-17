@@ -6,8 +6,8 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
-import { CFG } from '../config.js';
 import { Save } from '../save.js';
+import { coverBackground } from './sceneUtils.js';
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -36,8 +36,8 @@ export default class MainMenuScene extends Phaser.Scene {
     };
     const selectedBackground = resolveBackground(Save.get().settings?.backgroundId);
 
-    this.add.image(0, 0, backgroundKey(selectedBackground.id)).setOrigin(0).setDepth(-20);
-    this.add.rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x000000, 0.34).setOrigin(0);
+    coverBackground(this, backgroundKey(selectedBackground.id)).setDepth(-20);
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.34).setOrigin(0);
 
     this.add.text(58, 72, 'ARENA FIGHT', {
       ...style,
@@ -56,7 +56,7 @@ export default class MainMenuScene extends Phaser.Scene {
       this.createGameOverDetails(style);
     }
 
-    this.add.text(62, CFG.arena.height - 46, `Arena: ${selectedBackground.name}`, {
+    this.add.text(62, this.scale.height - 46, `Arena: ${selectedBackground.name}`, {
       ...style,
       fontSize: '14px',
       color: '#d7f5c3',
@@ -111,11 +111,16 @@ export default class MainMenuScene extends Phaser.Scene {
     this.createMenu(style);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     this.input.keyboard.on('keydown', this.onKey, this);
+
+    // Stateless menu: rebuild on a mobile rotate / fullscreen toggle to relayout.
+    this.onResize = () => this.scene.restart(this.gameOverData || undefined);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
   }
 
   shutdown() {
     this.input.setDefaultCursor('default');
     this.input.keyboard.off('keydown', this.onKey, this);
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
   }
 
   createGameOverDetails(style) {
@@ -139,7 +144,9 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   createMenu(style) {
-    const x = 520;
+    // Right-anchored so the column keeps its ~60px right margin on a wider mobile
+    // canvas (x = 520 on the desktop 800-wide canvas — identical there).
+    const x = this.scale.width - 280;
     const y = 170;
     const width = 220;
     const height = 54;

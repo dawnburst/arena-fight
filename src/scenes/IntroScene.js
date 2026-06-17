@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
 import { preloadMusic, syncMusic } from '../audio.js';
-import { CFG } from '../config.js';
+import { requestFullscreenIfEnabled } from '../viewport.js';
+import { coverBackground } from './sceneUtils.js';
 
 export default class IntroScene extends Phaser.Scene {
   constructor() {
@@ -23,15 +24,15 @@ export default class IntroScene extends Phaser.Scene {
       color: '#ffffff',
     };
 
-    this.addCoverImage('intro-art');
-    this.add.rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x000000, 0.22).setOrigin(0);
+    coverBackground(this, 'intro-art');
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.22).setOrigin(0);
     this.add
-      .rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x000000, 0.34)
+      .rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.34)
       .setOrigin(0)
       .setBlendMode(Phaser.BlendModes.MULTIPLY);
 
     const titleShadow = this.add
-      .text(CFG.arena.width / 2 + 5, 94 + 5, 'ARENA FIGHT', {
+      .text(this.scale.width / 2 + 5, 94 + 5, 'ARENA FIGHT', {
         ...style,
         fontSize: '66px',
         color: '#000000',
@@ -40,7 +41,7 @@ export default class IntroScene extends Phaser.Scene {
       .setAlpha(0);
 
     const title = this.add
-      .text(CFG.arena.width / 2, 94, 'ARENA FIGHT', {
+      .text(this.scale.width / 2, 94, 'ARENA FIGHT', {
         ...style,
         fontSize: '66px',
         color: '#ffd54f',
@@ -49,7 +50,7 @@ export default class IntroScene extends Phaser.Scene {
       .setAlpha(0);
 
     const prompt = this.add
-      .text(CFG.arena.width / 2, CFG.arena.height - 44, 'click or press enter', {
+      .text(this.scale.width / 2, this.scale.height - 44, 'click or press enter', {
         ...style,
         fontSize: '13px',
         color: '#d8d8d8',
@@ -97,20 +98,21 @@ export default class IntroScene extends Phaser.Scene {
     this.input.keyboard.once('keydown-SPACE', () => this.startMenu());
     this.input.keyboard.once('keydown-ESC', () => this.startMenu());
     this.time.delayedCall(9200, () => this.startMenu());
-  }
 
-  addCoverImage(key) {
-    const source = this.textures.get(key).getSourceImage();
-    const scale = Math.max(CFG.arena.width / source.width, CFG.arena.height / source.height);
-    this.add
-      .image(CFG.arena.width / 2, CFG.arena.height / 2, key)
-      .setOrigin(0.5)
-      .setScale(scale);
+    // Mobile rotate / fullscreen toggle: rebuild the (stateless) intro to relayout.
+    this.onResize = () => this.scene.restart();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
+    });
   }
 
   startMenu() {
     if (this.started) return;
     this.started = true;
+    // First user gesture: enter fullscreen if the preference is on. No-op when
+    // reached via the idle auto-advance timer (no gesture) or already fullscreen.
+    requestFullscreenIfEnabled(this);
     this.cameras.main.fadeOut(260, 0, 0, 0);
     this.time.delayedCall(260, () => this.scene.start('MainMenuScene'));
   }

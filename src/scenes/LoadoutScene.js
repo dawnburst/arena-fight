@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
 import { MODS, MODS_BY_ID, TIER_COLORS, WEAPONS, WEAPONS_BY_ID } from '../catalog.js';
-import { CFG } from '../config.js';
 import { Save } from '../save.js';
 
 const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'EQUIPMENT 1', 'EQUIPMENT 2'];
@@ -80,18 +79,24 @@ export default class LoadoutScene extends Phaser.Scene {
 
     this.hintText = this.add.text(
       20,
-      CFG.arena.height - 36,
+      this.scale.height - 36,
       '↑/↓ slot  •  ←/→ cycle  •  enter start run  •  B back  •  swap weapons in-game with C',
       { ...style, fontSize: '12px', color: '#666' },
     );
 
     this.input.keyboard.on('keydown', this.onKey, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+
+    // Stateless layout: rebuild on a mobile rotate / fullscreen toggle.
+    this.onResize = () => this.scene.restart(this.scene.settings.data);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
 
     this.refresh();
   }
 
   shutdown() {
     this.input.keyboard.off('keydown', this.onKey, this);
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
   }
 
   onKey(event) {

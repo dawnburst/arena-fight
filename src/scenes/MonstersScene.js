@@ -30,8 +30,8 @@ export default class MonstersScene extends Phaser.Scene {
     this.selectedIndex = 0;
     this.mode = 'gallery';
 
-    this.add.rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x111511, 1).setOrigin(0);
-    this.add.rectangle(0, 0, CFG.arena.width, CFG.arena.height, 0x234022, 0.18).setOrigin(0);
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x111511, 1).setOrigin(0);
+    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x234022, 0.18).setOrigin(0);
 
     this.title = this.add.text(28, 20, 'MONSTERS', { ...STYLE, fontSize: '30px' });
     this.subtitle = this.add.text(30, 58, 'select a monster to inspect its power', {
@@ -48,8 +48,8 @@ export default class MonstersScene extends Phaser.Scene {
 
     this.hint = this.add
       .text(
-        CFG.arena.width / 2,
-        CFG.arena.height - 28,
+        this.scale.width / 2,
+        this.scale.height - 28,
         'arrows select  •  enter inspect  •  B / Esc back',
         { ...STYLE, fontSize: '12px', color: '#b7c7b3' },
       )
@@ -57,12 +57,18 @@ export default class MonstersScene extends Phaser.Scene {
 
     this.input.keyboard.on('keydown', this.onKey, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+
+    // Stateless gallery: rebuild on a mobile rotate / fullscreen toggle.
+    this.onResize = () => this.scene.restart();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+
     this.refreshGallery();
   }
 
   shutdown() {
     this.input.setDefaultCursor('default');
     this.input.keyboard.off('keydown', this.onKey, this);
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.onResize, this);
   }
 
   createGallery() {
