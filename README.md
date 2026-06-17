@@ -35,13 +35,21 @@ Production builds use the `/arena-fight/` base path for GitHub Pages. Deployment
 | Fire (hold) | Left mouse button |
 | Dash | `Space` |
 | Pause / Resume | `P` or `Esc` |
+| Fullscreen | `F` |
 | Menu navigation | Mouse or arrow keys + `Enter` |
 
 On phones and tablets the game switches to on-screen **twin-stick** controls: the
 left stick moves, the right stick aims and fires automatically, and there are
-on-screen dash, pause, and weapon-switch buttons. Play in **landscape** — held in
-portrait, the game pauses and asks you to rotate. Desktop play is unchanged. Touch
-mode is detected automatically and can be forced on or off in Settings.
+on-screen dash, pause, and weapon-switch buttons. The controls hug the screen
+corners. Play in **landscape** — held in portrait, the game pauses and asks you to
+rotate. Touch mode is detected automatically and can be forced on or off in
+Settings.
+
+The game is **responsive on mobile**: it keeps a fixed world height (600) and
+widens the arena to match your device's landscape aspect, so the play field fills
+the screen edge-to-edge with no black bars. **Fullscreen** is on by default and
+auto-enters on your first tap; press `F` (or the Settings row) to toggle it.
+Desktop windowed play stays exactly 800×600 and unchanged.
 
 ## Settings
 
@@ -52,7 +60,8 @@ The Settings menu lets you choose the arena background and control the looping b
 - Sound effects on/off toggle.
 - Sound effects volume slider.
 - Touch controls mode: Auto / On / Off (applies on reload).
-- Keyboard shortcuts: `M` toggles music, `S` toggles sound, `T` cycles touch controls, `+` / `-` adjusts volume.
+- Fullscreen On / Off (persisted; applies immediately).
+- Keyboard shortcuts: `M` toggles music, `S` toggles sound, `T` cycles touch controls, `F` toggles fullscreen, `+` / `-` adjusts volume.
 - Gameplay sound effects play for coins, dash, gifts, game over, and Beam/Plasma shots.
 
 ## Goal
