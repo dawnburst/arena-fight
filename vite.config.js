@@ -28,6 +28,8 @@ export default defineConfig({
         'node_modules/**',
         'src/main.js', // Entry point usually excluded from unit tests
         'src/scenes/**', // Scenes are hard to cover 100% with unit tests
+        'src/input/touchControls.js', // Phaser/DOM input rendering; needs a real device
+        'src/input/orientationLock.js', // DOM overlay + game-loop control; needs a browser
         '**/*.test.js',
       ],
     },
