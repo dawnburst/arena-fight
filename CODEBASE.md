@@ -16,7 +16,8 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - Sound effects are loaded from `public/assets/sounds/*.wav` through `src/audio.js` and played from `GameScene` gameplay hooks.
 - Music settings persist in `Save.settings` as `musicEnabled` and `musicVolume`.
 - Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
-- `SettingsScene` controls arena background, music on/off and volume, and sound-effect on/off and volume.
+- `SettingsScene` controls arena background, music on/off and volume, sound-effect on/off and volume, and the touch-controls mode (Auto / On / Off).
+- Touch/mobile mode persists in `Save.settings` as `touchControls` (`'auto' | 'on' | 'off'`); resolved at boot by `src/input/touchMode.js`.
 - Static generated assets live under `public/assets/...`; Phaser code resolves them through `src/assetPath.js` so builds work at `/arena-fight/` on GitHub Pages. Windows `*:Zone.Identifier` sidecars are ignored.
 
 ---
@@ -95,6 +96,15 @@ npm run preview  # serves built ./dist
 | Restart (Game Over) | `R` |
 | Open Store (Game Over) | `S` |
 | Open Loadout (Game Over) | `L` |
+
+On touch devices (phones/tablets) the game auto-switches to on-screen **twin-stick**
+controls: left stick moves, right stick aims and auto-fires, plus dash, pause, and
+weapon-switch buttons. The game is landscape-only there — a "rotate your device"
+overlay shows and the game loop sleeps while held in portrait. Desktop/web is
+unchanged. Touch mode is auto-detected (`pointer: coarse`) and overridable in
+`SettingsScene` (Auto / On / Off, persisted as `Save.settings.touchControls`).
+See `src/input/touchMode.js`, `src/input/touchControls.js`, and
+`src/input/orientationLock.js`.
 
 ---
 
@@ -783,7 +793,7 @@ Resilience: corrupt JSON, missing fields, unknown `version` → fall back to def
 - **Boomerang doesn't hit enemies on the return path** if it gets too fast or off-screen — its body is small. Mostly works in practice.
 - **No save migrations.** A schema bump (e.g., `v1` → `v2`) currently means wipe; need a migrator before any breaking schema change.
 - **Cheat key is global.** Pressing backtick during pause or shield-anim works fine, but during the game-over scene there's no equivalent shortcut.
-- **No mobile/touch input.** Mouse + keyboard only.
+- **Touch settings apply on reload.** Scale mode, multitouch pointer count, and the orientation lock are boot-time decisions; changing the touch-controls mode in Settings takes effect on the next reload (the row is labelled accordingly).
 - **The store catalog is hard-coded** in `catalog.js`. No external content / no DLC concept.
 - **Lucky Charm's double-drop** doubles the *count* of coin objects spawned, which is more visual chaos but the same coin value (each coin is +1 to `coinsThisRun`).
 - **Coin lifetime is unlimited** — they stay on the arena until collected. Could become a perf concern with hundreds of coins; not observed in practice.
