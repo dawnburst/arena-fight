@@ -105,6 +105,12 @@ describe('save', () => {
     expect(Save.get().settings.sfxVolume).toBe(0.1);
   });
 
+  it('fullscreen defaults to true and setFullscreen updates it', () => {
+    expect(Save.get().settings.fullscreen).toBe(true);
+    Save.setFullscreen(false);
+    expect(Save.get().settings.fullscreen).toBe(false);
+  });
+
   it('recordRun should update stats', () => {
     Save.recordRun({ wave: 10, score: 5000, coinsEarned: 100 });
     const stats = Save.get().stats;
