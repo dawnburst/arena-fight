@@ -32,6 +32,20 @@
       #game canvas {
         display: block;
       }
+      /* Mobile/touch only: let the FIT canvas fill the viewport edge-to-edge.
+         Desktop windowed (no .touch class) keeps the flex-centered 800x600 box. */
+      body.touch {
+        overflow: hidden;
+      }
+      body.touch,
+      html:has(body.touch) {
+        height: 100%;
+      }
+      body.touch #game {
+        width: 100%;
+        height: 100%;
+        box-shadow: none;
+      }
       #rotate-overlay {
         position: fixed;
         inset: 0;
