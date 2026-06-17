@@ -30,6 +30,7 @@ export default defineConfig({
         'src/scenes/**', // Scenes are hard to cover 100% with unit tests
         'src/input/touchControls.js', // Phaser/DOM input rendering; needs a real device
         'src/input/orientationLock.js', // DOM overlay + game-loop control; needs a browser
+        'src/viewport.js', // Phaser scale-manager / fullscreen / DOM resize; needs a browser
         '**/*.test.js',
       ],
     },
