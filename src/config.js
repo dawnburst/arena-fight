@@ -452,7 +452,7 @@ export const CFG = {
     spawnIntervalMs: 600,
     interWaveDelayMs: 1500,
     enemySpeedGrowth: 4,
-    speedCapWave: 40, // enemy speed stops increasing past this wave
+    speedCapWave: 15, // enemy speed stops increasing past this wave (bosses unaffected)
   },
   combo: {
     resetMs: 2500,
