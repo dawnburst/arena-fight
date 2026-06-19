@@ -95,7 +95,7 @@ export const WEAPONS = [
     price: 16000,
     description: 'Slow, explodes on hit (60px AOE).',
     fire: {
-      rateMs: 1154,
+      rateMs: 385,
       angles: [0],
       bulletMods: { aoeRadius: 60, sizeMult: 2.5, speedMult: 0.7 },
     },
