@@ -203,12 +203,22 @@ export default class GameScene extends Phaser.Scene {
     this.touchMode = touchActive();
     this.touch = this.touchMode ? new TouchControls(this) : null;
 
+    // Desktop (mouse) only: swap to the sniper-target reticle while in the arena.
+    // crosshair is the fallback if the image fails to load. Reset on shutdown so
+    // the custom cursor never leaks into the menu scenes (shared canvas element).
+    if (!this.touchMode) {
+      this.input.setDefaultCursor(
+        `url(${assetPath('assets/cursor/snipper_target_cursor.png')}) 24 24, crosshair`,
+      );
+    }
+
     // Reflow live (no restart) when the canvas resizes — mobile rotate or a
     // fullscreen toggle. Cleaned up on shutdown so it never fires on a dead scene.
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.touch?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+      this.input.setDefaultCursor('default');
     });
 
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitEnemy, null, this);
