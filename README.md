@@ -31,7 +31,7 @@ Production builds use the `/arena-fight/` base path for GitHub Pages. Deployment
 | Action | Key |
 |---|---|
 | Move | `W` `A` `S` `D` (or arrow keys) |
-| Aim | Mouse |
+| Aim | Mouse (sniper-target cursor in the arena) |
 | Fire (hold) | Left mouse button |
 | Dash | `Space` |
 | Pause / Resume | `P` or `Esc` |
