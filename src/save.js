@@ -13,7 +13,7 @@ const DEFAULTS = () => ({
     sfxEnabled: true,
     sfxVolume: 0.75,
     touchControls: 'auto',
-    fullscreen: true,
+    fullscreen: false,
   },
   stats: { runsPlayed: 0, bestWave: 0, bestScore: 0, totalCoinsEarned: 0 },
 });
