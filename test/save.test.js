@@ -105,10 +105,10 @@ describe('save', () => {
     expect(Save.get().settings.sfxVolume).toBe(0.1);
   });
 
-  it('fullscreen defaults to true and setFullscreen updates it', () => {
-    expect(Save.get().settings.fullscreen).toBe(true);
-    Save.setFullscreen(false);
+  it('fullscreen defaults to false and setFullscreen updates it', () => {
     expect(Save.get().settings.fullscreen).toBe(false);
+    Save.setFullscreen(true);
+    expect(Save.get().settings.fullscreen).toBe(true);
   });
 
   it('recordRun should update stats', () => {
