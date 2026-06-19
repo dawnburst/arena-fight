@@ -12,4 +12,5 @@ plan_docs/
 .claude/projects/
 .claude/cache/
 .claude/local/
+.claude/worktrees/
 .claude/settings.local.json
