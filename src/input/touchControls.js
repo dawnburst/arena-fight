@@ -104,6 +104,12 @@ export default class TouchControls {
   }
 
   handleDown(pointer) {
+    // Ignore taps that land on an on-screen UI button (the MENU/RESUME/EXIT
+    // overlay buttons, depth >= 1500 — see sceneUtils.addTouchButton) so they
+    // don't also start the movement/aim stick underneath.
+    if (pointer.currentlyOver?.some((o) => o?.input && o.depth >= 1500)) {
+      return;
+    }
     const { x, y } = pointer;
     const btn = this.hitButton(x, y);
     if (btn) {
