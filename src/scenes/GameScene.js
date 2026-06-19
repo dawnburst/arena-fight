@@ -14,7 +14,7 @@ import TouchControls from '../input/touchControls.js';
 import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
 import { toggleFullscreen } from '../viewport.js';
-import { coverBackground } from './sceneUtils.js';
+import { addTouchButton, coverBackground } from './sceneUtils.js';
 
 const PLAYER_DIRECTIONS = [
   'east',
@@ -491,6 +491,40 @@ export default class GameScene extends Phaser.Scene {
         .setVisible(false);
     }
 
+    // Touch players have no keyboard, so expose pause/exit as on-screen buttons:
+    // a top-left MENU button opens the pause overlay (where EXIT TO MENU is
+    // tappable), and a RESUME button dismisses it.
+    if (this.touchMode) {
+      // Raise the pause overlay above the twin-stick layer (depth 1000) so it is
+      // clearly visible when paused on touch.
+      this.pauseText.setText('PAUSED').setDepth(1400);
+      this.pauseExitButton.setDepth(1400);
+      this.menuButton = addTouchButton(this, {
+        x: 8,
+        y: 6,
+        width: 80,
+        height: 38,
+        label: 'MENU',
+        fontSize: '14px',
+        onClick: () => {
+          if (this.demo) this.scene.start(this.demoReturn);
+          else this.togglePause();
+        },
+      });
+      this.pauseResumeButton = addTouchButton(this, {
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 46,
+        label: 'RESUME',
+        onClick: () => this.togglePause(),
+      });
+      this.pauseResumeButton.setVisible(false);
+      // Keep the left HUD text clear of the MENU button.
+      this.hudHp.setX(96);
+      this.hudScore.setX(96);
+    }
+
     this.layoutHud();
     this.updateHUD();
   }
@@ -506,6 +540,7 @@ export default class GameScene extends Phaser.Scene {
     this.hudCombo?.setPosition(w - 10, 28);
     this.hudCoins?.setPosition(w / 2, 8);
     this.pauseText?.setPosition(w / 2, h / 2 - 34);
+    this.pauseResumeButton?.setPosition(w / 2 - 100, h / 2 + 16);
     this.pauseExitButton?.setPosition(w / 2, h / 2 + 78);
     this.dashCdText?.setPosition(w / 2, h - 18);
     this.hudWeapon?.setPosition(10, h - 8);
@@ -3071,6 +3106,7 @@ export default class GameScene extends Phaser.Scene {
   setPauseMenuVisible(visible) {
     this.pauseText.setVisible(visible);
     this.pauseExitButton.setVisible(visible);
+    this.pauseResumeButton?.setVisible(visible);
     if (visible) {
       this.pauseExitButton.setInteractive({ useHandCursor: true });
     } else {
