@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CFG } from '../config.js';
 import { ENEMY_BESTIARY, ENEMY_SPRITES } from '../enemies.js';
+import { addTouchButton, isTouchMode } from './sceneUtils.js';
 
 const STYLE = {
   fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
@@ -62,7 +63,27 @@ export default class MonstersScene extends Phaser.Scene {
     this.onResize = () => this.scene.restart();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
 
+    this.createTouchControls();
     this.refreshGallery();
+  }
+
+  // Touch BACK: cards already tap to inspect and the detail screen has a tappable
+  // demo button, so a single context-aware BACK is all that's missing.
+  createTouchControls() {
+    if (!isTouchMode()) return;
+    addTouchButton(this, {
+      x: this.scale.width - 138,
+      y: 24,
+      width: 124,
+      height: 46,
+      label: '‹ BACK',
+      onClick: () => this.back(),
+    });
+  }
+
+  back() {
+    if (this.mode === 'detail') this.showGallery();
+    else this.scene.start('MainMenuScene');
   }
 
   shutdown() {
