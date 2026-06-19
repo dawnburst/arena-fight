@@ -87,10 +87,12 @@ export function installViewport(game, { touch } = {}) {
 
   scale.on(Phaser.Scale.Events.ENTER_FULLSCREEN, () => {
     scale.scaleMode = Phaser.Scale.FIT;
+    scale.autoCenter = Phaser.Scale.CENTER_BOTH;
     scale.refresh();
   });
   scale.on(Phaser.Scale.Events.LEAVE_FULLSCREEN, () => {
     scale.scaleMode = Phaser.Scale.NONE;
+    scale.autoCenter = Phaser.Scale.NO_CENTER;
     scale.setGameSize(BASE_WIDTH, BASE_HEIGHT);
     scale.refresh();
   });
