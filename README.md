@@ -41,9 +41,11 @@ Production builds use the `/arena-fight/` base path for GitHub Pages. Deployment
 On phones and tablets the game switches to on-screen **twin-stick** controls: the
 left stick moves, the right stick aims and fires automatically, and there are
 on-screen dash, pause, and weapon-switch buttons. The controls hug the screen
-corners. Play in **landscape** — held in portrait, the game pauses and asks you to
-rotate. Touch mode is detected automatically and can be forced on or off in
-Settings.
+corners. A top-left **MENU** button pauses and lets you exit to the main menu, and
+every menu screen (Store, Loadout, Settings, Monsters) gets on-screen **BACK** and
+navigation buttons so the whole game is playable without a keyboard. Play in
+**landscape** — held in portrait, the game pauses and asks you to rotate. Touch
+mode is detected automatically and can be forced on or off in Settings.
 
 The game is **responsive on mobile**: it keeps a fixed world height (600) and
 widens the arena to match your device's landscape aspect, so the play field fills
