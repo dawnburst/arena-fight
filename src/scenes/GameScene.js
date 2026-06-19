@@ -266,6 +266,10 @@ export default class GameScene extends Phaser.Scene {
 
   spawnDemoEnemy() {
     if (this.gameOver || !this.demo) return;
+    // Honor each monster's maxAlive cap in the sandbox too (e.g. summoners),
+    // otherwise respawn-on-kill lets them pile up unbounded.
+    const cfg = CFG[this.demoEnemyId];
+    if (cfg?.maxAlive && this.countEnemiesByType(this.demoEnemyId) >= cfg.maxAlive) return;
     const { x, y } = this.pickSpawnEdge();
     this.createEnemyByType(this.demoEnemyId, x, y);
   }
@@ -2378,7 +2382,14 @@ export default class GameScene extends Phaser.Scene {
     this.keepRange(enemy, px, py, CFG.summoner.minRange, CFG.summoner.minRange + 110, enemy.speed);
     if (now < enemy.nextSummonAt) return;
     enemy.nextSummonAt = now + CFG.summoner.summonCooldownMs;
-    for (let i = 0; i < CFG.summoner.summonCount; i++) {
+    // Don't pile up minions: only top up to maxMinionsAlive splitter-children.
+    const room = Math.max(
+      0,
+      CFG.summoner.maxMinionsAlive - this.countEnemiesByType('splitter-child'),
+    );
+    const toSummon = Math.min(CFG.summoner.summonCount, room);
+    if (toSummon <= 0) return;
+    for (let i = 0; i < toSummon; i++) {
       const angle = Math.random() * Math.PI * 2;
       this.createSplitterChild(enemy.x + Math.cos(angle) * 26, enemy.y + Math.sin(angle) * 26);
     }

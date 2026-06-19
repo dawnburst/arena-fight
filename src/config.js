@@ -116,6 +116,7 @@ export const CFG = {
     minRange: 190,
     summonCooldownMs: 3600,
     summonCount: 2,
+    maxMinionsAlive: 4, // a summoner won't add minions past this many splitter-children alive
     appearFromWave: 50,
     spawnRatio: 0.1,
     maxAlive: 2,
