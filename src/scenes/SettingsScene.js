@@ -8,7 +8,7 @@ import {
 } from '../backgrounds.js';
 import { Save } from '../save.js';
 import { toggleFullscreen } from '../viewport.js';
-import { coverBackground } from './sceneUtils.js';
+import { addTouchButton, coverBackground, isTouchMode } from './sceneUtils.js';
 
 export default class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -115,6 +115,17 @@ export default class SettingsScene extends Phaser.Scene {
     // Stateless settings: rebuild on a mobile rotate / fullscreen toggle.
     this.onResize = () => this.scene.restart();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.onResize, this);
+
+    if (isTouchMode()) {
+      addTouchButton(this, {
+        x: this.scale.width - 138,
+        y: 18,
+        width: 124,
+        height: 46,
+        label: '‹ BACK',
+        onClick: () => this.scene.start('MainMenuScene'),
+      });
+    }
 
     this.refresh();
   }
