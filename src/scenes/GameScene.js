@@ -1009,6 +1009,14 @@ export default class GameScene extends Phaser.Scene {
 
   despawnExpiredBullets(time) {
     this.bullets.getChildren().forEach((bullet) => {
+      // Boomerangs must be allowed to travel past the screen edge and fly back,
+      // so they only despawn on lifetime expiry, never on leaving the bounds.
+      if (bullet.isBoomerang) {
+        if (time >= bullet.expiresAt) {
+          bullet.destroy();
+        }
+        return;
+      }
       if (
         time >= bullet.expiresAt ||
         bullet.x < -20 ||
