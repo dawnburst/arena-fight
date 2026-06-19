@@ -24,7 +24,12 @@ const config = {
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#1a1a1a',
-  scale: { parent: 'game', ...resolveInitialScaleConfig(touch) },
+  // fullscreenTarget: make the #game element itself the fullscreen element.
+  // Otherwise Phaser generates its own wrapper div, reparents the canvas into
+  // it, and keeps measuring the now-collapsed #game div for scale bounds — on
+  // desktop (boot scaleMode NONE, so Phaser never sized #game) that yields a
+  // 0-height parent and FIT scales the canvas to nothing (black screen).
+  scale: { parent: 'game', fullscreenTarget: 'game', ...resolveInitialScaleConfig(touch) },
   physics: {
     default: 'arcade',
     arcade: {
