@@ -698,7 +698,7 @@ export default class GameScene extends Phaser.Scene {
     return best;
   }
 
-  updateCoins(_time, _delta) {
+  updateCoins(time, _delta) {
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
     const magnetRadius = this.runtime.magnetRadius;
@@ -707,6 +707,19 @@ export default class GameScene extends Phaser.Scene {
     const gravityRadiusSq = gravityRadius * gravityRadius;
     const maxSpeed = CFG.coin.maxSpeed;
     this.coins.getChildren().forEach((coin) => {
+      // Small kill-drop coins despawn after CFG.coin.lifetimeMs so the arena does
+      // not fill up with uncollected coins. Big boss-reward coins have no
+      // expiresAt and never time out.
+      if (coin.expiresAt != null) {
+        const remaining = coin.expiresAt - time;
+        if (remaining <= 0) {
+          coin.destroy();
+          return;
+        }
+        if (remaining <= CFG.coin.warnLastMs) {
+          coin.setAlpha(0.3 + 0.7 * Math.abs(Math.sin(time / 90)));
+        }
+      }
       const dx = px - coin.x;
       const dy = py - coin.y;
       const distSq = dx * dx + dy * dy;
@@ -985,6 +998,11 @@ export default class GameScene extends Phaser.Scene {
     const spawnY = py + Math.sin(angle) * PLAYER_BULLET_OFFSET;
 
     const bullet = this.add.circle(spawnX, spawnY, radius, color);
+    // Dark-gray standard bullets need a thin light outline to stay readable over
+    // darker arena backgrounds. AoE/boomerang bullets carry their own distinct look.
+    if (!mods.aoeRadius && !mods.boomerang) {
+      bullet.setStrokeStyle(1, 0xe0e0e0, 0.85);
+    }
     this.physics.add.existing(bullet);
     this.bullets.add(bullet);
     bullet.body.setCircle(radius);
@@ -2868,6 +2886,7 @@ export default class GameScene extends Phaser.Scene {
       coin.body.setOffset(-CFG.coin.radius, -CFG.coin.radius);
       coin.body.setVelocity(Math.cos(angle) * sp, Math.sin(angle) * sp);
       coin.value = 1;
+      coin.expiresAt = this.time.now + CFG.coin.lifetimeMs;
     }
   }
 
