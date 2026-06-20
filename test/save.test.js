@@ -221,6 +221,29 @@ describe('save', () => {
     expect(state.loadout.weapons).toEqual(['pistol', null]);
   });
 
+  it('tutorialSeen defaults to false', () => {
+    expect(Save.get().tutorialSeen).toBe(false);
+  });
+
+  it('markTutorialSeen flips the flag once', () => {
+    Save.markTutorialSeen();
+    expect(Save.get().tutorialSeen).toBe(true);
+    Save.markTutorialSeen();
+    expect(Save.get().tutorialSeen).toBe(true);
+  });
+
+  it('resetTutorial clears the flag', () => {
+    Save.markTutorialSeen();
+    Save.resetTutorial();
+    expect(Save.get().tutorialSeen).toBe(false);
+  });
+
+  it('preserves an existing tutorialSeen flag across load', () => {
+    localStorage.setItem('arenaFight.save.v1', JSON.stringify({ version: 1, tutorialSeen: true }));
+    Save._clearCache();
+    expect(Save.get().tutorialSeen).toBe(true);
+  });
+
   describe('schema migration', () => {
     it('migrates a v1 single-weapon save to the current schema, preserving data', () => {
       localStorage.setItem(
