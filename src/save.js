@@ -29,6 +29,9 @@ const DEFAULTS = () => ({
     bossesDefeated: 0,
   },
   achievements: [],
+  // Onboarding: records that the interactive tutorial has been started. The
+  // tutorial is launched only from the menu's TUTORIAL button (no auto-launch).
+  tutorialSeen: false,
 });
 
 // Ordered migration pipeline. Each entry maps a state at version N to version
@@ -228,6 +231,12 @@ export const Save = {
       ...s,
       settings: { ...(s.settings || {}), fullscreen },
     }));
+  },
+  markTutorialSeen() {
+    return this.set((s) => (s.tutorialSeen ? s : { ...s, tutorialSeen: true }));
+  },
+  resetTutorial() {
+    return this.set((s) => ({ ...s, tutorialSeen: false }));
   },
   recordRun({
     wave,
