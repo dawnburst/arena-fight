@@ -197,12 +197,13 @@ describe('save', () => {
     warnSpy.mockRestore();
   });
 
-  it('should handle unknown version in storage', () => {
+  it('should reset a save from a newer (future) version', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    localStorage.setItem('arenaFight.save.v1', JSON.stringify({ version: 999 }));
+    localStorage.setItem('arenaFight.save.v1', JSON.stringify({ version: 999, wallet: 500 }));
     Save._clearCache();
     const state = Save.get();
-    expect(state.version).toBe(1);
+    expect(state.version).toBe(2);
+    expect(state.wallet).toBe(0);
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
@@ -218,5 +219,86 @@ describe('save', () => {
     Save._clearCache();
     const state = Save.get();
     expect(state.loadout.weapons).toEqual(['pistol', null]);
+  });
+
+  describe('schema migration', () => {
+    it('migrates a v1 single-weapon save to the current schema, preserving data', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({
+          version: 1,
+          wallet: 320,
+          ownedWeapons: ['pistol', 'shotgun'],
+          ownedMods: ['quick-draw'],
+          loadout: { weapon: 'shotgun', mods: ['quick-draw', null] },
+        }),
+      );
+      Save._clearCache();
+      const state = Save.get();
+      expect(state.version).toBe(2);
+      expect(state.wallet).toBe(320);
+      expect(state.ownedWeapons).toEqual(['pistol', 'shotgun']);
+      expect(state.ownedMods).toEqual(['quick-draw']);
+      expect(state.loadout.weapons).toEqual(['shotgun', null]);
+      expect(state.loadout.weapon).toBe('shotgun');
+    });
+
+    it('persists the upgraded save so migrations do not re-run', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({ version: 1, wallet: 99, loadout: { weapon: 'shotgun' } }),
+      );
+      Save._clearCache();
+      Save.get();
+      const persisted = JSON.parse(localStorage.getItem('arenaFight.save.v1'));
+      expect(persisted.version).toBe(2);
+      expect(persisted.wallet).toBe(99);
+      expect(persisted.loadout.weapons).toEqual(['shotgun', null]);
+    });
+
+    it('backs up the raw save before migrating', () => {
+      const raw = JSON.stringify({ version: 1, wallet: 7 });
+      localStorage.setItem('arenaFight.save.v1', raw);
+      Save._clearCache();
+      Save.get();
+      expect(localStorage.getItem('arenaFight.save.backup')).toBe(raw);
+    });
+
+    it('treats a pre-versioning save (no version field) as v1 and migrates it', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({ wallet: 42, loadout: { weapon: 'burst' } }),
+      );
+      Save._clearCache();
+      const state = Save.get();
+      expect(state.version).toBe(2);
+      expect(state.wallet).toBe(42);
+      expect(state.loadout.weapons).toEqual(['burst', null]);
+    });
+
+    it('deep-merges defaults for keys missing from an older save', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({ version: 1, settings: { musicVolume: 0.2 } }),
+      );
+      Save._clearCache();
+      const state = Save.get();
+      // Provided key kept, sibling defaults backfilled.
+      expect(state.settings.musicVolume).toBe(0.2);
+      expect(state.settings.sfxVolume).toBe(0.75);
+      expect(state.settings.fullscreen).toBe(false);
+      expect(state.stats.runsPlayed).toBe(0);
+    });
+
+    it('resets to defaults when a save shape is not an object', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      localStorage.setItem('arenaFight.save.v1', JSON.stringify([1, 2, 3]));
+      Save._clearCache();
+      const state = Save.get();
+      expect(state.version).toBe(2);
+      expect(state.wallet).toBe(0);
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
   });
 });
