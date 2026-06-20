@@ -53,6 +53,22 @@ the screen edge-to-edge with no black bars. **Fullscreen** is on by default and
 auto-enters on your first tap; press `F` (or the Settings row) to toggle it.
 Desktop windowed play stays exactly 800×600 and unchanged.
 
+## Tutorial
+
+New players get an **interactive, step-by-step tutorial** — there are no hints
+during a normal run.
+
+- Each step shows a short explanation and pauses the game; press
+  `SPACE` / `ENTER` (or tap/click) to continue, then **do** what it asks before
+  the next step appears.
+- It walks through the core moves in order: move, aim & fire, dash, combo, coins,
+  the green gift, the gold shield, and how bosses work.
+- You **can't die** in the tutorial, and it doesn't count toward your stats.
+- Each completed step gives a little praise ("Good job!", "Great!") before moving
+  on.
+- Start it any time from the main menu's **TUTORIAL** button (shortcut `T`).
+  Press `Esc` to leave.
+
 ## Settings
 
 The Settings menu lets you choose the arena background and control the looping background music:
