@@ -103,6 +103,12 @@ export default class MainMenuScene extends Phaser.Scene {
     this.actions = [
       firstAction,
       {
+        label: 'TUTORIAL',
+        shortcut: 't',
+        color: 0x80d8ff,
+        action: () => this.scene.start('GameScene', { tutorial: true }),
+      },
+      {
         label: 'STORE',
         shortcut: 's',
         color: 0xffd54f,
@@ -231,10 +237,15 @@ export default class MainMenuScene extends Phaser.Scene {
     // Right-anchored so the column keeps its ~60px right margin on a wider mobile
     // canvas (x = 520 on the desktop 800-wide canvas — identical there).
     const x = this.scale.width - 280;
-    const y = 170;
     const width = 220;
-    const height = 54;
-    const gap = 16;
+    // Fit the column on the fixed 600px-tall canvas: with 6+ actions, tighten
+    // the row height/gap and raise the top so the bottom row and the help line
+    // below it never clip off-screen.
+    const compact = this.actions.length > 5;
+    const y = compact ? 150 : 170;
+    const height = compact ? 46 : 54;
+    const gap = compact ? 12 : 16;
+    this.menuRow = { width, height };
 
     this.actionViews = this.actions.map((action, index) => {
       const top = y + index * (height + gap);
@@ -298,6 +309,7 @@ export default class MainMenuScene extends Phaser.Scene {
         'enter',
         ' ',
         'r',
+        't',
         's',
         'l',
         'm',
@@ -314,6 +326,7 @@ export default class MainMenuScene extends Phaser.Scene {
     else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
       this.activateAction(this.actionIndex);
     else if (k === 'r' && this.gameOverData) this.scene.start('GameScene');
+    else if (k === 't') this.scene.start('GameScene', { tutorial: true });
     else if (k === 's')
       this.scene.start('StoreScene', {
         returnScene: 'MainMenuScene',
@@ -335,14 +348,16 @@ export default class MainMenuScene extends Phaser.Scene {
     this.actionViews.forEach((view, i) => {
       const selected = i === this.actionIndex;
       const action = this.actions[i];
+      const rw = this.menuRow?.width ?? 220;
+      const rh = this.menuRow?.height ?? 54;
       view.bg.clear();
       view.bg.fillStyle(0x101710, selected ? 0.96 : 0.78);
-      view.bg.fillRoundedRect(0, 0, 220, 54, 8);
+      view.bg.fillRoundedRect(0, 0, rw, rh, 8);
       view.bg.lineStyle(selected ? 4 : 2, action.color, 1);
-      view.bg.strokeRoundedRect(0, 0, 220, 54, 8);
+      view.bg.strokeRoundedRect(0, 0, rw, rh, 8);
       if (selected) {
         view.bg.fillStyle(action.color, 1);
-        view.bg.fillTriangle(-16, 27, -5, 20, -5, 34);
+        view.bg.fillTriangle(-16, rh / 2, -5, rh / 2 - 7, -5, rh / 2 + 7);
       }
       view.label.setColor(selected ? '#ffffff' : '#dddddd');
       view.shortcut.setColor(selected ? '#ffffff' : '#aaaaaa');
