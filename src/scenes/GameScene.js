@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { evaluateAchievements } from '../achievements.js';
 import { assetPath } from '../assetPath.js';
 import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
 import {
@@ -131,6 +132,18 @@ export default class GameScene extends Phaser.Scene {
     this.burstNextAt = 0;
     this.lastLaserSfxAt = -Infinity;
 
+    // Per-run breakdown surfaced on the game-over summary screen.
+    this.runStats = {
+      startTime: 0, // set when the first wave starts (after create() boot work)
+      killsByType: {},
+      bosses: 0,
+      longestCombo: 1,
+      shotsFired: 0,
+      shotsHit: 0,
+      bossNoHit: false,
+    };
+    this.bossHitTaken = false;
+
     this.aimAngle = 0;
     this.lastMoveDir = { x: 1, y: 0 };
 
@@ -242,6 +255,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.demo) {
       this.startDemo();
     } else {
+      this.runStats.startTime = this.time.now;
       this.startNextWave();
       this.scheduleNextShieldBonus();
       this.scheduleNextGift();
@@ -980,6 +994,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   fireBullet(time, offsetDeg = 0) {
+    if (!this.demo) this.runStats.shotsFired += 1;
     const px = this.player.sprite.x;
     const py = this.player.sprite.y;
     const angle = this.aimAngle + (offsetDeg * Math.PI) / 180;
@@ -1304,6 +1319,8 @@ export default class GameScene extends Phaser.Scene {
 
   startBossWave(n) {
     this.bossActive = true;
+    // Reset the no-hit tracker so a clean boss kill unlocks "Untouchable".
+    this.bossHitTaken = false;
     this.pendingSpawns = 0;
     this.activeSpawnEvent = null;
     const tier = Math.floor(n / CFG.boss.everyNWaves);
@@ -2734,6 +2751,10 @@ export default class GameScene extends Phaser.Scene {
     const ey = enemy.y;
     const damage = this.damageEnemy(enemy, bullet.x, bullet.y, 1);
     if (damage <= 0) return;
+    if (!this.demo && !bullet.countedHit) {
+      bullet.countedHit = true;
+      this.runStats.shotsHit += 1;
+    }
 
     if (mods.aoeRadius) {
       const r = mods.aoeRadius;
@@ -2839,6 +2860,12 @@ export default class GameScene extends Phaser.Scene {
       this.scheduleDemoRespawn();
       return;
     }
+    if (type === 'boss') {
+      this.runStats.bosses += 1;
+      if (!this.bossHitTaken) this.runStats.bossNoHit = true;
+    } else {
+      this.runStats.killsByType[type] = (this.runStats.killsByType[type] || 0) + 1;
+    }
     this.killEnemyScoring(x, y);
     if (type === 'splitter') {
       for (let i = 0; i < CFG.splitter.childCount; i++) {
@@ -2857,6 +2884,9 @@ export default class GameScene extends Phaser.Scene {
 
   killEnemyScoring(x, y) {
     this.comboMultiplier = Math.min(this.comboMultiplier + 1, CFG.combo.maxMultiplier);
+    if (this.comboMultiplier > this.runStats.longestCombo) {
+      this.runStats.longestCombo = this.comboMultiplier;
+    }
     this.lastKillAt = this.time.now;
     this.score += CFG.combo.scorePerKillBase * this.comboMultiplier;
     this.dropCoinsForKill(x, y);
@@ -2961,6 +2991,7 @@ export default class GameScene extends Phaser.Scene {
       enemy.destroy();
     }
     this.player.hp -= this.getEnemyContactDamage(enemy.type);
+    this.bossHitTaken = true;
     this.comboMultiplier = 1;
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
     this.player.hitUntil = this.time.now + CFG.player.hitFlashMs;
@@ -3038,6 +3069,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.player.hp -= amount;
+    this.bossHitTaken = true;
     this.comboMultiplier = 1;
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
     this.player.hitUntil = this.time.now + CFG.player.hitFlashMs;
@@ -3100,12 +3132,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.shieldPickup) this.despawnShieldBonus();
     if (this.giftPickup) this.despawnGift();
     if (this.shieldActive) this.endShield();
-    const saved = Save.recordRun({
-      wave: this.wave,
-      score: this.score,
-      coinsEarned: this.coinsThisRun,
-      persistCoins: false,
-    });
+    const { saved, summary, newAchievements } = this.finalizeRun();
     this.time.delayedCall(400, () => {
       this.scene.start('MainMenuScene', {
         gameOver: true,
@@ -3113,8 +3140,50 @@ export default class GameScene extends Phaser.Scene {
         wave: this.wave,
         coinsEarned: this.coinsThisRun,
         walletSaved: saved.wallet,
+        summary,
+        newAchievements,
       });
     });
+  }
+
+  // Builds the per-run summary, records the run into Save.stats, then evaluates
+  // and persists any newly unlocked achievements. Coins are already credited live
+  // during play, so persistCoins is false to avoid double-counting.
+  finalizeRun() {
+    const summary = this.buildRunSummary();
+    const saved = Save.recordRun({
+      wave: this.wave,
+      score: this.score,
+      coinsEarned: this.coinsThisRun,
+      persistCoins: false,
+      longestCombo: summary.longestCombo,
+      kills: summary.kills,
+      bosses: summary.bosses,
+    });
+    const newAchievements = evaluateAchievements(
+      { run: summary, stats: saved.stats, save: saved },
+      saved.achievements,
+    );
+    if (newAchievements.length) Save.unlockAchievements(newAchievements);
+    return { saved, summary, newAchievements };
+  }
+
+  buildRunSummary() {
+    const killsByType = this.runStats.killsByType;
+    const kills = Object.values(killsByType).reduce((a, b) => a + b, 0);
+    return {
+      wave: this.wave,
+      score: this.score,
+      coinsEarned: this.coinsThisRun,
+      durationMs: Math.max(0, this.time.now - this.runStats.startTime),
+      killsByType,
+      kills,
+      bosses: this.runStats.bosses,
+      longestCombo: this.runStats.longestCombo,
+      shotsFired: this.runStats.shotsFired,
+      shotsHit: this.runStats.shotsHit,
+      bossNoHit: this.runStats.bossNoHit,
+    };
   }
 
   payWaveClearBonus() {
@@ -3169,15 +3238,9 @@ export default class GameScene extends Phaser.Scene {
     this.cheatPromptActive = false;
     this.physics.resume();
     this.time.paused = false;
-    // Record the run on exit just like death does. Coins are already credited
-    // to the wallet live during play, so persistCoins is false to avoid
-    // double-counting; this still saves stats and the lifetime coin total.
-    Save.recordRun({
-      wave: this.wave,
-      score: this.score,
-      coinsEarned: this.coinsThisRun,
-      persistCoins: false,
-    });
+    // Record the run on exit just like death does (stats + achievements). The
+    // plain menu is shown without a summary panel since this is a manual exit.
+    this.finalizeRun();
     this.scene.start('MainMenuScene');
   }
 
