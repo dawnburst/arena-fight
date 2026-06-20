@@ -16,7 +16,7 @@ export const CFG = {
   bullet: {
     speed: 520,
     radius: 4,
-    color: 0xffeb3b,
+    color: 0x37474f,
     lifetimeMs: 1200,
   },
   enemy: {
@@ -477,6 +477,8 @@ export const CFG = {
     magnetTurn: 0.18,
     drag: 0.9,
     maxSpeed: 520,
+    lifetimeMs: 5000, // small kill-drop coins despawn after this if uncollected
+    warnLastMs: 1200, // blink the coin during the last part of its life before despawn
   },
   store: {
     waveClearBase: 25,
