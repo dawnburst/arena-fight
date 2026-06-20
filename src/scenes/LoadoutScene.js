@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
+import { playSfx, preloadSfx } from '../audio.js';
 import { MODS, MODS_BY_ID, TIER_COLORS, WEAPONS, WEAPONS_BY_ID } from '../catalog.js';
 import { Save } from '../save.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
@@ -28,6 +29,7 @@ export default class LoadoutScene extends Phaser.Scene {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
     }
+    preloadSfx(this);
   }
 
   create() {
@@ -176,6 +178,7 @@ export default class LoadoutScene extends Phaser.Scene {
   }
 
   selectSlot(i) {
+    if (i !== this.slotIndex) playSfx(this, 'uiMove');
     this.slotIndex = i;
     this.refresh();
   }
@@ -187,16 +190,19 @@ export default class LoadoutScene extends Phaser.Scene {
   }
 
   back() {
+    playSfx(this, 'uiCancel');
     const data = this.scene.settings.data || {};
     this.scene.start(data.returnScene || 'MainMenuScene', data);
   }
 
   moveSlot(dir) {
+    playSfx(this, 'uiMove');
     this.slotIndex = (this.slotIndex + dir + SLOT_LABELS.length) % SLOT_LABELS.length;
     this.refresh();
   }
 
   startRun() {
+    playSfx(this, 'uiConfirm');
     Save.setLoadout(this.weaponIds, this.modIds);
     this.scene.start('GameScene');
   }
@@ -234,6 +240,7 @@ export default class LoadoutScene extends Phaser.Scene {
   }
 
   cycle(dir) {
+    playSfx(this, 'uiMove');
     const save = Save.get();
     if (this.slotIndex === 0 || this.slotIndex === 1) {
       const isPrimary = this.slotIndex === 0;

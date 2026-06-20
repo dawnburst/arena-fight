@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { assetPath } from '../assetPath.js';
+import { playSfx, preloadSfx } from '../audio.js';
 import { MODS, TIER_COLORS, TIERS, WEAPONS } from '../catalog.js';
 import { Save } from '../save.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
@@ -24,6 +25,7 @@ export default class StoreScene extends Phaser.Scene {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
     }
+    preloadSfx(this);
   }
 
   create() {
@@ -186,12 +188,14 @@ export default class StoreScene extends Phaser.Scene {
   }
 
   back() {
+    playSfx(this, 'uiCancel');
     const data = this.scene.settings.data || {};
     this.scene.start(data.returnScene || 'MainMenuScene', data);
   }
 
   setTab(tab) {
     if (this.tab === tab) return;
+    playSfx(this, 'uiMove');
     this.tab = tab;
     this.selectedIndex = 0;
     this.refresh();
@@ -202,7 +206,9 @@ export default class StoreScene extends Phaser.Scene {
   }
 
   moveSelection(dir) {
-    this.selectedIndex = Phaser.Math.Clamp(this.selectedIndex + dir, 0, this.entries.length - 1);
+    const next = Phaser.Math.Clamp(this.selectedIndex + dir, 0, this.entries.length - 1);
+    if (next !== this.selectedIndex) playSfx(this, 'uiMove');
+    this.selectedIndex = next;
     this.refresh();
   }
 
@@ -286,11 +292,18 @@ export default class StoreScene extends Phaser.Scene {
 
   tryBuy() {
     const entry = this.entries[this.selectedIndex];
-    if (!entry || entry.owned || entry.locked) return;
+    if (!entry || entry.owned || entry.locked) {
+      playSfx(this, 'purchaseFail');
+      return;
+    }
     const save = Save.get();
-    if (save.wallet < entry.price) return;
+    if (save.wallet < entry.price) {
+      playSfx(this, 'purchaseFail');
+      return;
+    }
     if (this.tab === 'weapons') Save.buyWeapon(entry.id, entry.price);
     else Save.buyMod(entry.id, entry.price);
+    playSfx(this, 'purchase');
     this.refresh();
   }
 
