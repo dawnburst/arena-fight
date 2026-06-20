@@ -95,6 +95,16 @@ export function installViewport(game, { touch } = {}) {
     scale.autoCenter = Phaser.Scale.NO_CENTER;
     scale.setGameSize(BASE_WIDTH, BASE_HEIGHT);
     scale.refresh();
+    // FIT + CENTER_BOTH leaves inflated inline CSS (px width/height plus centering
+    // margins) on the canvas. Scale.NONE does not clear them, so without this the
+    // canvas keeps its fullscreen size and the page overflows with scrollbars.
+    const canvas = scale.canvas || game.canvas;
+    if (canvas?.style) {
+      canvas.style.width = `${BASE_WIDTH}px`;
+      canvas.style.height = `${BASE_HEIGHT}px`;
+      canvas.style.marginLeft = '0px';
+      canvas.style.marginTop = '0px';
+    }
   });
 }
 
