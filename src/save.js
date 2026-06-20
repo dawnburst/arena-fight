@@ -15,7 +15,16 @@ const DEFAULTS = () => ({
     touchControls: 'auto',
     fullscreen: false,
   },
-  stats: { runsPlayed: 0, bestWave: 0, bestScore: 0, totalCoinsEarned: 0 },
+  stats: {
+    runsPlayed: 0,
+    bestWave: 0,
+    bestScore: 0,
+    totalCoinsEarned: 0,
+    bestCombo: 0,
+    totalKills: 0,
+    bossesDefeated: 0,
+  },
+  achievements: [],
 });
 
 let cache = null;
@@ -46,6 +55,7 @@ function read() {
       stats: { ...base.stats, ...(parsed.stats || {}) },
       ownedWeapons: Array.isArray(parsed.ownedWeapons) ? parsed.ownedWeapons : base.ownedWeapons,
       ownedMods: Array.isArray(parsed.ownedMods) ? parsed.ownedMods : base.ownedMods,
+      achievements: Array.isArray(parsed.achievements) ? parsed.achievements : base.achievements,
     };
   } catch (e) {
     console.warn('[save] corrupt save, resetting', e);
@@ -141,17 +151,37 @@ export const Save = {
       settings: { ...(s.settings || {}), fullscreen },
     }));
   },
-  recordRun({ wave, score, coinsEarned, persistCoins = true }) {
+  recordRun({
+    wave,
+    score,
+    coinsEarned,
+    persistCoins = true,
+    longestCombo = 0,
+    kills = 0,
+    bosses = 0,
+  }) {
     return this.set((s) => ({
       ...s,
       wallet: persistCoins ? s.wallet + coinsEarned : s.wallet,
       stats: {
+        ...s.stats,
         runsPlayed: s.stats.runsPlayed + 1,
         bestWave: Math.max(s.stats.bestWave, wave),
         bestScore: Math.max(s.stats.bestScore, score),
         totalCoinsEarned: s.stats.totalCoinsEarned + coinsEarned,
+        bestCombo: Math.max(s.stats.bestCombo || 0, longestCombo),
+        totalKills: (s.stats.totalKills || 0) + kills,
+        bossesDefeated: (s.stats.bossesDefeated || 0) + bosses,
       },
     }));
+  },
+  unlockAchievements(ids) {
+    const toAdd = Array.isArray(ids) ? ids : [ids];
+    return this.set((s) => {
+      const set = new Set(s.achievements || []);
+      for (const id of toAdd) set.add(id);
+      return { ...s, achievements: [...set] };
+    });
   },
   reset() {
     cache = DEFAULTS();
