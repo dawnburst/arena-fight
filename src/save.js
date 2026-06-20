@@ -1,7 +1,11 @@
 const KEY = 'arenaFight.save.v1';
+const BACKUP_KEY = 'arenaFight.save.backup';
+
+// Bump whenever the persisted schema changes and add a matching MIGRATIONS entry.
+const CURRENT_VERSION = 2;
 
 const DEFAULTS = () => ({
-  version: 1,
+  version: CURRENT_VERSION,
   wallet: 0,
   ownedWeapons: ['pistol'],
   ownedMods: [],
@@ -27,40 +31,106 @@ const DEFAULTS = () => ({
   achievements: [],
 });
 
-let cache = null;
-
-function read() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULTS();
-    const parsed = JSON.parse(raw);
-    if (parsed?.version !== 1) {
-      console.warn('[save] unknown schema version, resetting');
-      return DEFAULTS();
-    }
-    const base = DEFAULTS();
-    const loadout = { ...base.loadout, ...(parsed.loadout || {}) };
-    // Migrate single-weapon saves to the two-slot weapons array.
+// Ordered migration pipeline. Each entry maps a state at version N to version
+// N+1. Keep them pure and idempotent; the post-migration deep-merge against
+// DEFAULTS backfills any key a migration omits.
+const MIGRATIONS = {
+  // v1 -> v2: collapse the legacy single-weapon loadout into the two-slot
+  // `weapons` array (was previously an untracked in-place migration).
+  1: (s) => {
+    const loadout = { ...(s.loadout || {}) };
     const weaponsArr =
       Array.isArray(loadout.weapons) && loadout.weapons.length
         ? loadout.weapons
         : [loadout.weapon || 'pistol', null];
-    loadout.weapons = [weaponsArr[0] || 'pistol', weaponsArr[1] || null];
-    loadout.weapon = loadout.weapons[0];
-    return {
-      ...base,
-      ...parsed,
-      loadout,
-      settings: { ...base.settings, ...(parsed.settings || {}) },
-      stats: { ...base.stats, ...(parsed.stats || {}) },
-      ownedWeapons: Array.isArray(parsed.ownedWeapons) ? parsed.ownedWeapons : base.ownedWeapons,
-      ownedMods: Array.isArray(parsed.ownedMods) ? parsed.ownedMods : base.ownedMods,
-      achievements: Array.isArray(parsed.achievements) ? parsed.achievements : base.achievements,
-    };
+    const weapons = [weaponsArr[0] || 'pistol', weaponsArr[1] || null];
+    return { ...s, version: 2, loadout: { ...loadout, weapons, weapon: weapons[0] } };
+  },
+};
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+// Recursively backfill missing keys from `defaults`, preferring stored values.
+function mergeDefaults(defaults, value) {
+  if (Array.isArray(defaults)) {
+    return Array.isArray(value) ? value : defaults;
+  }
+  if (isPlainObject(defaults)) {
+    const out = { ...defaults };
+    if (isPlainObject(value)) {
+      for (const k of Object.keys(value)) {
+        out[k] = k in defaults ? mergeDefaults(defaults[k], value[k]) : value[k];
+      }
+    }
+    return out;
+  }
+  return value === undefined ? defaults : value;
+}
+
+let cache = null;
+// Set by read() when migrations ran, so get() can persist the upgraded save.
+let needsPersist = false;
+
+function read() {
+  needsPersist = false;
+  let raw;
+  try {
+    raw = localStorage.getItem(KEY);
+  } catch (e) {
+    console.warn('[save] read failed, using defaults', e);
+    return DEFAULTS();
+  }
+  if (!raw) return DEFAULTS();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
   } catch (e) {
     console.warn('[save] corrupt save, resetting', e);
     return DEFAULTS();
   }
+  if (!isPlainObject(parsed)) {
+    console.warn('[save] unexpected save shape, resetting');
+    return DEFAULTS();
+  }
+
+  // Missing/invalid version is treated as the earliest schema (v1).
+  let version = Number.isInteger(parsed.version) ? parsed.version : 1;
+  if (version > CURRENT_VERSION) {
+    console.warn('[save] save is from a newer version, resetting');
+    return DEFAULTS();
+  }
+  if (version === CURRENT_VERSION) {
+    return mergeDefaults(DEFAULTS(), parsed);
+  }
+
+  // Back up the raw bytes before mutating so a failed migration is recoverable.
+  try {
+    localStorage.setItem(BACKUP_KEY, raw);
+  } catch {
+    // Backup is best-effort; continue even if storage is full.
+  }
+
+  let state = parsed;
+  try {
+    while (version < CURRENT_VERSION) {
+      const migrate = MIGRATIONS[version];
+      if (typeof migrate !== 'function') {
+        console.warn(`[save] no migration for version ${version}, resetting`);
+        return DEFAULTS();
+      }
+      state = migrate(state);
+      version = Number.isInteger(state?.version) ? state.version : version + 1;
+    }
+  } catch (e) {
+    console.warn('[save] migration failed, resetting (backup retained)', e);
+    return DEFAULTS();
+  }
+
+  needsPersist = true;
+  return mergeDefaults(DEFAULTS(), state);
 }
 
 function write(state) {
@@ -74,7 +144,15 @@ function write(state) {
 
 export const Save = {
   get() {
-    if (!cache) cache = read();
+    if (!cache) {
+      cache = read();
+      // Persist immediately after an upgrade so migrations don't re-run on
+      // every load (and the backup stays in sync with the live save).
+      if (needsPersist) {
+        needsPersist = false;
+        write(cache);
+      }
+    }
     return cache;
   },
   set(updater) {
