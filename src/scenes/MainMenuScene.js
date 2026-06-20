@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ACHIEVEMENT_COUNT, ACHIEVEMENTS_BY_ID } from '../achievements.js';
 import { preloadMusic, syncMusic } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
@@ -6,8 +7,26 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
+import { ENEMY_BESTIARY } from '../enemies.js';
 import { Save } from '../save.js';
 import { coverBackground } from './sceneUtils.js';
+
+// enemy `type` string → display name for the run-summary kills breakdown.
+const ENEMY_LABELS = {
+  ...Object.fromEntries(ENEMY_BESTIARY.map((e) => [e.id, e.name])),
+  'splitter-child': 'Splitling',
+};
+
+function enemyLabel(type) {
+  return ENEMY_LABELS[type] || type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function formatDuration(ms) {
+  const total = Math.floor((ms || 0) / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -125,22 +144,86 @@ export default class MainMenuScene extends Phaser.Scene {
 
   createGameOverDetails(style) {
     const data = this.gameOverData;
+    const summary = data.summary || {};
     const walletSaved = data.walletSaved ?? Save.get().wallet;
-    const lines = [
-      { text: 'GAME OVER', y: 168, size: '34px', color: '#ff4242' },
-      { text: `Wave reached: ${data.wave ?? 0}`, y: 230, size: '18px', color: '#ffffff' },
-      { text: `Score: ${data.score ?? 0}`, y: 260, size: '18px', color: '#ffffff' },
-      { text: `Coins earned: +${data.coinsEarned ?? 0}`, y: 292, size: '18px', color: '#ffd54f' },
-      { text: `Wallet saved: ${walletSaved}`, y: 322, size: '16px', color: '#d0d0d0' },
-    ];
 
-    for (const line of lines) {
-      this.add.text(62, line.y, line.text, {
+    this.add.text(62, 158, 'GAME OVER', {
+      ...style,
+      fontSize: '30px',
+      color: '#ff4242',
+    });
+
+    // Two-column stat grid: left col x=62, right col x=300.
+    const fired = summary.shotsFired ?? 0;
+    const accuracy = fired > 0 ? `${Math.round(((summary.shotsHit ?? 0) / fired) * 100)}%` : '—';
+    const rows = [
+      [`Wave reached: ${data.wave ?? 0}`, `Score: ${data.score ?? 0}`],
+      [`Time: ${formatDuration(summary.durationMs)}`, `Coins: +${data.coinsEarned ?? 0}`],
+      [`Longest combo: x${summary.longestCombo ?? 1}`, `Accuracy: ${accuracy}`],
+      [`Enemies slain: ${summary.kills ?? 0}`, `Bosses: ${summary.bosses ?? 0}`],
+    ];
+    const statStyle = { ...style, fontSize: '15px', color: '#eeeeee' };
+    rows.forEach(([left, right], i) => {
+      const y = 204 + i * 24;
+      this.add.text(62, y, left, statStyle);
+      this.add.text(290, y, right, statStyle);
+    });
+
+    // Kills-by-type breakdown (only types actually killed), word-wrapped.
+    const byType = summary.killsByType || {};
+    const parts = Object.entries(byType)
+      .filter(([, n]) => n > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, n]) => `${enemyLabel(type)} ${n}`);
+    let nextY = 304;
+    if (parts.length) {
+      this.add.text(62, nextY, 'Kills by type', { ...style, fontSize: '13px', color: '#ffd54f' });
+      this.add.text(62, nextY + 18, parts.join('   '), {
         ...style,
-        fontSize: line.size,
-        color: line.color,
+        fontSize: '12px',
+        color: '#bdbdbd',
+        wordWrap: { width: 446 },
       });
+      nextY += 18 + 18 * Math.ceil(parts.length / 5);
     }
+
+    // Newly unlocked achievements (gold), then lifetime progress + wallet.
+    const unlocked = data.newAchievements || [];
+    nextY = Math.max(nextY, 360);
+    if (unlocked.length) {
+      this.add.text(62, nextY, '🏆 Achievement unlocked!', {
+        ...style,
+        fontSize: '15px',
+        color: '#ffd54f',
+      });
+      unlocked.forEach((id, i) => {
+        const ach = ACHIEVEMENTS_BY_ID[id];
+        if (!ach) return;
+        this.add.text(78, nextY + 22 + i * 20, `• ${ach.name} — ${ach.description}`, {
+          ...style,
+          fontSize: '12px',
+          color: '#ffe082',
+        });
+      });
+      nextY += 22 + unlocked.length * 20 + 6;
+    }
+
+    const totalUnlocked = (Save.get().achievements || []).length;
+    this.add.text(
+      62,
+      this.scale.height - 84,
+      `Achievements: ${totalUnlocked} / ${ACHIEVEMENT_COUNT}`,
+      {
+        ...style,
+        fontSize: '14px',
+        color: '#d7c4f5',
+      },
+    );
+    this.add.text(62, this.scale.height - 66, `Wallet saved: ${walletSaved}`, {
+      ...style,
+      fontSize: '14px',
+      color: '#d0d0d0',
+    });
   }
 
   createMenu(style) {
