@@ -120,6 +120,51 @@ describe('save', () => {
     expect(Save.get().wallet).toBe(100);
   });
 
+  it('recordRun should fold combo/kills/bosses into stats', () => {
+    Save.recordRun({
+      wave: 10,
+      score: 5000,
+      coinsEarned: 100,
+      longestCombo: 6,
+      kills: 40,
+      bosses: 1,
+    });
+    Save.recordRun({
+      wave: 12,
+      score: 6000,
+      coinsEarned: 50,
+      longestCombo: 4,
+      kills: 25,
+      bosses: 2,
+    });
+    const stats = Save.get().stats;
+    expect(stats.bestCombo).toBe(6);
+    expect(stats.totalKills).toBe(65);
+    expect(stats.bossesDefeated).toBe(3);
+  });
+
+  it('stats default to zero for the new tracked fields', () => {
+    const stats = Save.get().stats;
+    expect(stats.bestCombo).toBe(0);
+    expect(stats.totalKills).toBe(0);
+    expect(stats.bossesDefeated).toBe(0);
+  });
+
+  it('achievements default to an empty array', () => {
+    expect(Save.get().achievements).toEqual([]);
+  });
+
+  it('unlockAchievements unions and dedupes ids', () => {
+    Save.unlockAchievements(['wave-10', 'boss-slayer']);
+    Save.unlockAchievements(['wave-10', 'first-blood']);
+    expect(Save.get().achievements.sort()).toEqual(['boss-slayer', 'first-blood', 'wave-10']);
+  });
+
+  it('unlockAchievements accepts a single id', () => {
+    Save.unlockAchievements('arsenal');
+    expect(Save.get().achievements).toContain('arsenal');
+  });
+
   it('recordRun should update stats without persisting coins if requested', () => {
     Save.recordRun({ wave: 5, score: 1000, coinsEarned: 50, persistCoins: false });
     expect(Save.get().wallet).toBe(0);
