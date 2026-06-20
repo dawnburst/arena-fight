@@ -14,8 +14,14 @@ import { ENEMY_SPRITES } from '../enemies.js';
 import TouchControls from '../input/touchControls.js';
 import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
+import { TUTORIAL_SCRIPT, TutorialController } from '../tutorial.js';
 import { toggleFullscreen } from '../viewport.js';
 import { addTouchButton, coverBackground } from './sceneUtils.js';
+
+// Praise shown when a tutorial step is completed.
+const TUTORIAL_PRAISE = ['Good job!', 'Great!', 'Nice!', 'Well done!', 'Awesome!', 'Perfect!'];
+// Pause after each completed step before the next instruction appears.
+const TUTORIAL_STEP_DELAY_MS = 2000;
 
 const PLAYER_DIRECTIONS = [
   'east',
@@ -94,6 +100,10 @@ export default class GameScene extends Phaser.Scene {
     this.demo = !!data.demo;
     this.demoEnemyId = data.demoEnemyId || 'swarmer';
     this.demoReturn = data.returnScene || 'MonstersScene';
+    // Tutorial mode: a real (waved) run where the player can't die and every
+    // onboarding hint is forced. Distinct from `demo` (the Monsters sandbox,
+    // which freezes wave progression and scoring).
+    this.tutorial = !!data.tutorial;
     syncMusic(this);
     // Live arena dimensions: 800x600 on desktop, wider (height fixed at 600) on
     // mobile. Spawn/clamp/HUD code reads these so it self-adjusts after a resize.
@@ -255,6 +265,8 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.demo) {
       this.startDemo();
+    } else if (this.tutorial) {
+      this.startTutorial();
     } else {
       this.runStats.startTime = this.time.now;
       playSfx(this, 'gameStart');
@@ -262,6 +274,332 @@ export default class GameScene extends Phaser.Scene {
       this.scheduleNextShieldBonus();
       this.scheduleNextGift();
     }
+  }
+
+  // ── Interactive tutorial ────────────────────────────────────────────────
+  // A fully scripted, step-by-step lesson launched only from the menu (and once
+  // on first launch). Each step: freeze the arena and show an explanation →
+  // player acknowledges → player performs the action in the live arena →
+  // advance. The player cannot die; normal waves and random pickups are off.
+
+  startTutorial() {
+    Save.markTutorialSeen();
+    this.tut = new TutorialController(TUTORIAL_SCRIPT);
+    this.tutorialFinished = false;
+    this.tutorialFrozen = false;
+    this.tutorialAwaitingAck = false;
+    this.enemySpeedThisWave = 0; // tutorial targets are stationary dummies
+    // Keep the combo alive for the whole lesson so the combo step is reliable.
+    this.runtime.comboResetMs = 999999;
+    this.createTutorialUI();
+    this.enterTutorialStep();
+  }
+
+  createTutorialUI() {
+    const style = { fontFamily: 'ui-monospace, Menlo, Consolas, monospace', color: '#ffffff' };
+    const cx = this.arenaW / 2;
+    const cy = this.arenaH / 2;
+    const w = 600;
+    const h = 232;
+    this.tutPanel = this.add
+      .rectangle(cx, cy, w, h, 0x05140a, 0.93)
+      .setStrokeStyle(2, 0x80d8ff, 0.9)
+      .setDepth(1600)
+      .setVisible(false);
+    this.tutTitle = this.add
+      .text(cx, cy - 80, '', { ...style, fontSize: '22px', color: '#80d8ff' })
+      .setOrigin(0.5)
+      .setDepth(1601)
+      .setVisible(false);
+    this.tutBody = this.add
+      .text(cx, cy - 18, '', { ...style, fontSize: '15px', align: 'center' })
+      .setOrigin(0.5)
+      .setDepth(1601)
+      .setVisible(false);
+    this.tutPrompt = this.add
+      .text(cx, cy + 84, '', { ...style, fontSize: '13px', color: '#ffd54f' })
+      .setOrigin(0.5)
+      .setDepth(1601)
+      .setVisible(false);
+    this.tutObjective = this.add
+      .text(cx, this.arenaH - 96, '', {
+        ...style,
+        fontSize: '15px',
+        color: '#cdeffd',
+        backgroundColor: '#000000cc',
+        padding: { x: 12, y: 7 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(40)
+      .setVisible(false);
+  }
+
+  // Begin a step: freeze the arena and show its explanation panel.
+  enterTutorialStep() {
+    const step = this.tut.current();
+    if (!step) {
+      this.finishTutorial();
+      return;
+    }
+    this.clearTutorialEntities();
+    this.tutorialFrozen = true;
+    this.physics.pause();
+    this.tutObjective.setVisible(false);
+    const continueHint = this.touchMode
+      ? 'tap to continue'
+      : 'press SPACE / ENTER / click to continue';
+    this.showTutorialPanel(step.title, step.body, continueHint);
+    this.tutorialAwaitingAck = true;
+  }
+
+  showTutorialPanel(title, body, prompt) {
+    this.tutPanel.setVisible(true);
+    this.tutTitle.setText(title).setVisible(true);
+    this.tutBody.setText(body).setVisible(true);
+    this.tutPrompt.setText(prompt).setVisible(true);
+  }
+
+  hideTutorialPanel() {
+    this.tutPanel.setVisible(false);
+    this.tutTitle.setVisible(false);
+    this.tutBody.setVisible(false);
+    this.tutPrompt.setVisible(false);
+  }
+
+  // Player dismissed the current panel.
+  acknowledgeTutorial() {
+    if (!this.tutorialAwaitingAck) return;
+    this.tutorialAwaitingAck = false;
+    if (this.tutorialFinished) {
+      this.exitToMainMenu();
+      return;
+    }
+    const phase = this.tut.acknowledge();
+    if (phase === 'done') {
+      this.finishTutorial();
+      return;
+    }
+    // Begin the action phase: unfreeze and set up the step's scenario.
+    this.hideTutorialPanel();
+    this.physics.resume();
+    this.tutorialFrozen = false;
+    this.setupTutorialGoal(this.tut.current());
+  }
+
+  // Reset per-step trackers and spawn whatever the goal needs.
+  setupTutorialGoal(step) {
+    this.tutorialKills = 0;
+    this.tutorialCoins = 0;
+    this.tutorialDashed = false;
+    this.tutorialGiftGot = false;
+    this.tutorialShieldGot = false;
+    this.tutorialMoveDist = 0;
+    this.comboMultiplier = 1;
+    this.tutorialLastPos = { x: this.player.sprite.x, y: this.player.sprite.y };
+    this.tutObjective.setText(`➤ ${step.task}`).setVisible(true);
+
+    const cx = this.arenaW / 2;
+    const cy = this.arenaH / 2;
+    switch (step.goal.type) {
+      case 'kill':
+        this.spawnTutorialTarget(cx, cy - 150);
+        break;
+      case 'combo':
+        this.spawnComboTargets(step.goal.amount);
+        break;
+      case 'coin': {
+        // Drop the player in the bottom-left corner so they have to walk across
+        // to the coin cluster in the middle of the screen to collect it.
+        const startX = 70;
+        const startY = this.arenaH - 70;
+        this.player.sprite.body.reset(startX, startY);
+        this.tutorialLastPos = { x: startX, y: startY };
+        this.spawnCoins(cx, cy, Math.max(1, step.goal.amount));
+        break;
+      }
+      case 'gift':
+        this.spawnGift();
+        this.keepTutorialPickup('gift'); // stop it despawning, KEEP the overlap
+        break;
+      case 'shield':
+        this.spawnShieldBonus();
+        this.keepTutorialPickup('shield');
+        break;
+      default:
+        break; // move / dash / ack need no scenario
+    }
+  }
+
+  // Cancel a pickup's despawn/warn timers so it waits for the player, while
+  // leaving its collection overlap intact (clearGiftTimers/clearShieldPickupTimers
+  // also destroy the overlap, which would make the pickup uncollectable).
+  keepTutorialPickup(kind) {
+    if (kind === 'gift') {
+      this.giftDespawnEvent?.remove(false);
+      this.giftDespawnEvent = null;
+      this.giftWarnEvent?.remove(false);
+      this.giftWarnEvent = null;
+    } else {
+      this.shieldDespawnEvent?.remove(false);
+      this.shieldDespawnEvent = null;
+      this.shieldWarnEvent?.remove(false);
+      this.shieldWarnEvent = null;
+    }
+  }
+
+  // A stationary swarmer used as a shooting target during the tutorial.
+  spawnTutorialTarget(x, y) {
+    this.createSwarmer(x, y);
+    const enemy = this.enemies.getChildren()[this.enemies.getChildren().length - 1];
+    if (enemy) enemy.speed = 0;
+  }
+
+  // Spread `n` stationary targets in a ring around the arena centre.
+  spawnComboTargets(n) {
+    const cx = this.arenaW / 2;
+    const cy = this.arenaH / 2;
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i) / n - Math.PI / 2;
+      this.spawnTutorialTarget(cx + Math.cos(a) * 150, cy + Math.sin(a) * 120);
+    }
+  }
+
+  // Poll the current goal. Returns true when satisfied.
+  checkTutorialGoal(step) {
+    switch (step.goal.type) {
+      case 'move': {
+        const p = this.player.sprite;
+        this.tutorialMoveDist += Math.hypot(
+          p.x - this.tutorialLastPos.x,
+          p.y - this.tutorialLastPos.y,
+        );
+        this.tutorialLastPos = { x: p.x, y: p.y };
+        return this.tutorialMoveDist >= step.goal.amount;
+      }
+      case 'kill':
+        return this.tutorialKills >= step.goal.amount;
+      case 'dash':
+        return this.tutorialDashed;
+      case 'combo':
+        // Require all targets to be destroyed (the combo rises as they fall).
+        return this.tutorialKills >= step.goal.amount;
+      case 'coin':
+        return this.tutorialCoins >= step.goal.amount;
+      case 'gift':
+        return this.tutorialGiftGot;
+      case 'shield':
+        return this.tutorialShieldGot;
+      default:
+        return false;
+    }
+  }
+
+  // Per-frame tutorial driver (called from update during the action phase).
+  updateTutorial() {
+    if (this.tutorialFrozen || this.tutorialFinished) return;
+    const step = this.tut.current();
+    if (!step || this.tut.phase !== 'act') return;
+    if (this.checkTutorialGoal(step)) {
+      this.completeTutorialStep(step);
+      return;
+    }
+    // Combo step: if the targets are gone but the player hasn't destroyed enough
+    // yet, top them back up so there's always something to shoot.
+    if (step.goal.type === 'combo' && this.enemies.countActive(true) === 0) {
+      const remaining = step.goal.amount - (this.tutorialKills || 0);
+      if (remaining > 0) this.spawnComboTargets(remaining);
+    }
+  }
+
+  completeTutorialStep(step) {
+    this.tut.complete();
+    this.tutObjective.setVisible(false);
+    this.clearTutorialEntities();
+    this.showTutorialToast(step.success);
+    // The arena stays live during this 2s praise window: the player can keep
+    // moving until the next explanation panel (which freezes the game) appears.
+    // Uniform 2s pause (showing the praise) after every completed step before
+    // the next instruction appears.
+    this.time.delayedCall(TUTORIAL_STEP_DELAY_MS, () => this.enterTutorialStep());
+  }
+
+  // A cheerful praise word (line 1) over the step's detail (line 2).
+  showTutorialToast(detail) {
+    const praise = Phaser.Utils.Array.GetRandom(TUTORIAL_PRAISE);
+    const cx = this.arenaW / 2;
+    const cy = this.arenaH / 2;
+    const big = this.add
+      .text(cx, cy - 140, praise, {
+        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+        fontSize: '30px',
+        color: '#69f0ae',
+      })
+      .setOrigin(0.5)
+      .setDepth(1602);
+    const small = this.add
+      .text(cx, cy - 108, detail, {
+        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+        fontSize: '15px',
+        color: '#cdeffd',
+      })
+      .setOrigin(0.5)
+      .setDepth(1602);
+    this.tweens.add({
+      targets: [big, small],
+      y: '-=24',
+      alpha: { from: 1, to: 0 },
+      delay: 600,
+      duration: 1100,
+      ease: 'Quad.out',
+      onComplete: () => {
+        big.destroy();
+        small.destroy();
+      },
+    });
+  }
+
+  finishTutorial() {
+    this.clearTutorialEntities();
+    this.tutorialFinished = true;
+    this.tutorialFrozen = true;
+    this.physics.pause();
+    this.tutObjective.setVisible(false);
+    const prompt = this.touchMode
+      ? 'tap to return to the menu'
+      : 'press SPACE / ENTER / click to return to the menu';
+    this.showTutorialPanel(
+      'TUTORIAL COMPLETE',
+      "You've learned the basics:\nmove, fire, dash, combo, coins, gift, shield, bosses.\nReturn to the menu and start your first run!",
+      prompt,
+    );
+    this.tutorialAwaitingAck = true;
+  }
+
+  // Wipe the arena between steps so each scenario starts clean.
+  clearTutorialEntities() {
+    this.enemies
+      .getChildren()
+      .slice()
+      .forEach((e) => {
+        this.cleanupEnemyExtras(e);
+        e.destroy();
+      });
+    this.coins
+      .getChildren()
+      .slice()
+      .forEach((c) => {
+        c.destroy();
+      });
+    this.bullets
+      .getChildren()
+      .slice()
+      .forEach((b) => {
+        b.visual?.destroy();
+        b.destroy();
+      });
+    if (this.giftPickup) this.despawnGift();
+    if (this.shieldPickup) this.despawnShieldBonus();
+    if (this.shieldActive) this.endShield();
   }
 
   // Monsters-menu sandbox: spawn one of a chosen monster so the player can watch
@@ -376,6 +714,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onPointerDown() {
+    // A tap dismisses the tutorial explanation panel (works on touch too).
+    if (this.tutorial && this.tutorialAwaitingAck) {
+      this.acknowledgeTutorial();
+      return;
+    }
     // On touch, taps drive the virtual sticks/buttons; don't also recall
     // boomerangs (they auto-return via returningAfterMs).
     if (this.touchMode) return;
@@ -576,6 +919,11 @@ export default class GameScene extends Phaser.Scene {
     this.hudWeapon?.setPosition(10, h - 8);
     this.shieldHud?.setPosition(w / 2, 38);
     this.giftHud?.setPosition(w / 2, 58);
+    this.tutPanel?.setPosition(w / 2, h / 2);
+    this.tutTitle?.setPosition(w / 2, h / 2 - 80);
+    this.tutBody?.setPosition(w / 2, h / 2 - 18);
+    this.tutPrompt?.setPosition(w / 2, h / 2 + 84);
+    this.tutObjective?.setPosition(w / 2, h - 96);
 
     const bar = CFG.boss.bar;
     const barLeft = w / 2 - bar.width / 2;
@@ -621,10 +969,22 @@ export default class GameScene extends Phaser.Scene {
         this.scene.start(this.demoReturn);
         return;
       }
+      if (this.tutorial) {
+        this.exitToMainMenu();
+        return;
+      }
       this.togglePause();
     }
 
     if (this.paused) return;
+
+    // While a tutorial explanation panel (or the completion panel) is up the
+    // arena is frozen; only the aim indicator and HUD update.
+    if (this.tutorial && this.tutorialFrozen) {
+      this.updateAim();
+      this.updateHUD(time);
+      return;
+    }
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.switchWeapon) || this.touch?.consumeSwitch()) {
       this.switchWeapon(time);
@@ -645,6 +1005,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateShield(time);
     this.updateTempMod(time);
     this.maybeStartNextWave();
+    if (this.tutorial) this.updateTutorial();
     this.updateHUD(time);
   }
 
@@ -863,6 +1224,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.dashEndsAt = time + CFG.player.dashDurationMs;
     this.player.dashReadyAt = time + this.runtime.dashCooldownMs;
     this.player.invulnerableUntil = this.player.dashEndsAt;
+    this.tutorialDashed = true;
     playSfx(this, 'dash');
 
     this.tweens.add({
@@ -2725,7 +3087,7 @@ export default class GameScene extends Phaser.Scene {
 
   maybeStartNextWave() {
     if (this.gameOver) return;
-    if (this.demo) return; // sandbox: no wave progression
+    if (this.demo || this.tutorial) return; // sandbox / scripted tutorial: no wave progression
     if (this.bossSpawning) return; // a boss shadow is telegraphing; hold the wave
     if (this.pendingSpawns > 0) return;
     if (this.enemies.countActive(true) > 0) return;
@@ -2870,6 +3232,7 @@ export default class GameScene extends Phaser.Scene {
       this.scheduleDemoRespawn();
       return;
     }
+    if (this.tutorial) this.tutorialKills = (this.tutorialKills || 0) + 1;
     if (type === 'boss') {
       this.runStats.bosses += 1;
       if (!this.bossHitTaken) this.runStats.bossNoHit = true;
@@ -2911,7 +3274,8 @@ export default class GameScene extends Phaser.Scene {
   dropCoinsForKill(x, y) {
     // Enemies during a boss fight (the boss's own minions) drop no coins;
     // the boss itself drops one big collectible coin instead (see payBossReward).
-    if (this.bossActive || this.demo) return;
+    // Tutorial spawns its own coins for the coin step, so kills drop none.
+    if (this.bossActive || this.demo || this.tutorial) return;
     const base = CFG.store.coinDropPerKillBase + (this.comboMultiplier - 1);
     let amount = Math.max(1, Math.round(base * this.runtime.coinDropMult));
     if (this.runtime.luckyChance > 0 && Math.random() < this.runtime.luckyChance) {
@@ -2960,6 +3324,13 @@ export default class GameScene extends Phaser.Scene {
   onPlayerCoin(_playerSprite, coin) {
     const value = coin.value || 1;
     coin.destroy();
+    playSfx(this, 'coin');
+    // Tutorial coins are illustrative: count them for the step but don't touch
+    // the real wallet or run total.
+    if (this.tutorial) {
+      this.tutorialCoins = (this.tutorialCoins || 0) + value;
+      return;
+    }
     this.coinsThisRun += value;
     Save.addToWallet(value);
     playSfx(this, value > 1 ? 'coinBig' : 'coin');
@@ -2976,6 +3347,9 @@ export default class GameScene extends Phaser.Scene {
 
   onPlayerHitEnemy(_playerSprite, enemy) {
     if (this.demo) return; // sandbox: contact does nothing, keep the monster alive
+    // Tutorial: the player can't die and targets must survive contact so they
+    // can only be destroyed by shooting (which drives the kill/combo steps).
+    if (this.tutorial) return;
     if (this.time.now < this.player.invulnerableUntil) return;
 
     // The boss is never destroyed by contact; it just damages the player.
@@ -3067,7 +3441,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   damagePlayer(amount) {
-    if (this.demo) return; // sandbox: the player is invulnerable
+    if (this.demo || this.tutorial) return; // sandbox / tutorial: player is invulnerable
     if (this.time.now < this.player.invulnerableUntil) return;
 
     if (this.shieldActive) {
@@ -3264,6 +3638,11 @@ export default class GameScene extends Phaser.Scene {
     this.cheatPromptActive = false;
     this.physics.resume();
     this.time.paused = false;
+    // A tutorial is not a real run: don't record stats or touch the wallet.
+    if (this.tutorial) {
+      this.scene.start('MainMenuScene');
+      return;
+    }
     // Record the run on exit just like death does (stats + achievements). The
     // plain menu is shown without a summary panel since this is a manual exit.
     this.finalizeRun();
@@ -3271,7 +3650,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   scheduleNextShieldBonus() {
-    if (this.gameOver) return;
+    if (this.gameOver || this.tutorial) return;
     const delay = Phaser.Math.Between(
       CFG.shieldBonus.spawnDelayMinMs,
       CFG.shieldBonus.spawnDelayMaxMs,
@@ -3295,8 +3674,9 @@ export default class GameScene extends Phaser.Scene {
     const star = this.add.polygon(x, y, points, CFG.shieldBonus.color);
     star.setStrokeStyle(2, 0xffffff, 0.8);
     this.physics.add.existing(star);
+    // setCircle already centres the circular body on the star; an extra negative
+    // offset here would push the hitbox off the visible shape (uncollectable).
     star.body.setCircle(CFG.shieldBonus.outerRadius);
-    star.body.setOffset(-CFG.shieldBonus.outerRadius, -CFG.shieldBonus.outerRadius);
     star.body.setImmovable(true);
 
     star.pulseTween = this.tweens.add({
@@ -3353,6 +3733,7 @@ export default class GameScene extends Phaser.Scene {
     this.shieldPickup.destroy();
     this.shieldPickup = null;
     playSfx(this, 'shieldPickup');
+    this.tutorialShieldGot = true;
 
     this.activateShield(true);
     this.scheduleNextShieldBonus();
@@ -3406,8 +3787,9 @@ export default class GameScene extends Phaser.Scene {
 
   endShield() {
     // Reward leftover protection: the gold-star pickup shield pays coins for
-    // each unused hit when it ends (the Phoenix shield does not).
-    if (this.shieldFromPickup && this.shieldHitsRemaining > 0) {
+    // each unused hit when it ends (the Phoenix shield does not). No payout in
+    // the tutorial.
+    if (!this.tutorial && this.shieldFromPickup && this.shieldHitsRemaining > 0) {
       const reward = this.shieldHitsRemaining * CFG.shieldBonus.coinsPerUnusedHit;
       this.coinsThisRun += reward;
       Save.addToWallet(reward);
@@ -3448,7 +3830,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   scheduleNextGift() {
-    if (this.gameOver) return;
+    if (this.gameOver || this.tutorial) return;
     const base = Phaser.Math.Between(CFG.gift.spawnDelayMinMs, CFG.gift.spawnDelayMaxMs);
     const delay = base * (this.runtime.giftRateMult ?? 1);
     this.time.delayedCall(delay, () => this.spawnGift());
@@ -3513,6 +3895,7 @@ export default class GameScene extends Phaser.Scene {
     this.clearGiftTimers();
     this.destroyGiftPickup();
     playSfx(this, 'modGrant');
+    this.tutorialGiftGot = true;
     this.grantRandomMod();
     this.scheduleNextGift();
   }
@@ -3603,6 +3986,17 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onKeyDown(event) {
+    // Tutorial: SPACE / ENTER dismisses the current explanation (or completion)
+    // panel and advances the scripted lesson.
+    if (
+      this.tutorial &&
+      this.tutorialAwaitingAck &&
+      (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
+    ) {
+      event.preventDefault?.();
+      this.acknowledgeTutorial();
+      return;
+    }
     if (CHEATS_ENABLED && (event.key === '`' || event.code === 'Backquote')) {
       event.preventDefault?.();
       if (this.cheatPromptActive) this.closeCheat();
