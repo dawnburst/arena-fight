@@ -64,7 +64,8 @@ The Settings menu lets you choose the arena background and control the looping b
 - Touch controls mode: Auto / On / Off (applies on reload).
 - Fullscreen On / Off (persisted; applies immediately).
 - Keyboard shortcuts: `M` toggles music, `S` toggles sound, `T` cycles touch controls, `F` toggles fullscreen, `+` / `-` adjusts volume.
-- Gameplay sound effects play for coins, dash, gifts, game over, and Beam/Plasma shots.
+- Gameplay sound effects play for shots, coins, dash and dash-ready, gifts/mods, shield pickups and blocks, enemy hits and deaths, boss spawn/hit/phase/defeat, player hits, combo up/break, wave start/clear, game start, and game over.
+- UI sound effects play for menu navigation, confirm/cancel, and store purchase success/failure.
 
 ## Goal
 

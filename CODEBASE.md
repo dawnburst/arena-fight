@@ -13,7 +13,7 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - The game now boots through `IntroScene`, using `public/assets/intro/intro.png`, then transitions to `MainMenuScene`.
 - `MainMenuScene` is the only menu flow and also renders game-over details after death.
 - Music is loaded from `public/assets/music/retro_game_music.mp3` through `src/audio.js`.
-- Sound effects are loaded from `public/assets/sounds/*.wav` through `src/audio.js` and played from `GameScene` gameplay hooks.
+- Sound effects are loaded from `public/assets/sounds/*.wav` through `src/audio.js` (the `SFX` map) and played via `playSfx(scene, id)`. Gameplay cues (enemy hit/death, boss hit/spawn/phase/defeat, player hit, shield block, dash ready, combo up/break, big coin, mod grant, shield pickup, wave start/clear, game start) fire from `GameScene`; UI cues (`uiMove`/`uiConfirm`/`uiCancel`, `purchase`/`purchaseFail`) fire from the menu, store, loadout, settings, and monsters scenes (each calls `preloadSfx` in `preload`). Generation prompts and target durations are in `plan_docs/sound-effects-prompts.md`.
 - Music settings persist in `Save.settings` as `musicEnabled` and `musicVolume`.
 - Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
 - `SettingsScene` controls arena background, music on/off and volume, sound-effect on/off and volume, the touch-controls mode (Auto / On / Off), and the fullscreen toggle (On / Off).
