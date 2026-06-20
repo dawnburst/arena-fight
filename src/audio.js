@@ -10,6 +10,88 @@ export const SFX = {
   dash: { key: 'sfx-dash', path: assetPath('assets/sounds/dash.wav'), volume: 0.55 },
   gift: { key: 'sfx-gift', path: assetPath('assets/sounds/gift.wav'), volume: 0.6 },
   lose: { key: 'sfx-lose', path: assetPath('assets/sounds/lose.wav'), volume: 0.7 },
+  // Combat
+  enemyHit: { key: 'sfx-enemy-hit', path: assetPath('assets/sounds/enemy_hit.wav'), volume: 0.3 },
+  enemyDeath: {
+    key: 'sfx-enemy-death',
+    path: assetPath('assets/sounds/enemy_death.wav'),
+    volume: 0.4,
+  },
+  bossHit: { key: 'sfx-boss-hit', path: assetPath('assets/sounds/boss_hit.wav'), volume: 0.45 },
+  playerHit: {
+    key: 'sfx-player-hit',
+    path: assetPath('assets/sounds/player_hit.wav'),
+    volume: 0.5,
+  },
+  shieldBlock: {
+    key: 'sfx-shield-block',
+    path: assetPath('assets/sounds/shield_block.wav'),
+    volume: 0.5,
+  },
+  dashReady: {
+    key: 'sfx-dash-ready',
+    path: assetPath('assets/sounds/dash_ready.wav'),
+    volume: 0.4,
+  },
+  // Pickups & economy
+  coinBig: { key: 'sfx-coin-big', path: assetPath('assets/sounds/coin_big.wav'), volume: 0.55 },
+  comboUp: { key: 'sfx-combo-up', path: assetPath('assets/sounds/combo_up.wav'), volume: 0.4 },
+  comboBreak: {
+    key: 'sfx-combo-break',
+    path: assetPath('assets/sounds/combo_break.wav'),
+    volume: 0.4,
+  },
+  shieldPickup: {
+    key: 'sfx-shield-pickup',
+    path: assetPath('assets/sounds/shield_pickup.wav'),
+    volume: 0.55,
+  },
+  modGrant: { key: 'sfx-mod-grant', path: assetPath('assets/sounds/mod_grant.wav'), volume: 0.6 },
+  // Waves & bosses
+  waveStart: {
+    key: 'sfx-wave-start',
+    path: assetPath('assets/sounds/wave_start.wav'),
+    volume: 0.5,
+  },
+  waveClear: {
+    key: 'sfx-wave-clear',
+    path: assetPath('assets/sounds/wave_clear.wav'),
+    volume: 0.55,
+  },
+  bossSpawn: {
+    key: 'sfx-boss-spawn',
+    path: assetPath('assets/sounds/boss_spawn.wav'),
+    volume: 0.6,
+  },
+  bossPhase: {
+    key: 'sfx-boss-phase',
+    path: assetPath('assets/sounds/boss_phase.wav'),
+    volume: 0.6,
+  },
+  bossDefeat: {
+    key: 'sfx-boss-defeat',
+    path: assetPath('assets/sounds/boss_defeat.wav'),
+    volume: 0.7,
+  },
+  // UI & meta
+  uiMove: { key: 'sfx-ui-move', path: assetPath('assets/sounds/ui_move.wav'), volume: 0.35 },
+  uiConfirm: {
+    key: 'sfx-ui-confirm',
+    path: assetPath('assets/sounds/ui_confirm.wav'),
+    volume: 0.45,
+  },
+  uiCancel: { key: 'sfx-ui-cancel', path: assetPath('assets/sounds/ui_cancel.wav'), volume: 0.45 },
+  purchase: { key: 'sfx-purchase', path: assetPath('assets/sounds/purchase.wav'), volume: 0.55 },
+  purchaseFail: {
+    key: 'sfx-purchase-fail',
+    path: assetPath('assets/sounds/purchase_fail.wav'),
+    volume: 0.5,
+  },
+  gameStart: {
+    key: 'sfx-game-start',
+    path: assetPath('assets/sounds/game_start.wav'),
+    volume: 0.6,
+  },
 };
 const MUSIC_MANAGER_KEY = 'backgroundMusicManager';
 const CROSSFADE_MS = 2600;
