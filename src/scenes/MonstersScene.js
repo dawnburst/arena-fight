@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { playSfx, preloadSfx } from '../audio.js';
 import { CFG } from '../config.js';
 import { ENEMY_BESTIARY, ENEMY_SPRITES } from '../enemies.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
@@ -25,6 +26,7 @@ export default class MonstersScene extends Phaser.Scene {
         });
       }
     }
+    preloadSfx(this);
   }
 
   create() {
@@ -82,6 +84,7 @@ export default class MonstersScene extends Phaser.Scene {
   }
 
   back() {
+    playSfx(this, 'uiCancel');
     if (this.mode === 'detail') this.showGallery();
     else this.scene.start('MainMenuScene');
   }
@@ -229,11 +232,11 @@ export default class MonstersScene extends Phaser.Scene {
     }
 
     if (this.mode === 'detail') {
-      if (k === 'b' || event.key === 'Escape') this.showGallery();
+      if (k === 'b' || event.key === 'Escape') this.back();
       return;
     }
 
-    if (k === 'b' || event.key === 'Escape') this.scene.start('MainMenuScene');
+    if (k === 'b' || event.key === 'Escape') this.back();
     else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
       this.select(this.selectedIndex - 1);
     else if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
@@ -243,7 +246,9 @@ export default class MonstersScene extends Phaser.Scene {
   }
 
   select(index) {
-    this.selectedIndex = Phaser.Math.Wrap(index, 0, ENEMY_BESTIARY.length);
+    const next = Phaser.Math.Wrap(index, 0, ENEMY_BESTIARY.length);
+    if (next !== this.selectedIndex) playSfx(this, 'uiMove');
+    this.selectedIndex = next;
     this.refreshGallery();
   }
 
@@ -261,6 +266,7 @@ export default class MonstersScene extends Phaser.Scene {
   }
 
   openDetail(index) {
+    playSfx(this, 'uiConfirm');
     this.selectedIndex = Phaser.Math.Wrap(index, 0, ENEMY_BESTIARY.length);
     const enemy = ENEMY_BESTIARY[this.selectedIndex];
     const spriteDef = ENEMY_SPRITES[enemy.sprite];

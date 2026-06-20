@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { preloadMusic, syncMusic } from '../audio.js';
+import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
   backgroundKey,
@@ -23,6 +23,7 @@ export default class SettingsScene extends Phaser.Scene {
       }
     }
     preloadMusic(this);
+    preloadSfx(this);
   }
 
   create() {
@@ -123,7 +124,10 @@ export default class SettingsScene extends Phaser.Scene {
         width: 124,
         height: 46,
         label: '‹ BACK',
-        onClick: () => this.scene.start('MainMenuScene'),
+        onClick: () => {
+          playSfx(this, 'uiCancel');
+          this.scene.start('MainMenuScene');
+        },
       });
     }
 
@@ -138,6 +142,7 @@ export default class SettingsScene extends Phaser.Scene {
 
   onKey(event) {
     if (event.key === 'b' || event.key === 'B' || event.key === 'Escape') {
+      playSfx(this, 'uiCancel');
       this.scene.start('MainMenuScene');
       return;
     }
@@ -188,13 +193,16 @@ export default class SettingsScene extends Phaser.Scene {
   }
 
   select(index) {
-    this.selectedIndex = Phaser.Math.Wrap(index, 0, ARENA_BACKGROUNDS.length);
+    const next = Phaser.Math.Wrap(index, 0, ARENA_BACKGROUNDS.length);
+    if (next !== this.selectedIndex) playSfx(this, 'uiMove');
+    this.selectedIndex = next;
     this.refresh();
   }
 
   applySelection(index) {
     this.selectedIndex = Phaser.Math.Wrap(index, 0, ARENA_BACKGROUNDS.length);
     Save.setBackground(ARENA_BACKGROUNDS[this.selectedIndex].id);
+    playSfx(this, 'uiConfirm');
     this.refresh();
   }
 
@@ -360,6 +368,8 @@ export default class SettingsScene extends Phaser.Scene {
   toggleSfx() {
     const enabled = Save.get().settings?.sfxEnabled !== false;
     Save.setSfxEnabled(!enabled);
+    // Audible confirmation when turning sound on (playSfx is a no-op when off).
+    playSfx(this, 'uiConfirm');
     this.refresh();
   }
 
