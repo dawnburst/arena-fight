@@ -747,8 +747,12 @@ Storage key: `arenaFight.save.v1`. JSON value:
     "runsPlayed": 12,
     "bestWave": 18,
     "bestScore": 8400,
-    "totalCoinsEarned": 4321
-  }
+    "totalCoinsEarned": 4321,
+    "bestCombo": 8,
+    "totalKills": 1840,
+    "bossesDefeated": 6
+  },
+  "achievements": ["first-blood", "wave-10", "boss-slayer"]
 }
 ```
 
@@ -761,11 +765,22 @@ Defaults on first launch (no key present):
   "ownedWeapons": ["pistol"],
   "ownedMods": [],
   "loadout": { "weapon": "pistol", "mods": [null, null] },
-  "stats": { "runsPlayed": 0, "bestWave": 0, "bestScore": 0, "totalCoinsEarned": 0 }
+  "stats": {
+    "runsPlayed": 0, "bestWave": 0, "bestScore": 0, "totalCoinsEarned": 0,
+    "bestCombo": 0, "totalKills": 0, "bossesDefeated": 0
+  },
+  "achievements": []
 }
 ```
 
-Resilience: corrupt JSON, missing fields, unknown `version` → fall back to defaults with a `console.warn`.
+`stats.bestCombo` / `totalKills` / `bossesDefeated` and the `achievements` array
+(unlocked achievement ids — definitions live in `src/achievements.js`) are folded in
+by `Save.recordRun()` / `Save.unlockAchievements()` at run end. The run-summary panel
+on the game-over screen (`MainMenuScene.createGameOverDetails`) reads the per-run
+breakdown passed in the game-over payload (`summary`, `newAchievements`), which
+`GameScene` accumulates in `this.runStats` during play.
+
+Resilience: corrupt JSON, missing fields, unknown `version` → fall back to defaults with a `console.warn`. All known fields (including the new stats/achievements) are deep-merged against defaults, so older v1 saves upgrade without a wipe.
 
 ---
 
