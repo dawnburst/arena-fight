@@ -549,6 +549,44 @@ Large, multi-phase bosses appear on every boss wave (`CFG.boss.everyNWaves`, def
 
 The boss is **not** in `ENEMY_TYPE_ORDER`, so `pickEnemyType()` never spawns it during normal waves; it is only created by `startBossWave()`. A bestiary entry exists in `src/enemies.js` (placeholder tinted sprite until boss art is added).
 
+### 6.20 Onboarding (interactive scripted tutorial)
+
+Implements task 1 of `plan_docs/improvments_task1.md`. A fully scripted,
+step-by-step interactive tutorial that lives **only** in the tutorial flow (there
+are no hints during a normal run). Reuses `GameScene` via a `{ tutorial: true }`
+flag — no new scene.
+
+- **Script + sequencer** (`src/tutorial.js`, framework-agnostic, unit-tested):
+  `TUTORIAL_SCRIPT` is the prepared, ordered list of steps (`move`, `aim-fire`,
+  `dash`, `combo`, `coin`, `gift`, `shield`, `boss`), each with `title`, `body`,
+  `task`, `success`, and a `goal` (`{type, amount}`). `class TutorialController`
+  drives the `explain → act → (next) → done` state machine via `acknowledge()`
+  and `complete()`.
+- **Per-step flow in `GameScene`:** `startTutorial()` builds the controller, marks
+  `Save.markTutorialSeen()`, and disables waves / random pickups. Each step:
+  `enterTutorialStep()` freezes the arena (`physics.pause()` + `tutorialFrozen`)
+  and shows the explanation panel; the player acknowledges (SPACE/ENTER/click →
+  `acknowledgeTutorial()`); `setupTutorialGoal()` spawns the scenario (stationary
+  target dummies for `kill`/`combo`, coins for `coin`, a forced gift/shield for
+  those steps) and shows the objective; `updateTutorial()` polls
+  `checkTutorialGoal()` each frame; on success `completeTutorialStep()` shows a
+  toast, advances, and re-freezes. `finishTutorial()` shows the completion panel.
+- **Invulnerable & isolated:** the player can't die (`onPlayerHitEnemy` and
+  `damagePlayer` no-op in tutorial; targets survive contact and die only to
+  bullets, which drives the kill/combo steps). Coins/gift/shield are illustrative
+  — `onPlayerCoin` counts but doesn't credit the wallet; `endShield` pays nothing.
+  `maybeStartNextWave`, `dropCoinsForKill`, `scheduleNextGift/ShieldBonus` all
+  early-return in tutorial. Exit any time with `Esc` (→ `exitToMainMenu`, which
+  skips `Save.recordRun` for a tutorial).
+- **Entry point:** launched only from `MainMenuScene`'s `TUTORIAL` action
+  (shortcut `T`) — there is no auto-launch (START/RETRY go straight to a normal
+  run). Per-step pacing: each completed step shows a praise word and holds for 2s
+  (`TUTORIAL_STEP_DELAY_MS`) during which the **arena stays live and the player can
+  keep moving**; the next explanation panel (which freezes the arena) appears when
+  the window elapses. The combo step requires destroying all 3 targets.
+
+Persistence: `Save.tutorialSeen` (set on start; see §9).
+
 ---
 
 ## 7. Catalog: weapons & mods
@@ -752,7 +790,8 @@ Storage key: `arenaFight.save.v1`. JSON value:
     "totalKills": 1840,
     "bossesDefeated": 6
   },
-  "achievements": ["first-blood", "wave-10", "boss-slayer"]
+  "achievements": ["first-blood", "wave-10", "boss-slayer"],
+  "tutorialSeen": true
 }
 ```
 
@@ -769,7 +808,8 @@ Defaults on first launch (no key present):
     "runsPlayed": 0, "bestWave": 0, "bestScore": 0, "totalCoinsEarned": 0,
     "bestCombo": 0, "totalKills": 0, "bossesDefeated": 0
   },
-  "achievements": []
+  "achievements": [],
+  "tutorialSeen": false
 }
 ```
 
@@ -780,7 +820,11 @@ on the game-over screen (`MainMenuScene.createGameOverDetails`) reads the per-ru
 breakdown passed in the game-over payload (`summary`, `newAchievements`), which
 `GameScene` accumulates in `this.runStats` during play.
 
-Resilience: corrupt JSON, missing fields, unknown `version` → fall back to defaults with a `console.warn`. All known fields (including the new stats/achievements) are deep-merged against defaults, so older v1 saves upgrade without a wipe.
+`tutorialSeen` records that the interactive tutorial has been started (launched
+from the menu's **TUTORIAL** action; there is no auto-launch). See
+§6.20 (Onboarding). Helpers: `markTutorialSeen()`, `resetTutorial()`.
+
+Resilience: corrupt JSON, missing fields, unknown `version` → fall back to defaults with a `console.warn`. All known fields (including the new stats/achievements and `tutorialSeen`) are deep-merged against defaults, so older v1 saves upgrade without a wipe.
 
 ---
 
@@ -806,7 +850,7 @@ Resilience: corrupt JSON, missing fields, unknown `version` → fall back to def
 - **No audio.** Deferred to a later phase.
 - **No sprites.** Everything is primitive shapes (`Arc`, `Polygon`, `Rectangle`).
 - **No real menu screen.** First launch goes directly into GameScene with the default loadout.
-- **No tutorial.** New players are dropped in with no onboarding.
+- ~~**No tutorial.**~~ Resolved: an interactive, scripted step-by-step tutorial launched from the menu **TUTORIAL** action (you can't die). See §6.20.
 - **Beam weapon is fake.** It's a very high fire rate with longer-lived bullets. A true hitscan beam would require dedicated rendering code.
 - **Boomerang doesn't hit enemies on the return path** if it gets too fast or off-screen — its body is small. Mostly works in practice.
 - **No save migrations.** A schema bump (e.g., `v1` → `v2`) currently means wipe; need a migrator before any breaking schema change.
