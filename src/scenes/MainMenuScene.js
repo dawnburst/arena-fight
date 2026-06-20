@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { ACHIEVEMENT_COUNT, ACHIEVEMENTS_BY_ID } from '../achievements.js';
-import { preloadMusic, syncMusic } from '../audio.js';
+import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
   backgroundKey,
@@ -45,6 +45,7 @@ export default class MainMenuScene extends Phaser.Scene {
       }
     }
     preloadMusic(this);
+    preloadSfx(this);
   }
 
   create() {
@@ -328,7 +329,9 @@ export default class MainMenuScene extends Phaser.Scene {
   }
 
   selectAction(index) {
-    this.actionIndex = Phaser.Math.Wrap(index, 0, this.actions.length);
+    const next = Phaser.Math.Wrap(index, 0, this.actions.length);
+    if (next !== this.actionIndex) playSfx(this, 'uiMove');
+    this.actionIndex = next;
     this.actionViews.forEach((view, i) => {
       const selected = i === this.actionIndex;
       const action = this.actions[i];
@@ -349,6 +352,7 @@ export default class MainMenuScene extends Phaser.Scene {
 
   activateAction(index) {
     this.input.setDefaultCursor('default');
+    playSfx(this, 'uiConfirm');
     this.actions[index]?.action();
   }
 }
