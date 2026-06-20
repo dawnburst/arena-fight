@@ -122,6 +122,7 @@ export default class GameScene extends Phaser.Scene {
     this.wave = 0;
     this.comboMultiplier = 1;
     this.lastKillAt = 0;
+    this.dashReadyAnnounced = true;
     this.enemySpeedThisWave = CFG.enemy.speed;
     this.pendingSpawns = 0;
     this.paused = false;
@@ -256,6 +257,7 @@ export default class GameScene extends Phaser.Scene {
       this.startDemo();
     } else {
       this.runStats.startTime = this.time.now;
+      playSfx(this, 'gameStart');
       this.startNextWave();
       this.scheduleNextShieldBonus();
       this.scheduleNextGift();
@@ -1332,6 +1334,7 @@ export default class GameScene extends Phaser.Scene {
       '30px',
     );
     this.cameras.main.shake(250, 0.006);
+    playSfx(this, 'bossSpawn');
     this.showBossShadow(tier);
   }
 
@@ -1624,6 +1627,7 @@ export default class GameScene extends Phaser.Scene {
     if (hitWeak) {
       boss.hp -= amount * wp.damageMult;
       this.bossHitFx(sourceX, sourceY, wp.color);
+      playSfx(this, 'bossHit');
     } else if (boss.shieldUp) {
       boss.shield -= amount;
       this.bossHitFx(sourceX, sourceY, CFG.boss.shieldColor);
@@ -1658,6 +1662,7 @@ export default class GameScene extends Phaser.Scene {
     if (target <= boss.phaseIndex) return;
 
     boss.phaseIndex = target;
+    playSfx(this, 'bossPhase');
     const now = this.time.now;
     boss.phaseChangingUntil = now + CFG.boss.transitionMs;
     boss.shield = boss.maxShield;
@@ -2687,6 +2692,8 @@ export default class GameScene extends Phaser.Scene {
     });
 
     this.showWaveBanner(`WAVE ${n}`);
+    // Wave 1 already gets the run-start sting; only later waves use the wave fanfare.
+    if (n > 1) playSfx(this, 'waveStart');
   }
 
   showWaveBanner(text, color = '#ffffff', fontSize = '32px') {
@@ -2725,6 +2732,8 @@ export default class GameScene extends Phaser.Scene {
     if (this.nextWaveScheduled) return;
 
     this.payWaveClearBonus();
+    // Boss waves get their own defeat fanfare, so skip the generic clear jingle.
+    if (this.wave > 0 && !this.isBossWave(this.wave)) playSfx(this, 'waveClear');
 
     this.nextWaveScheduled = true;
     this.nextWaveDelayedCall = this.time.delayedCall(CFG.waves.interWaveDelayMs, () => {
@@ -2796,6 +2805,7 @@ export default class GameScene extends Phaser.Scene {
     enemy.hp -= damage;
     if (enemy.hp > 0) {
       this.flashEnemyHit(enemy, frontBlocked);
+      playSfx(this, 'enemyHit');
       return damage;
     }
     const ex = enemy.x;
@@ -2865,6 +2875,7 @@ export default class GameScene extends Phaser.Scene {
       if (!this.bossHitTaken) this.runStats.bossNoHit = true;
     } else {
       this.runStats.killsByType[type] = (this.runStats.killsByType[type] || 0) + 1;
+      playSfx(this, 'enemyDeath');
     }
     this.killEnemyScoring(x, y);
     if (type === 'splitter') {
@@ -2875,6 +2886,7 @@ export default class GameScene extends Phaser.Scene {
     } else if (type === 'bomber') {
       this.explodeEnemy(x, y, CFG.bomber.explosionRadius, true);
     } else if (type === 'boss') {
+      playSfx(this, 'bossDefeat');
       this.payBossReward(x, y);
       this.bossDeathBurst(x, y);
       if (CFG.boss.clearAddsOnBossDeath) this.clearBossAdds();
@@ -2883,7 +2895,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   killEnemyScoring(x, y) {
+    const prevCombo = this.comboMultiplier;
     this.comboMultiplier = Math.min(this.comboMultiplier + 1, CFG.combo.maxMultiplier);
+    if (this.comboMultiplier > prevCombo) {
+      playSfx(this, 'comboUp');
+    }
     if (this.comboMultiplier > this.runStats.longestCombo) {
       this.runStats.longestCombo = this.comboMultiplier;
     }
@@ -2946,7 +2962,7 @@ export default class GameScene extends Phaser.Scene {
     coin.destroy();
     this.coinsThisRun += value;
     Save.addToWallet(value);
-    playSfx(this, 'coin');
+    playSfx(this, value > 1 ? 'coinBig' : 'coin');
     if (value > 1) {
       this.showFloatingText(
         this.player.sprite.x,
@@ -2971,6 +2987,7 @@ export default class GameScene extends Phaser.Scene {
         enemy.destroy();
       }
       this.shieldHitsRemaining -= 1;
+      playSfx(this, 'shieldBlock');
       this.player.invulnerableUntil = this.time.now + 200;
       this.tweens.add({
         targets: this.shieldRing,
@@ -2992,7 +3009,8 @@ export default class GameScene extends Phaser.Scene {
     }
     this.player.hp -= this.getEnemyContactDamage(enemy.type);
     this.bossHitTaken = true;
-    this.comboMultiplier = 1;
+    this.breakCombo();
+    playSfx(this, 'playerHit');
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
     this.player.hitUntil = this.time.now + CFG.player.hitFlashMs;
 
@@ -3054,6 +3072,7 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.shieldActive) {
       this.shieldHitsRemaining -= 1;
+      playSfx(this, 'shieldBlock');
       this.player.invulnerableUntil = this.time.now + 200;
       this.tweens.add({
         targets: this.shieldRing,
@@ -3070,7 +3089,8 @@ export default class GameScene extends Phaser.Scene {
 
     this.player.hp -= amount;
     this.bossHitTaken = true;
-    this.comboMultiplier = 1;
+    this.breakCombo();
+    playSfx(this, 'playerHit');
     this.player.invulnerableUntil = this.time.now + CFG.player.hitFlashMs * 2;
     this.player.hitUntil = this.time.now + CFG.player.hitFlashMs;
 
@@ -3203,8 +3223,14 @@ export default class GameScene extends Phaser.Scene {
 
   maybeDecayCombo(time) {
     if (this.comboMultiplier > 1 && time - this.lastKillAt > this.runtime.comboResetMs) {
-      this.comboMultiplier = 1;
+      this.breakCombo();
     }
+  }
+
+  // Reset the kill-streak multiplier, with a short "deflate" cue if a combo was lost.
+  breakCombo() {
+    if (this.comboMultiplier > 1) playSfx(this, 'comboBreak');
+    this.comboMultiplier = 1;
   }
 
   togglePause() {
@@ -3326,7 +3352,7 @@ export default class GameScene extends Phaser.Scene {
     this.shieldPickup.rotateTween?.stop();
     this.shieldPickup.destroy();
     this.shieldPickup = null;
-    playSfx(this, 'gift');
+    playSfx(this, 'shieldPickup');
 
     this.activateShield(true);
     this.scheduleNextShieldBonus();
@@ -3486,7 +3512,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.giftPickup || pickup !== this.giftPickup) return;
     this.clearGiftTimers();
     this.destroyGiftPickup();
-    playSfx(this, 'gift');
+    playSfx(this, 'modGrant');
     this.grantRandomMod();
     this.scheduleNextGift();
   }
@@ -3741,8 +3767,14 @@ export default class GameScene extends Phaser.Scene {
 
     const remaining = Math.max(0, this.player.dashReadyAt - time);
     if (remaining > 0) {
+      this.dashReadyAnnounced = false;
       this.dashCdText.setText(`dash cooldown: ${(remaining / 1000).toFixed(1)}s`);
     } else {
+      // Edge-trigger a "recharged" chime once, but only after an actual dash.
+      if (!this.dashReadyAnnounced) {
+        this.dashReadyAnnounced = true;
+        if (this.player.dashReadyAt > 0) playSfx(this, 'dashReady');
+      }
       this.dashCdText.setText('dash ready  [space]');
     }
 
