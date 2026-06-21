@@ -361,6 +361,7 @@ export const CFG = {
         phasePowers: [['barrage'], ['barrage', 'charge'], ['barrage', 'charge']],
       },
       {
+        id: 'hexweaver',
         name: 'The Hexweaver',
         body: 0x0d47a1,
         accent: 0x42a5f5,

@@ -15,6 +15,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  hexweaver: {
+    key: 'boss-hexweaver-idle-s',
+    path: assetPath('assets/enemies/boss/hexweaver/hexweaver_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -128,6 +135,7 @@ const bossFrames = (id, powers) => ({
 export const BOSS_SPRITES = {
   warden: bossFrames('warden', ['summon', 'barrage']),
   juggernaut: bossFrames('juggernaut', ['barrage', 'charge']),
+  hexweaver: bossFrames('hexweaver', ['beamSweep', 'mirrorClones', 'gravityWell']),
 };
 
 export const ENEMY_BESTIARY = [
@@ -305,5 +313,21 @@ export const ENEMY_BESTIARY = [
       'Its shield and orbiting weak points protect three phases while radial lime barrages and telegraphed charges pressure the whole arena.',
     counter:
       'Punish the small orbiting weak points, sidestep the lowered-horn charge warning, and move through gaps in each radial barrage.',
+  },
+  {
+    id: 'boss-hexweaver',
+    name: 'The Hexweaver',
+    sprite: 'hexweaver',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 30',
+    movement:
+      'Floats near the top of the arena, tracking the player while its shielded rune nodes orbit through three phases.',
+    power:
+      'Sweeps rotating arcane beams in phase 1, creates projectile-firing mirror clones in phase 2, and pulls the arena into a damaging gravity well in phase 3.',
+    counter:
+      'Break or bypass the shield through the orbiting weak points, move with the beam gaps, destroy clones quickly, and fight the gravity pull instead of drifting into its core.',
   },
 ];

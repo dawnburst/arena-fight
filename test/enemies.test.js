@@ -16,4 +16,12 @@ describe('enemies', () => {
       expect(existsSync(join(process.cwd(), 'public', frame.path))).toBe(true);
     }
   });
+
+  it('registers every Hexweaver frame to an existing asset', () => {
+    const frames = BOSS_SPRITES.hexweaver;
+    expect(Object.keys(frames)).toHaveLength(23);
+    for (const frame of Object.values(frames)) {
+      expect(existsSync(join(process.cwd(), 'public', frame.path))).toBe(true);
+    }
+  });
 });
