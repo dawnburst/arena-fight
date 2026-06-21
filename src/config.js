@@ -349,6 +349,7 @@ export const CFG = {
         phasePowers: [['summon'], ['summon', 'barrage'], ['summon', 'barrage']],
       },
       {
+        id: 'juggernaut',
         name: 'The Juggernaut',
         body: 0x1b5e20,
         accent: 0x66bb6a,

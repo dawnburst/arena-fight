@@ -8,6 +8,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  juggernaut: {
+    key: 'boss-juggernaut-idle-s',
+    path: assetPath('assets/enemies/boss/juggernaut/juggernaut_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -82,35 +89,45 @@ export const ENEMY_SPRITES = {
   },
 };
 
-const wardenFrame = (name) => ({
-  key: `boss-warden-${name.replaceAll('_', '-')}`,
-  path: assetPath(`assets/enemies/boss/warden/warden_${name}.png`),
+const bossFrame = (id, name) => ({
+  key: `boss-${id}-${name.replaceAll('_', '-')}`,
+  path: assetPath(`assets/enemies/boss/${id}/${id}_${name}.png`),
+});
+
+const bossFrames = (id, powers) => ({
+  idle_s: ENEMY_SPRITES[id],
+  ...Object.fromEntries(
+    ['idle_n', 'idle_w', 'idle_e', 'idle_se', 'idle_sw', 'idle_ne', 'idle_nw'].map((name) => [
+      name,
+      bossFrame(id, name),
+    ]),
+  ),
+  ...Object.fromEntries(
+    Array.from({ length: 4 }, (_, index) => `walk_s_${index}`).map((name) => [
+      name,
+      bossFrame(id, name),
+    ]),
+  ),
+  ...Object.fromEntries(
+    powers.flatMap((power) =>
+      ['telegraph', 'release'].map((state) => {
+        const name = `${power}_${state}`;
+        return [name, bossFrame(id, name)];
+      }),
+    ),
+  ),
+  enrage: bossFrame(id, 'enrage'),
+  ...Object.fromEntries(
+    Array.from({ length: 4 }, (_, index) => `death_${index}`).map((name) => [
+      name,
+      bossFrame(id, name),
+    ]),
+  ),
 });
 
 export const BOSS_SPRITES = {
-  warden: {
-    idle_s: ENEMY_SPRITES.warden,
-    idle_n: wardenFrame('idle_n'),
-    idle_w: wardenFrame('idle_w'),
-    idle_e: wardenFrame('idle_e'),
-    idle_se: wardenFrame('idle_se'),
-    idle_sw: wardenFrame('idle_sw'),
-    idle_ne: wardenFrame('idle_ne'),
-    idle_nw: wardenFrame('idle_nw'),
-    walk_s_0: wardenFrame('walk_s_0'),
-    walk_s_1: wardenFrame('walk_s_1'),
-    walk_s_2: wardenFrame('walk_s_2'),
-    walk_s_3: wardenFrame('walk_s_3'),
-    summon_telegraph: wardenFrame('summon_telegraph'),
-    summon_release: wardenFrame('summon_release'),
-    barrage_telegraph: wardenFrame('barrage_telegraph'),
-    barrage_release: wardenFrame('barrage_release'),
-    enrage: wardenFrame('enrage'),
-    death_0: wardenFrame('death_0'),
-    death_1: wardenFrame('death_1'),
-    death_2: wardenFrame('death_2'),
-    death_3: wardenFrame('death_3'),
-  },
+  warden: bossFrames('warden', ['summon', 'barrage']),
+  juggernaut: bossFrames('juggernaut', ['barrage', 'charge']),
 };
 
 export const ENEMY_BESTIARY = [
@@ -259,18 +276,34 @@ export const ENEMY_BESTIARY = [
   },
   {
     id: 'boss',
-    name: 'Bosses',
+    name: 'The Warden',
     sprite: 'warden',
     frame: 0,
     tint: null,
     galleryScale: 0.27,
     detailScale: 0.78,
-    firstWave: 'Every 10 waves',
+    firstWave: 'Wave 10',
     movement:
       'A huge shielded boss hovers near the top and tracks you, summoning its own minions. A different boss appears each boss wave (The Warden at 10 up to The Annihilator at 100), tougher the deeper you go.',
     power:
       'Energy shield blocks body hits and regenerates each phase; small orbiting weak points always take extra damage. Across three escalating phases it draws from radial barrages, spiraling fire, aimed volleys, charges and ground-slams, area blasts, and shield re-raises.',
     counter:
       'Snipe the moving weak points to skip the shield, or break the shield then unload. Dodge the charge windup and stay out of slam range.',
+  },
+  {
+    id: 'boss-juggernaut',
+    name: 'The Juggernaut',
+    sprite: 'juggernaut',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 20',
+    movement:
+      'Tracks the player near the top of the arena, then launches into a heavy horn-first charge.',
+    power:
+      'Its shield and orbiting weak points protect three phases while radial lime barrages and telegraphed charges pressure the whole arena.',
+    counter:
+      'Punish the small orbiting weak points, sidestep the lowered-horn charge warning, and move through gaps in each radial barrage.',
   },
 ];
