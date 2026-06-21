@@ -326,6 +326,7 @@ export const CFG = {
     // every boss fights differently. Difficulty also scales continuously by tier.
     variants: [
       {
+        id: 'warden',
         name: 'The Warden',
         body: 0x4a148c,
         accent: 0x9575cd,

@@ -113,7 +113,9 @@ export default class MonstersScene extends Phaser.Scene {
       const container = this.add.container(x, y);
       const bg = this.add.graphics();
       const spriteDef = ENEMY_SPRITES[enemy.sprite];
-      const portrait = this.add.sprite(cardW / 2, 46, spriteDef.key, enemy.frame).setScale(0.7);
+      const portrait = this.add
+        .sprite(cardW / 2, 46, spriteDef.key, enemy.frame)
+        .setScale(enemy.galleryScale ?? 0.7);
       if (enemy.tint) portrait.setTint(enemy.tint);
       const name = this.add
         .text(cardW / 2, 86, enemy.name, {
@@ -287,6 +289,7 @@ export default class MonstersScene extends Phaser.Scene {
     this.detailBg.fillRoundedRect(82, 132, 220, 220, 8);
 
     this.detailPortrait.setTexture(spriteDef.key, enemy.frame);
+    this.detailPortrait.setScale(enemy.detailScale ?? 3.1);
     this.detailPortrait.clearTint();
     if (enemy.tint) this.detailPortrait.setTint(enemy.tint);
     this.detailName.setText(enemy.name);

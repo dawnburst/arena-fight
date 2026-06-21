@@ -10,7 +10,7 @@ import {
 } from '../backgrounds.js';
 import { buildRuntimeStats, getWeapon, MODS } from '../catalog.js';
 import { CFG } from '../config.js';
-import { ENEMY_SPRITES } from '../enemies.js';
+import { BOSS_SPRITES, ENEMY_SPRITES } from '../enemies.js';
 import TouchControls from '../input/touchControls.js';
 import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
@@ -90,6 +90,13 @@ export default class GameScene extends Phaser.Scene {
           frameWidth: sprite.frameWidth,
           frameHeight: sprite.frameHeight,
         });
+      }
+    }
+    for (const boss of Object.values(BOSS_SPRITES)) {
+      for (const sprite of Object.values(boss)) {
+        if (sprite.key !== ENEMY_SPRITES.warden.key && !this.textures.exists(sprite.key)) {
+          this.load.image(sprite.key, sprite.path);
+        }
       }
     }
     preloadMusic(this);
@@ -686,7 +693,10 @@ export default class GameScene extends Phaser.Scene {
       if (!this.anims.exists(sprite.key)) {
         this.anims.create({
           key: sprite.key,
-          frames: this.anims.generateFrameNumbers(sprite.key, { start: 0, end: 3 }),
+          frames: this.anims.generateFrameNumbers(sprite.key, {
+            start: 0,
+            end: (sprite.frames ?? 4) - 1,
+          }),
           frameRate: 6,
           repeat: -1,
         });
@@ -1768,13 +1778,19 @@ export default class GameScene extends Phaser.Scene {
     const y = cfg.anchorY;
     const now = this.time.now;
 
-    const boss = this.add.circle(x, y, cfg.radius, variant.body);
-    boss.setStrokeStyle(5, variant.accent, 0.95);
+    const hasSpriteArt = variant.id && BOSS_SPRITES[variant.id];
+    const boss = hasSpriteArt
+      ? this.add.sprite(x, y, BOSS_SPRITES[variant.id].idle_s.key)
+      : this.add.circle(x, y, cfg.radius, variant.body);
+    if (!hasSpriteArt) boss.setStrokeStyle(5, variant.accent, 0.95);
     boss.setDepth(4);
     this.physics.add.existing(boss);
     this.enemies.add(boss);
-    boss.body.setCircle(cfg.hitRadius);
-    boss.body.setOffset(cfg.radius - cfg.hitRadius, cfg.radius - cfg.hitRadius);
+    boss.baseScale = hasSpriteArt ? 0.68 : 1;
+    const bodyRadius = hasSpriteArt ? cfg.hitRadius / boss.baseScale : cfg.hitRadius;
+    boss.body.setCircle(bodyRadius);
+    const bodyCenter = hasSpriteArt ? 128 : cfg.radius;
+    boss.body.setOffset(bodyCenter - bodyRadius, bodyCenter - bodyRadius);
 
     boss.type = 'boss';
     boss.tier = tier;
@@ -1790,8 +1806,12 @@ export default class GameScene extends Phaser.Scene {
     boss.phaseChangingUntil = now + cfg.introMs;
     boss.speed = 0;
     boss.spiralPhase = 0;
+    boss.hasSpriteArt = Boolean(hasSpriteArt);
+    boss.visualUntil = 0;
+    boss.actionEvent = null;
 
     boss.core = this.add.circle(x, y, 18, variant.core, 0.95).setDepth(4.3);
+    boss.core.setVisible(!hasSpriteArt);
     boss.shieldRingGfx = this.add.circle(x, y, cfg.hitRadius - 2).setDepth(4.1);
     boss.shieldRingGfx.setStrokeStyle(3, cfg.shieldColor, 0.85);
     boss.shieldRingGfx.setFillStyle(cfg.shieldColor, 0.08);
@@ -1809,7 +1829,7 @@ export default class GameScene extends Phaser.Scene {
     this.showBossBar(boss);
 
     // Physics-safe entrance: scale + alpha in (position stays put).
-    boss.setScale(1.5);
+    boss.setScale(boss.baseScale * 1.5);
     boss.setAlpha(0.2);
     boss.core.setAlpha(0.2);
     this.tweens.add({
@@ -1818,7 +1838,12 @@ export default class GameScene extends Phaser.Scene {
       duration: cfg.introMs,
       ease: 'Quad.out',
     });
-    this.tweens.add({ targets: boss, scale: 1, duration: cfg.introMs, ease: 'Back.out' });
+    this.tweens.add({
+      targets: boss,
+      scale: boss.baseScale,
+      duration: cfg.introMs,
+      ease: 'Back.out',
+    });
 
     return boss;
   }
@@ -1858,6 +1883,7 @@ export default class GameScene extends Phaser.Scene {
     this.positionBossParts(boss, now);
     this.keepEnemiesOutsideBoss(boss);
     this.updateBossBar(boss);
+    this.updateBossSprite(boss, px, py, now);
 
     if (now < boss.phaseChangingUntil) {
       boss.body.setVelocity(0, 0);
@@ -1946,6 +1972,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   castBossPower(boss, name, now) {
+    if (boss.variant.id === 'warden' && (name === 'summon' || name === 'barrage')) {
+      return this.playWardenPower(boss, name, now);
+    }
     if (name === 'summon') return this.bossSummon(boss);
     if (name === 'barrage') return this.bossBarrage(boss, now);
     if (name === 'spiral') return this.bossSpiral(boss, now);
@@ -1973,6 +2002,50 @@ export default class GameScene extends Phaser.Scene {
         boss.x + Math.cos(a) * wp.orbitRadius,
         boss.y + Math.sin(a) * wp.orbitRadius,
       );
+    });
+  }
+
+  setBossSpriteFrame(boss, frame) {
+    const sprite = BOSS_SPRITES[boss.variant.id]?.[frame];
+    if (boss.active && sprite && boss.texture.key !== sprite.key) boss.setTexture(sprite.key);
+  }
+
+  bossFacing(dx, dy) {
+    const horizontal = dx > 8 ? 'e' : dx < -8 ? 'w' : '';
+    const vertical = dy > 8 ? 's' : dy < -8 ? 'n' : '';
+    return `${vertical}${horizontal}` || 's';
+  }
+
+  updateBossSprite(boss, px, py, now) {
+    if (!boss.hasSpriteArt || now < boss.visualUntil) return;
+    if (boss.phaseIndex === 2) {
+      this.setBossSpriteFrame(boss, 'enrage');
+      return;
+    }
+
+    const moving = boss.body.speed > 4;
+    const dx = moving ? boss.body.velocity.x : px - boss.x;
+    const dy = moving ? boss.body.velocity.y : py - boss.y;
+    const facing = this.bossFacing(dx, dy);
+    if (moving && facing === 's') {
+      this.setBossSpriteFrame(boss, `walk_s_${Math.floor(now / 180) % 4}`);
+      return;
+    }
+    this.setBossSpriteFrame(boss, `idle_${facing}`);
+  }
+
+  playWardenPower(boss, name, now) {
+    const telegraphMs = 260;
+    const releaseMs = 220;
+    boss.visualUntil = now + telegraphMs + releaseMs;
+    this.setBossSpriteFrame(boss, `${name}_telegraph`);
+    if (boss.actionEvent) boss.actionEvent.remove(false);
+    boss.actionEvent = this.time.delayedCall(telegraphMs, () => {
+      boss.actionEvent = null;
+      if (!boss.active || this.gameOver) return;
+      this.setBossSpriteFrame(boss, `${name}_release`);
+      if (name === 'summon') this.bossSummon(boss);
+      else this.bossBarrage(boss, this.time.now);
     });
   }
 
@@ -2037,6 +2110,10 @@ export default class GameScene extends Phaser.Scene {
       boss.telegraph = null;
     }
     this.resetBossPowerTimers(boss, now + CFG.boss.transitionMs);
+    if (boss.variant.id === 'warden' && target === 2) {
+      boss.visualUntil = now + CFG.boss.transitionMs;
+      this.setBossSpriteFrame(boss, 'enrage');
+    }
     this.cameras.main.flash(220, 120, 30, 160);
     this.cameras.main.shake(220, 0.006);
   }
@@ -2536,9 +2613,25 @@ export default class GameScene extends Phaser.Scene {
   killBoss(boss) {
     const ex = boss.x;
     const ey = boss.y;
+    this.playBossDeathAnimation(boss);
     this.cleanupEnemyExtras(boss);
     boss.destroy();
     this.onEnemyKilled('boss', ex, ey);
+  }
+
+  playBossDeathAnimation(boss) {
+    if (boss.variant.id !== 'warden') return;
+    const death = this.add
+      .sprite(boss.x, boss.y, BOSS_SPRITES.warden.death_0.key)
+      .setScale(boss.baseScale)
+      .setDepth(4.55);
+    const frames = ['death_1', 'death_2', 'death_3'];
+    frames.forEach((frame, index) => {
+      this.time.delayedCall((index + 1) * 130, () => {
+        if (death.active) death.setTexture(BOSS_SPRITES.warden[frame].key);
+      });
+    });
+    this.time.delayedCall((frames.length + 1) * 130, () => death.destroy());
   }
 
   clearBossAdds() {
@@ -3216,6 +3309,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   cleanupEnemyExtras(enemy) {
+    if (enemy.actionEvent) {
+      enemy.actionEvent.remove(false);
+      enemy.actionEvent = null;
+    }
     if (enemy.shieldMark) enemy.shieldMark.destroy();
     if (enemy.aimLine) enemy.aimLine.destroy();
     if (enemy.core) enemy.core.destroy();
