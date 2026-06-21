@@ -285,9 +285,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // ── Interactive tutorial ────────────────────────────────────────────────
-  // A fully scripted, step-by-step lesson launched only from the menu (and once
-  // on first launch). Each step: freeze the arena and show an explanation →
-  // player acknowledges → player performs the action in the live arena →
+  // A fully scripted, step-by-step lesson launched only from the menu's
+  // TUTORIAL action — never on START. Each step: freeze the arena and show an
+  // explanation → player acknowledges → player performs the action in the live
+  // arena →
   // advance. The player cannot die; normal waves and random pickups are off.
 
   startTutorial() {

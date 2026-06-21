@@ -204,7 +204,7 @@ export default class LoadoutScene extends Phaser.Scene {
   startRun() {
     playSfx(this, 'uiConfirm');
     Save.setLoadout(this.weaponIds, this.modIds);
-    this.scene.start('GameScene');
+    this.scene.start('GameScene', { tutorial: false });
   }
 
   shutdown() {
