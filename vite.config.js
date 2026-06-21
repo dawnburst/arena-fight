@@ -10,6 +10,9 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
+    // Vitest owns unit tests under test/. The Playwright E2E specs live in e2e/
+    // and must not be picked up here (they import @playwright/test).
+    include: ['test/**/*.{test,spec}.js'],
     setupFiles: [],
     reporters: process.env.GITHUB_ACTIONS ? ['default', 'github-actions', 'junit'] : ['default'],
     outputFile: {
