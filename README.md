@@ -38,10 +38,15 @@ Production builds use the `/arena-fight/` base path for GitHub Pages. Deployment
 | Fullscreen | `F` |
 | Menu navigation | Mouse or arrow keys + `Enter` |
 
+Pausing opens an in-game menu — **Resume**, **Restart Run**, **Settings** (toggle
+music and sound without dying), and **Quit to Menu** — navigable by keyboard,
+mouse, or touch.
+
 On phones and tablets the game switches to on-screen **twin-stick** controls: the
 left stick moves, the right stick aims and fires automatically, and there are
 on-screen dash, pause, and weapon-switch buttons. The controls hug the screen
-corners. A top-left **MENU** button pauses and lets you exit to the main menu, and
+corners. A top-left **MENU** button opens the pause menu (Resume, Restart Run,
+Settings, Quit to Menu — all tappable), and
 every menu screen (Store, Loadout, Settings, Monsters) gets on-screen **BACK** and
 navigation buttons so the whole game is playable without a keyboard. Play in
 **landscape** — held in portrait, the game pauses and asks you to rotate. Touch

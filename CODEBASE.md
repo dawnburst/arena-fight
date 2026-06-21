@@ -21,7 +21,7 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - Static generated assets live under `public/assets/...`; Phaser code resolves them through `src/assetPath.js` so builds work at `/arena-fight/` on GitHub Pages. Windows `*:Zone.Identifier` sidecars are ignored.
 - The wave-10 Warden has a complete 21-frame 256×256 sprite set under `public/assets/enemies/boss/warden/`; `BOSS_SPRITES` in `src/enemies.js` registers its directional idle, walk, power, enrage, and death frames.
 - `src/viewport.js` owns the responsive scale strategy. **Desktop windowed** stays `Scale.NONE` 800×600 (unchanged); **desktop fullscreen** switches to `Scale.FIT` (4:3 scaled up, centered) and back to 800×600 on exit; **mobile/touch** uses `Scale.FIT` with a fixed logical height (600) and a width set to `round(600 × innerW/innerH)` (clamped 600–1400) so the canvas fills the device with no letterbox bars — the arena simply gets wider. On mobile, window resize/rotate recomputes that width via `game.scale.setGameSize(w, 600)`, which emits Phaser's `RESIZE` event. `GameScene` reflows live on resize (`handleResize` updates `this.arenaW/arenaH`, world bounds, background fit, HUD via `layoutHud()`, and touch-control anchors) with **no scene restart**; menu scenes rebuild via restart-on-resize. Fullscreen defaults off (`Save.settings.fullscreen`) on both desktop and touch; it is opt-in via `F` or the Settings row, and auto-enters on the first Intro tap only when the preference is on. Shared cover-fit background helper: `src/scenes/sceneUtils.js` → `coverBackground(scene, key, existing?)`.
-- **Touch has no keyboard**, so `src/scenes/sceneUtils.js` also exposes `isTouchMode()` and `addTouchButton(scene, {...})` (a screen-anchored, high-depth tappable button). When touch is active each scene adds on-screen equivalents for its keyboard actions: `GameScene` a top-left **MENU** button (pause → tappable EXIT/RESUME); `StoreScene` makes the tab labels and each list row directly tappable (click a row to select + buy, with a touch-only BUY/CANCEL confirm dialog) plus a BACK button; `LoadoutScene` makes each slot tappable to select with inline ◀/▶ arrows to cycle its choice, plus BACK and START buttons; `MonstersScene`/`SettingsScene` a BACK button. `TouchControls.handleDown` ignores pointers over depth ≥ 1500 UI buttons so taps don't also drive the movement stick.
+- **Touch has no keyboard**, so `src/scenes/sceneUtils.js` also exposes `isTouchMode()` and `addTouchButton(scene, {...})` (a screen-anchored, high-depth tappable button). When touch is active each scene adds on-screen equivalents for its keyboard actions: `GameScene` a top-left **MENU** button (opens the pause menu, whose Resume/Restart/Settings/Quit buttons are all tappable); `StoreScene` makes the tab labels and each list row directly tappable (click a row to select + buy, with a touch-only BUY/CANCEL confirm dialog) plus a BACK button; `LoadoutScene` makes each slot tappable to select with inline ◀/▶ arrows to cycle its choice, plus BACK and START buttons; `MonstersScene`/`SettingsScene` a BACK button. `TouchControls.handleDown` ignores pointers over depth ≥ 1500 UI buttons so taps don't also drive the movement stick.
 
 ---
 
@@ -492,7 +492,7 @@ Layout:
 - Bottom-center: `dash cooldown: X.Xs` or `dash ready  [space]`
 
 Other UI elements created in `createHUD()`:
-- `pauseText` — large centered "PAUSED — press P / Esc to resume"
+- Pause menu (`buildPauseMenu()`) — a full-canvas dimmed overlay with a centered button column (see §6.16)
 - `cheatBg` / `cheatTitle` / `cheatInput` / `cheatHint` — backtick console overlay (see §6.17)
 - `waveBanner` — created in `startNextWave()`, lives 1800ms
 
@@ -500,9 +500,14 @@ Other UI elements created in `createHUD()`:
 
 ### 6.16 Pause
 
-- `togglePause()` toggles `this.paused`, calls `this.physics.pause()`/`.resume()`, sets `this.time.paused`, shows/hides `pauseText`.
-- `update()` returns early if `this.paused`.
+- `togglePause()` toggles `this.paused`, calls `this.physics.pause()`/`.resume()`, sets `this.time.paused`, and shows/hides the pause menu via `setPauseMenuVisible()`.
+- `update()` returns early if `this.paused` (gameplay + firing frozen); `onPointerDown()` likewise ignores taps while paused, so input never bleeds through to the arena.
+- **Pause menu** (`buildPauseMenu()`, built once in `createHUD()`, laid out in `layoutPauseMenu()` from `layoutHud()` so it recenters on resize). A dimmed full-canvas backdrop (depth `CFG.pause.depth`, default 1400) plus a centered button column: **RESUME** → `togglePause()`, **RESTART RUN** → `scene.start('GameScene')`, **SETTINGS** → inline audio sub-panel, **QUIT TO MENU** → `exitToMainMenu()`. Reuses the MainMenu rounded-rect/caret button look (`drawPauseButton`).
+- Navigable by keyboard (Arrow/`W`/`S` move + `Enter`/`Space` activate, handled in `onKeyDown`), mouse (zone `pointerover`/`pointerdown`), and touch (the on-screen MENU button toggles pause; the overlay's own zones are tappable). `P`/`Esc` resume (handled in `update()`); in the settings sub-panel `P`/`Esc` backs out to the button list first.
+- **Settings sub-panel** (`pauseView === 'settings'`): inline **MUSIC** and **SOUND** toggles (`Save.setMusicEnabled`/`Save.setSfxEnabled` + `syncMusic`) and a **‹ BACK** row, so players can change audio without dying. (Screen-shake toggle is a future add-on — see `plan_docs/ui_ux_top10_prompts/ui_ux_task6.md`.)
+- Tuning lives in `CFG.pause` (button size/gap, offsets, backdrop alpha, depth, accent color).
 - All `time.addEvent` and `time.delayedCall` events naturally pause along with `this.time.paused = true`, so bonus/shield/wave timers all freeze correctly.
+- The cheat console hides the pause overlay (`setPauseMenuVisible(false)`) while open and restores it on close if the game was already paused (`preCheatPaused`).
 
 ### 6.17 Dev-only cheat console: jump to wave / add coins (backtick)
 
