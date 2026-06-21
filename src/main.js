@@ -8,6 +8,7 @@ import MainMenuScene from './scenes/MainMenuScene.js';
 import MonstersScene from './scenes/MonstersScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
 import StoreScene from './scenes/StoreScene.js';
+import { installTestHooks } from './testHooks.js';
 import { installViewport, resolveInitialScaleConfig } from './viewport.js';
 
 // Resolved once at boot. When false (desktop/web), the scale stays NONE 800x600
@@ -54,3 +55,6 @@ installViewport(game, { touch });
 if (touch) {
   installOrientationLock(game);
 }
+
+// Read-only introspection hook for the E2E suite; no-op unless `?e2e=1` is set.
+installTestHooks(game);
