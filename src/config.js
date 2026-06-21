@@ -474,6 +474,18 @@ export const CFG = {
     maxMultiplier: 8,
     scorePerKillBase: 100,
   },
+  // In-game pause menu (GameScene.buildPauseMenu): Resume / Restart / Settings /
+  // Quit, navigable by keyboard, mouse, and touch.
+  pause: {
+    buttonWidth: 240,
+    buttonHeight: 46,
+    buttonGap: 14,
+    titleOffsetY: -150, // title center-y relative to canvas center
+    firstButtonOffsetY: -68, // first button top relative to canvas center
+    backdropAlpha: 0.66,
+    depth: 1400,
+    accent: 0x69f0ae, // selected caret / border accent (matches menu START)
+  },
   arena: {
     width: 800,
     height: 600,
