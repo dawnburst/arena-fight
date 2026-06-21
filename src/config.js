@@ -13,6 +13,19 @@ export const CFG = {
     phoenixBlastDamage: 99, // high enough to destroy any non-boss enemy
     weaponSwapDelayMs: 500, // cannot fire for this long after switching weapons
   },
+  // Top-left HUD HP indicator. HP is rendered as discrete pips (one per max HP)
+  // instead of "HP: N/M" text so it reads at a glance mid-fight. A lost pip
+  // flashes before going dim. Pip count is dynamic (mods change runtime.maxHp).
+  hud: {
+    hpPips: {
+      size: 16, // heart icon width/height in px
+      gap: 18, // center-to-center spacing between pips
+      y: 16, // center y of the pip row (clears the score row at y=28)
+      fillColor: 0xff5252, // tint for both filled hearts and the empty outline
+      flashColor: 0xffffff, // bright pop on the just-lost heart
+      flashMs: 220,
+    },
+  },
   bullet: {
     speed: 520,
     radius: 4,
