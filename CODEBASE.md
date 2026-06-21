@@ -484,7 +484,7 @@ Storage key: `arenaFight.save.v1` (version-prefixed for forward compat).
 Built in `createHUD()` (called from `create()`). All text elements use a monospace font.
 
 Layout:
-- Top-left: `HP: N/M` and `Score: N` (two lines)
+- Top-left: HP pips (one red heart per max HP — filled `hp-heart` when remaining, empty `hp-heart-empty` outline when lost; a just-lost heart flashes — `renderHpPips()`, tuned by `CFG.hud.hpPips`) and `Score: N` (two lines)
 - Top-right: `Wave: N` and `Combo: xN`
 - Top-center: `¢ N` (coins this run, gold)
 - Below top-center: `★ LVL N ★` (green-bonus indicator, hidden when `buffLevel === 0`)
