@@ -130,6 +130,14 @@ retro style anchor** to each prompt.
 
 ## Wave 20 — The Juggernaut · id `juggernaut`
 
+**Implementation status (2026-06-21): complete.** All 21 frames below were
+generated, normalized to transparent 256×256 PNGs, and saved under
+`public/assets/enemies/boss/juggernaut/`. `GameScene` displays the eight idle
+directions, south-facing walk loop, barrage and charge telegraph/release states,
+phase-3 enrage, and four-frame death sequence. The shield and orbiting weak
+points remain code-drawn overlays. The Monsters gallery includes the real
+south-facing Juggernaut portrait.
+
 **Colours:** body `#1b5e20` · accent `#66bb6a` · core `#ffee58` · proj `#9ccc65`
 **Phase powers:** P1 `barrage` · P2 `barrage + charge` · P3 `barrage + charge`
 **Weak points by phase:** 2 / 2 / 3
@@ -896,7 +904,7 @@ anchor** — and push the detail/intimidation higher than every other boss.
 | Wave | Boss | id | Images |
 |------|------|----|--------|
 | 10 | The Warden | `warden` | 21 |
-| 20 | The Juggernaut | `juggernaut` | 20 |
+| 20 | The Juggernaut | `juggernaut` | 21 |
 | 30 | The Hexweaver | `hexweaver` | 23 |
 | 40 | The Bombardier | `bombardier` | 24 |
 | 50 | The Phantom | `phantom` | 26 |
@@ -905,7 +913,7 @@ anchor** — and push the detail/intimidation higher than every other boss.
 | 80 | The Colossus | `colossus` | 26 |
 | 90 | The Voidcaller | `voidcaller` | 28 |
 | 100 | The Annihilator | `annihilator` | 32 |
-| | | **Total** | **252** |
+| | | **Total** | **253** |
 
 > Counts include, for every boss: 8 idle directions + 4 move-cycle frames +
 > 2 frames per power (telegraph + release) + 1 enrage + 4 death frames.
