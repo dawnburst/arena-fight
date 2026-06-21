@@ -423,6 +423,12 @@ export default class GameScene extends Phaser.Scene {
         this.player.sprite.body.reset(startX, startY);
         this.tutorialLastPos = { x: startX, y: startY };
         this.spawnCoins(cx, cy, Math.max(1, step.goal.amount));
+        // Tutorial coins must wait for the player instead of timing out, so the
+        // step is always completable. Clear the despawn deadline set by
+        // spawnCoins (mirrors keepTutorialPickup for gift/shield pickups).
+        this.coins.getChildren().forEach((coin) => {
+          coin.expiresAt = null;
+        });
         break;
       }
       case 'gift':
