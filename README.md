@@ -26,6 +26,22 @@ npm run preview
 
 Production builds use the `/arena-fight/` base path for GitHub Pages. Deployments and official releases are triggered manually through the **"Deploy static content to Pages"** workflow in GitHub Actions. Ensure repository Pages are configured to use `GitHub Actions` as the source.
 
+## Run with Docker
+
+The included [`Dockerfile`](./Dockerfile) builds the static bundle (served from the root path, not the GitHub Pages `/arena-fight/` base) and serves it with nginx.
+
+```bash
+# Build the image
+docker build -t arena-fight .
+
+# Run it, mapping the container's port 80 to localhost:8080
+docker run --rm -p 8080:80 arena-fight
+```
+
+Then open `http://localhost:8080/` in any modern browser. Stop the container with `Ctrl+C`.
+
+To serve on a different host port, change the left side of the `-p` mapping (e.g. `-p 3000:80` → `http://localhost:3000/`).
+
 ## Controls
 
 | Action | Key |
