@@ -372,6 +372,7 @@ export const CFG = {
         phasePowers: [['beamSweep'], ['mirrorClones'], ['gravityWell']],
       },
       {
+        id: 'bombardier',
         name: 'The Bombardier',
         body: 0xbf360c,
         accent: 0xff8a65,
