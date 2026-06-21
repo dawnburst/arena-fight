@@ -85,7 +85,20 @@ npm install
 npm run dev      # http://localhost:5173/  (also bound to 0.0.0.0)
 npm run build    # produces ./dist
 npm run preview  # serves built ./dist
+npm run test:run # Vitest unit suite with coverage
+npm run test:e2e # Playwright end-to-end suite (builds + previews, drives Chromium)
 ```
+
+**End-to-end tests** live in `e2e/` (Playwright) and exercise the real built game:
+smoke/boot, scene navigation, gameplay (enemies spawn + score climbs), and save
+persistence across reloads. They drive the game through a read-only test hook,
+`window.__arena` (`src/testHooks.js`), which is installed **only** when the page is
+opened with `?e2e=1` and exposes `activeSceneKeys`, live `state`, and the `save`
+snapshot. The hook is inert and absent for real players. The suite runs daily via
+`.github/workflows/e2e-daily.yml` (06:00 UTC cron) and opens/updates a GitHub issue
+on failure. Note: the Intro screen is left by **clicking the canvas** (its
+`pointerdown` handler) once `IntroScene` is active — Playwright key events only reach
+Phaser after the canvas has been focused by that first click.
 
 **Controls** (also documented in `README.md`):
 
@@ -119,7 +132,11 @@ arena-fight/
 ├── package.json              # phaser + vite, type:module
 ├── vite.config.js            # dev port 5173; production base /arena-fight/
 ├── .github/workflows/
-│   └── deploy.yml            # builds dist and deploys to GitHub Pages
+│   ├── deploy.yml            # builds dist and deploys to GitHub Pages
+│   ├── pr-build.yml          # PR lint/build/unit-test gate
+│   └── e2e-daily.yml         # daily Playwright E2E cron (06:00 UTC) + failure issue
+├── e2e/                      # Playwright end-to-end specs + shared fixtures
+├── playwright.config.js      # E2E config: builds+previews, baseURL /arena-fight/
 ├── index.html                # mounts #game div, loads /src/main.js
 ├── README.md                 # short player-facing readme
 ├── plan-game.md              # Phase 1 design (predates implementation)
