@@ -92,9 +92,10 @@ export default class GameScene extends Phaser.Scene {
         });
       }
     }
+    const baseSpriteKeys = new Set(Object.values(ENEMY_SPRITES).map((sprite) => sprite.key));
     for (const boss of Object.values(BOSS_SPRITES)) {
       for (const sprite of Object.values(boss)) {
-        if (sprite.key !== ENEMY_SPRITES.warden.key && !this.textures.exists(sprite.key)) {
+        if (!baseSpriteKeys.has(sprite.key) && !this.textures.exists(sprite.key)) {
           this.load.image(sprite.key, sprite.path);
         }
       }
@@ -247,6 +248,7 @@ export default class GameScene extends Phaser.Scene {
     // fullscreen toggle. Cleaned up on shutdown so it never fires on a dead scene.
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.boss) this.cancelBossAction(this.boss);
       this.touch?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
       this.input.setDefaultCursor('default');
@@ -1933,6 +1935,10 @@ export default class GameScene extends Phaser.Scene {
         boss.chargeDir = { x: dx / len, y: dy / len };
         boss.body.setVelocity(boss.chargeDir.x * speed, boss.chargeDir.y * speed);
         boss.chargeEndsAt = now + charge.durationMs;
+        if (boss.hasSpriteArt && BOSS_SPRITES[boss.variant.id]?.charge_release) {
+          boss.visualUntil = boss.chargeEndsAt;
+          this.setBossSpriteFrame(boss, 'charge_release');
+        }
       }
       return;
     }
@@ -1953,6 +1959,10 @@ export default class GameScene extends Phaser.Scene {
       if (now < (boss.powerNextAt[name] ?? 0)) continue;
       if (name === 'charge') {
         boss.chargeWindupUntil = now + charge.windupMs;
+        if (boss.hasSpriteArt && BOSS_SPRITES[boss.variant.id]?.charge_telegraph) {
+          boss.visualUntil = boss.chargeWindupUntil;
+          this.setBossSpriteFrame(boss, 'charge_telegraph');
+        }
         boss.powerNextAt.charge = now + this.bossPowerCooldown(boss, 'charge'); // reset on slam
         return;
       }
@@ -1988,9 +1998,14 @@ export default class GameScene extends Phaser.Scene {
   }
 
   castBossPower(boss, name, now) {
-    if (boss.variant.id === 'warden' && (name === 'summon' || name === 'barrage')) {
-      return this.playWardenPower(boss, name, now);
+    const frames = BOSS_SPRITES[boss.variant.id];
+    if (frames?.[`${name}_telegraph`] && frames?.[`${name}_release`]) {
+      return this.playBossPowerArt(boss, name, now);
     }
+    return this.executeBossPower(boss, name, now);
+  }
+
+  executeBossPower(boss, name, now) {
     if (name === 'summon') return this.bossSummon(boss);
     if (name === 'barrage') return this.bossBarrage(boss, now);
     if (name === 'spiral') return this.bossSpiral(boss, now);
@@ -2050,7 +2065,7 @@ export default class GameScene extends Phaser.Scene {
     this.setBossSpriteFrame(boss, `idle_${facing}`);
   }
 
-  playWardenPower(boss, name, now) {
+  playBossPowerArt(boss, name, now) {
     const telegraphMs = 260;
     const releaseMs = 220;
     boss.visualUntil = now + telegraphMs + releaseMs;
@@ -2060,9 +2075,14 @@ export default class GameScene extends Phaser.Scene {
       boss.actionEvent = null;
       if (!boss.active || this.gameOver) return;
       this.setBossSpriteFrame(boss, `${name}_release`);
-      if (name === 'summon') this.bossSummon(boss);
-      else this.bossBarrage(boss, this.time.now);
+      this.executeBossPower(boss, name, this.time.now);
     });
+  }
+
+  cancelBossAction(boss) {
+    if (!boss?.actionEvent) return;
+    boss.actionEvent.remove(false);
+    boss.actionEvent = null;
   }
 
   damageBoss(boss, sourceX, sourceY, amount) {
@@ -2121,12 +2141,13 @@ export default class GameScene extends Phaser.Scene {
     this.configureBossPhase(boss);
     boss.chargeWindupUntil = 0;
     boss.chargeEndsAt = 0;
+    this.cancelBossAction(boss);
     if (boss.telegraph) {
       boss.telegraph.destroy();
       boss.telegraph = null;
     }
     this.resetBossPowerTimers(boss, now + CFG.boss.transitionMs);
-    if (boss.variant.id === 'warden' && target === 2) {
+    if (boss.hasSpriteArt && target === 2) {
       boss.visualUntil = now + CFG.boss.transitionMs;
       this.setBossSpriteFrame(boss, 'enrage');
     }
@@ -2636,18 +2657,19 @@ export default class GameScene extends Phaser.Scene {
   }
 
   playBossDeathAnimation(boss) {
-    if (boss.variant.id !== 'warden') return;
+    const spriteFrames = BOSS_SPRITES[boss.variant.id];
+    if (!spriteFrames?.death_0) return;
     const death = this.add
-      .sprite(boss.x, boss.y, BOSS_SPRITES.warden.death_0.key)
+      .sprite(boss.x, boss.y, spriteFrames.death_0.key)
       .setScale(boss.baseScale)
       .setDepth(4.55);
-    const frames = ['death_1', 'death_2', 'death_3'];
-    frames.forEach((frame, index) => {
+    const sequence = ['death_1', 'death_2', 'death_3'];
+    sequence.forEach((frame, index) => {
       this.time.delayedCall((index + 1) * 130, () => {
-        if (death.active) death.setTexture(BOSS_SPRITES.warden[frame].key);
+        if (death.active) death.setTexture(spriteFrames[frame].key);
       });
     });
-    this.time.delayedCall((frames.length + 1) * 130, () => death.destroy());
+    this.time.delayedCall((sequence.length + 1) * 130, () => death.destroy());
   }
 
   clearBossAdds() {
@@ -3325,10 +3347,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   cleanupEnemyExtras(enemy) {
-    if (enemy.actionEvent) {
-      enemy.actionEvent.remove(false);
-      enemy.actionEvent = null;
-    }
+    this.cancelBossAction(enemy);
     if (enemy.shieldMark) enemy.shieldMark.destroy();
     if (enemy.aimLine) enemy.aimLine.destroy();
     if (enemy.core) enemy.core.destroy();
@@ -3632,6 +3651,7 @@ export default class GameScene extends Phaser.Scene {
 
   endGame() {
     this.gameOver = true;
+    if (this.boss) this.cancelBossAction(this.boss);
     playSfx(this, 'lose');
     this.player.sprite.setTexture(this.playerFrameKey(this.player.facing, 'death'));
     this.player.barrel.setVisible(false);
