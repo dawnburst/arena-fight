@@ -22,3 +22,25 @@ Integrated states:
 The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
 locks telegraph/release frames until the real power fires, cancels delayed casts
 during cleanup, and falls back to primitive rendering for bosses without art.
+
+## Wave 40 — The Bombardier · id `bombardier`
+
+**Implementation status (2026-06-22): complete.** All 23 frames were generated,
+normalized to transparent 256×256 RGBA PNGs, and integrated from
+`public/assets/enemies/boss/bombardier/`.
+
+Colours: body `#bf360c`, accent `#ff8a65`, core `#ffd54f`, projectile
+`#ff7043`. Phase powers are `aimedVolley`, `barrage`, and `charge`; weak-point
+counts are 2 / 2 / 3.
+
+Integrated states:
+
+- Eight directional idle poses: S, N, W, E, SE, SW, NE, NW.
+- Four south-facing walk-cycle frames.
+- Telegraph and release frames for each of the three phase powers.
+- One phase-3 enrage frame.
+- Four one-shot death frames.
+
+The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
+locks attack art through the real release, preserves world-space collision size,
+and uses the south-facing portrait in the Monsters gallery.
