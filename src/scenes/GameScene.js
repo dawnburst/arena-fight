@@ -804,27 +804,7 @@ export default class GameScene extends Phaser.Scene {
       .text(this.arenaW / 2, 8, '', { ...style, color: '#ffd54f' })
       .setOrigin(0.5, 0);
 
-    this.pauseText = this.add
-      .text(this.arenaW / 2, this.arenaH / 2 - 34, 'PAUSED\nP / Esc resume', {
-        ...style,
-        fontSize: '28px',
-        align: 'center',
-      })
-      .setOrigin(0.5)
-      .setVisible(false);
-    this.pauseExitButton = this.add
-      .text(this.arenaW / 2, this.arenaH / 2 + 78, 'EXIT TO MENU   [M]', {
-        ...style,
-        fontSize: '20px',
-        color: '#ffd54f',
-      })
-      .setOrigin(0.5)
-      .setVisible(false)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.exitToMainMenu())
-      .on('pointerover', () => this.pauseExitButton.setColor('#ffffff'))
-      .on('pointerout', () => this.pauseExitButton.setColor('#ffd54f'));
-    this.pauseExitButton.disableInteractive();
+    this.buildPauseMenu(style);
 
     this.dashCdText = this.add
       .text(this.arenaW / 2, this.arenaH - 18, '', {
@@ -919,14 +899,10 @@ export default class GameScene extends Phaser.Scene {
         .setVisible(false);
     }
 
-    // Touch players have no keyboard, so expose pause/exit as on-screen buttons:
-    // a top-left MENU button opens the pause overlay (where EXIT TO MENU is
-    // tappable), and a RESUME button dismisses it.
+    // Touch players have no keyboard, so a top-left MENU button opens the pause
+    // overlay; the overlay's own buttons (Resume / Restart / Settings / Quit) are
+    // all tappable zones, so no separate touch buttons are needed.
     if (this.touchMode) {
-      // Raise the pause overlay above the twin-stick layer (depth 1000) so it is
-      // clearly visible when paused on touch.
-      this.pauseText.setText('PAUSED').setDepth(1400);
-      this.pauseExitButton.setDepth(1400);
       this.menuButton = addTouchButton(this, {
         x: 8,
         y: 6,
@@ -939,15 +915,6 @@ export default class GameScene extends Phaser.Scene {
           else this.togglePause();
         },
       });
-      this.pauseResumeButton = addTouchButton(this, {
-        x: 0,
-        y: 0,
-        width: 200,
-        height: 46,
-        label: 'RESUME',
-        onClick: () => this.togglePause(),
-      });
-      this.pauseResumeButton.setVisible(false);
       // Keep the left HUD (HP pips + score) clear of the MENU button.
       this.hpPipsX = 96;
       this.hudScore.setX(96);
@@ -967,9 +934,7 @@ export default class GameScene extends Phaser.Scene {
     this.hudWave?.setPosition(w - 10, 8);
     this.hudCombo?.setPosition(w - 10, 28);
     this.hudCoins?.setPosition(w / 2, 8);
-    this.pauseText?.setPosition(w / 2, h / 2 - 34);
-    this.pauseResumeButton?.setPosition(w / 2 - 100, h / 2 + 16);
-    this.pauseExitButton?.setPosition(w / 2, h / 2 + 78);
+    this.layoutPauseMenu();
     this.dashCdText?.setPosition(w / 2, h - 18);
     this.hudWeapon?.setPosition(10, h - 8);
     this.shieldHud?.setPosition(w / 2, 38);
@@ -1028,7 +993,13 @@ export default class GameScene extends Phaser.Scene {
         this.exitToMainMenu();
         return;
       }
-      this.togglePause();
+      // While the settings sub-panel is open, P/Esc backs out to the button list
+      // instead of resuming the game outright.
+      if (this.paused && this.pauseView === 'settings') {
+        this.closePauseSettings();
+      } else {
+        this.togglePause();
+      }
     }
 
     if (this.paused) return;
@@ -3762,15 +3733,279 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // Restart the run from the pause menu. The physics world and time Clock are
+  // reused across scene.start(), so their paused flags must be cleared first —
+  // otherwise the fresh run boots paused and wave-spawn timers never fire.
+  restartRun() {
+    this.paused = false;
+    this.physics.resume();
+    this.time.paused = false;
+    this.scene.start('GameScene');
+  }
+
+  // Builds the in-game pause menu (Resume / Restart / Settings / Quit) plus an
+  // inline audio-settings sub-panel. Everything is created hidden and laid out
+  // from the live arena size in layoutPauseMenu(); shown via setPauseMenuVisible.
+  buildPauseMenu(style) {
+    const pcfg = CFG.pause;
+    this.pauseView = 'menu';
+    this.pauseIndex = 0;
+    this.pauseObjects = [];
+
+    const add = (obj) => {
+      obj.setDepth(pcfg.depth).setVisible(false);
+      this.pauseObjects.push(obj);
+      return obj;
+    };
+
+    // Full-canvas dim backdrop; interactive so taps behind the buttons are
+    // swallowed instead of reaching the arena (matters on touch).
+    this.pauseBackdrop = add(
+      this.add
+        .rectangle(0, 0, this.arenaW, this.arenaH, 0x000000, pcfg.backdropAlpha)
+        .setOrigin(0)
+        .setInteractive(),
+    );
+
+    this.pauseTitle = add(
+      this.add
+        .text(0, 0, 'PAUSED', { ...style, fontSize: '34px', color: '#ffffff' })
+        .setOrigin(0.5),
+    );
+
+    this.pauseButtons = [
+      { label: 'RESUME', action: () => this.togglePause() },
+      { label: 'RESTART RUN', action: () => this.restartRun() },
+      { label: 'SETTINGS', action: () => this.openPauseSettings() },
+      { label: 'QUIT TO MENU', action: () => this.exitToMainMenu() },
+    ];
+
+    this.pauseButtonViews = this.pauseButtons.map((def, index) => {
+      const bg = add(this.add.graphics());
+      const label = add(
+        this.add.text(0, 0, def.label, { ...style, fontSize: '22px' }).setOrigin(0, 0.5),
+      );
+      const zone = add(
+        this.add
+          .zone(0, 0, pcfg.buttonWidth, pcfg.buttonHeight)
+          .setOrigin(0)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerover', () => this.selectPauseButton(index))
+          .on('pointerdown', () => this.activatePauseButton(index)),
+      );
+      return { bg, label, zone };
+    });
+
+    this.pauseHint = add(
+      this.add
+        .text(0, 0, '↑/↓ + Enter   •   click   •   P / Esc resume', {
+          ...style,
+          fontSize: '12px',
+          color: '#cccccc',
+        })
+        .setOrigin(0.5),
+    );
+
+    // Inline settings sub-panel: Music + Sound toggles and a Back row. Each row is
+    // a label + value text + a tappable zone; visible only while pauseView is
+    // 'settings'.
+    const makeSettingRow = (rowIndex, onClick) => {
+      const label = add(this.add.text(0, 0, '', { ...style, fontSize: '20px' }).setOrigin(0, 0.5));
+      const value = add(this.add.text(0, 0, '', { ...style, fontSize: '20px' }).setOrigin(1, 0.5));
+      const zone = add(
+        this.add
+          .zone(0, 0, pcfg.buttonWidth, pcfg.buttonHeight)
+          .setOrigin(0)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerover', () => {
+            this.pauseIndex = rowIndex;
+            this.refreshPauseMenu();
+          })
+          .on('pointerdown', onClick),
+      );
+      return { label, value, zone };
+    };
+    this.pauseSettingsTitle = add(
+      this.add
+        .text(0, 0, 'SETTINGS', { ...style, fontSize: '22px', color: '#ffd54f' })
+        .setOrigin(0.5),
+    );
+    this.pauseMusicRow = makeSettingRow(0, () => this.togglePauseMusic());
+    this.pauseSfxRow = makeSettingRow(1, () => this.togglePauseSfx());
+    this.pauseBackRow = makeSettingRow(2, () => this.closePauseSettings());
+
+    this.layoutPauseMenu();
+  }
+
+  // Repositions every pause-menu object from the live arena size. Called from
+  // layoutHud() so the menu recenters on a mobile rotate / fullscreen toggle.
+  layoutPauseMenu() {
+    if (!this.pauseObjects) return;
+    const pcfg = CFG.pause;
+    const cx = this.arenaW / 2;
+    const cy = this.arenaH / 2;
+    const left = cx - pcfg.buttonWidth / 2;
+
+    this.pauseBackdrop?.setSize(this.arenaW, this.arenaH);
+    this.pauseBackdrop?.setPosition(0, 0);
+    this.pauseTitle?.setPosition(cx, cy + pcfg.titleOffsetY);
+
+    const rowTop = (i) => cy + pcfg.firstButtonOffsetY + i * (pcfg.buttonHeight + pcfg.buttonGap);
+    this.pauseButtonViews?.forEach((view, i) => {
+      const top = rowTop(i);
+      view.label.setPosition(left + 24, top + pcfg.buttonHeight / 2);
+      view.zone.setPosition(left, top);
+    });
+    this.pauseHint?.setPosition(cx, rowTop(this.pauseButtons.length - 1) + pcfg.buttonHeight + 26);
+
+    // Settings sub-panel rows share the same column geometry as the buttons.
+    this.pauseSettingsTitle?.setPosition(cx, cy + pcfg.titleOffsetY + 56);
+    const settingRows = [this.pauseMusicRow, this.pauseSfxRow, this.pauseBackRow];
+    settingRows.forEach((row, i) => {
+      if (!row) return;
+      const top = rowTop(i);
+      const midY = top + pcfg.buttonHeight / 2;
+      row.label.setPosition(left + 24, midY);
+      row.value.setPosition(left + pcfg.buttonWidth - 24, midY);
+      row.zone.setPosition(left, top);
+    });
+
+    if (this.pauseObjects.some((o) => o.visible)) this.refreshPauseMenu();
+  }
+
   setPauseMenuVisible(visible) {
-    this.pauseText.setVisible(visible);
-    this.pauseExitButton.setVisible(visible);
-    this.pauseResumeButton?.setVisible(visible);
     if (visible) {
-      this.pauseExitButton.setInteractive({ useHandCursor: true });
+      this.pauseView = 'menu';
+      this.pauseIndex = 0;
+      this.refreshPauseMenu();
     } else {
-      this.pauseExitButton.disableInteractive();
+      for (const obj of this.pauseObjects) {
+        obj.setVisible(false);
+        obj.input && obj.disableInteractive();
+      }
     }
+  }
+
+  // Shows the rows for the current pauseView and repaints button highlights and
+  // setting values. The single source of truth for pause-overlay visuals.
+  refreshPauseMenu() {
+    const inMenu = this.pauseView === 'menu';
+
+    this.pauseBackdrop.setVisible(true).setInteractive();
+    this.pauseTitle.setVisible(inMenu);
+    this.pauseHint.setVisible(inMenu);
+
+    this.pauseButtonViews.forEach((view, i) => {
+      view.label.setVisible(inMenu);
+      view.bg.setVisible(inMenu);
+      view.zone.setVisible(inMenu);
+      if (inMenu) view.zone.setInteractive({ useHandCursor: true });
+      else view.zone.disableInteractive();
+      if (inMenu) this.drawPauseButton(i, i === this.pauseIndex);
+    });
+
+    this.pauseSettingsTitle.setVisible(!inMenu);
+    const rows = [this.pauseMusicRow, this.pauseSfxRow, this.pauseBackRow];
+    const settings = Save.get().settings || {};
+    const labels = [
+      ['MUSIC', settings.musicEnabled !== false ? 'ON' : 'OFF'],
+      ['SOUND', settings.sfxEnabled !== false ? 'ON' : 'OFF'],
+      ['‹ BACK', ''],
+    ];
+    rows.forEach((row, i) => {
+      const [labelText, valueText] = labels[i];
+      const selected = !inMenu && i === this.pauseIndex;
+      row.label.setText(labelText).setVisible(!inMenu);
+      row.label.setColor(selected ? '#ffffff' : '#bbbbbb');
+      row.value.setText(valueText).setColor(valueText === 'ON' ? '#69f0ae' : '#ff8a80');
+      row.value.setVisible(!inMenu && valueText !== '');
+      row.zone.setVisible(!inMenu);
+      if (!inMenu) row.zone.setInteractive({ useHandCursor: true });
+      else row.zone.disableInteractive();
+    });
+  }
+
+  // Draws a single pause button's rounded-rect (selected = accent caret + thicker
+  // border + brighter label), mirroring MainMenuScene.selectAction.
+  drawPauseButton(index, selected) {
+    const pcfg = CFG.pause;
+    const view = this.pauseButtonViews[index];
+    const w = pcfg.buttonWidth;
+    const h = pcfg.buttonHeight;
+    const x = this.arenaW / 2 - w / 2;
+    const top = this.arenaH / 2 + pcfg.firstButtonOffsetY + index * (h + pcfg.buttonGap);
+    view.bg.clear();
+    view.bg.fillStyle(0x101710, selected ? 0.96 : 0.82);
+    view.bg.fillRoundedRect(x, top, w, h, 8);
+    view.bg.lineStyle(selected ? 4 : 2, pcfg.accent, 1);
+    view.bg.strokeRoundedRect(x, top, w, h, 8);
+    if (selected) {
+      view.bg.fillStyle(pcfg.accent, 1);
+      view.bg.fillTriangle(x - 14, top + h / 2, x - 3, top + h / 2 - 7, x - 3, top + h / 2 + 7);
+    }
+    view.label.setColor(selected ? '#ffffff' : '#dddddd');
+  }
+
+  selectPauseButton(index) {
+    const next = Phaser.Math.Wrap(index, 0, this.pauseButtons.length);
+    if (next !== this.pauseIndex) playSfx(this, 'uiMove');
+    this.pauseIndex = next;
+    this.pauseButtonViews.forEach((_, i) => {
+      this.drawPauseButton(i, i === this.pauseIndex);
+    });
+  }
+
+  activatePauseButton(index) {
+    playSfx(this, 'uiConfirm');
+    this.pauseButtons[index]?.action();
+  }
+
+  // Keyboard navigation shared by both pause views. Row count depends on the view
+  // (4 menu buttons vs. 3 settings rows).
+  movePauseSelection(delta) {
+    const count = this.pauseView === 'menu' ? this.pauseButtons.length : 3;
+    const next = Phaser.Math.Wrap(this.pauseIndex + delta, 0, count);
+    if (next !== this.pauseIndex) playSfx(this, 'uiMove');
+    this.pauseIndex = next;
+    this.refreshPauseMenu();
+  }
+
+  activatePauseSelection() {
+    if (this.pauseView === 'menu') {
+      this.activatePauseButton(this.pauseIndex);
+      return;
+    }
+    // Settings rows: each handler plays its own SFX (toggle confirm / back cancel).
+    [() => this.togglePauseMusic(), () => this.togglePauseSfx(), () => this.closePauseSettings()][
+      this.pauseIndex
+    ]?.();
+  }
+
+  openPauseSettings() {
+    this.pauseView = 'settings';
+    this.refreshPauseMenu();
+  }
+
+  closePauseSettings() {
+    playSfx(this, 'uiCancel');
+    this.pauseView = 'menu';
+    this.pauseIndex = 0;
+    this.refreshPauseMenu();
+  }
+
+  togglePauseMusic() {
+    const enabled = Save.get().settings?.musicEnabled !== false;
+    Save.setMusicEnabled(!enabled);
+    syncMusic(this);
+    this.refreshPauseMenu();
+  }
+
+  togglePauseSfx() {
+    const enabled = Save.get().settings?.sfxEnabled !== false;
+    Save.setSfxEnabled(!enabled);
+    // Audible confirmation when turning sound on (playSfx is a no-op when off).
+    playSfx(this, 'uiConfirm');
+    this.refreshPauseMenu();
   }
 
   exitToMainMenu() {
@@ -4150,10 +4385,24 @@ export default class GameScene extends Phaser.Scene {
       toggleFullscreen(this);
       return;
     }
-    if (this.paused && !this.cheatPromptActive && (event.key === 'm' || event.key === 'M')) {
-      event.preventDefault?.();
-      this.exitToMainMenu();
-      return;
+    // Pause-menu keyboard navigation (arrows / WASD up-down + Enter/Space). P/Esc
+    // resume (and back-out of the settings sub-panel) are handled in update().
+    if (this.paused && !this.cheatPromptActive) {
+      if (event.key === 'ArrowUp' || event.key === 'w' || event.key === 'W') {
+        event.preventDefault?.();
+        this.movePauseSelection(-1);
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 's' || event.key === 'S') {
+        event.preventDefault?.();
+        this.movePauseSelection(1);
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space') {
+        event.preventDefault?.();
+        this.activatePauseSelection();
+        return;
+      }
     }
     if (!this.cheatPromptActive) return;
     if (event.key === 'Enter') {
