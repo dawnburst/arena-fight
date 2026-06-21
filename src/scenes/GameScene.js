@@ -1962,6 +1962,10 @@ export default class GameScene extends Phaser.Scene {
     if (len > 6) boss.body.setVelocity((dx / len) * moveSpeed, (dy / len) * moveSpeed);
     else boss.body.setVelocity(0, 0);
 
+    // Do not consume another power's cooldown while an art telegraph is waiting
+    // to release. It will remain ready and cast on a later update.
+    if (boss.actionEvent) return;
+
     // Cast whichever powers this variant uses in the current phase.
     for (const name of boss.variant.phasePowers[boss.phaseIndex]) {
       if (now < (boss.powerNextAt[name] ?? 0)) continue;
@@ -2078,7 +2082,6 @@ export default class GameScene extends Phaser.Scene {
     const releaseMs = 220;
     boss.visualUntil = now + telegraphMs + releaseMs;
     this.setBossSpriteFrame(boss, `${name}_telegraph`);
-    if (boss.actionEvent) boss.actionEvent.remove(false);
     boss.actionEvent = this.time.delayedCall(telegraphMs, () => {
       boss.actionEvent = null;
       if (!boss.active || this.gameOver) return;

@@ -300,7 +300,7 @@ export default class MonstersScene extends Phaser.Scene {
     this.detailCounter.setText(`How to Fight\n${enemy.counter}`);
 
     // Bosses cannot be demoed; everything else gets a working Demo button.
-    const isBoss = enemy.id === 'boss';
+    const isBoss = enemy.id.startsWith('boss');
     this.demoBtnBg.clear();
     this.demoBtnLabel.setVisible(!isBoss);
     if (isBoss) {
