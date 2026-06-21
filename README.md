@@ -102,9 +102,9 @@ or break the shield then unload. Across three escalating phases a boss draws fro
 a pool of attacks (radial barrages, spiraling fire, aimed volleys, charges and
 ground-slams, area-denial blasts, shield re-raises), with different bosses
 favouring different moves. Beating one pays a large coin bonus that scales with
-the boss number. The Warden uses a complete retro pixel-art animation set for
-movement, attacks, its enraged final phase, and defeat; later bosses currently
-retain the colour-coded fallback body.
+the boss number. The Warden and wave-20 Juggernaut use complete retro pixel-art
+animation sets for movement, attacks, their enraged final phases, and defeat;
+later bosses currently retain the colour-coded fallback body.
 
 <img width="813" height="600" alt="image" src="https://github.com/user-attachments/assets/33332e4e-fafd-4932-b616-7071bdfd1b82" />
 
