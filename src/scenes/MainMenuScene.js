@@ -92,13 +92,13 @@ export default class MainMenuScene extends Phaser.Scene {
           label: 'RETRY',
           shortcut: 'r',
           color: 0x69f0ae,
-          action: () => this.scene.start('GameScene'),
+          action: () => this.scene.start('GameScene', { tutorial: false }),
         }
       : {
           label: 'START',
           shortcut: 'enter',
           color: 0x69f0ae,
-          action: () => this.scene.start('GameScene'),
+          action: () => this.scene.start('GameScene', { tutorial: false }),
         };
     this.actions = [
       firstAction,
@@ -325,7 +325,7 @@ export default class MainMenuScene extends Phaser.Scene {
       this.selectAction(this.actionIndex + 1);
     else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
       this.activateAction(this.actionIndex);
-    else if (k === 'r' && this.gameOverData) this.scene.start('GameScene');
+    else if (k === 'r' && this.gameOverData) this.scene.start('GameScene', { tutorial: false });
     else if (k === 't') this.scene.start('GameScene', { tutorial: true });
     else if (k === 's')
       this.scene.start('StoreScene', {
