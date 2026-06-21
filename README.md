@@ -127,6 +127,11 @@ the boss number. The Warden and wave-20 Juggernaut use complete retro pixel-art
 animation sets for movement, attacks, their enraged final phases, and defeat;
 later bosses currently retain the colour-coded fallback body.
 
+The wave-30 Hexweaver uses a complete retro sprite set in gameplay and the
+Monsters gallery: directional hover poses, spell telegraphs/releases, phase-3
+enrage, and a four-frame death sequence. Its shield and weak points remain
+separate animated gameplay overlays.
+
 <img width="813" height="600" alt="image" src="https://github.com/user-attachments/assets/33332e4e-fafd-4932-b616-7071bdfd1b82" />
 
 <img width="813" height="600" alt="image" src="https://github.com/user-attachments/assets/1073c2c0-190e-4b4c-a852-dd33de8c9835" />
