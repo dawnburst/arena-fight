@@ -265,6 +265,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.createEnemyAnimations();
     this.createBoomerangTexture();
+    this.createHeartTextures();
     this.createHUD();
 
     this.input.keyboard.on('keydown', this.onKeyDown, this);
@@ -723,6 +724,47 @@ export default class GameScene extends Phaser.Scene {
     g.destroy();
   }
 
+  // White heart textures for the HP pips: 'hp-heart' (filled) for remaining HP and
+  // 'hp-heart-empty' (outline only) for lost HP. Both share one polygon so the empty
+  // outline matches the filled shape exactly. Drawn white so renderHpPips can tint.
+  createHeartTextures() {
+    if (this.textures.exists('hp-heart')) return;
+    // Sample a parametric heart curve into a closed polygon.
+    const steps = 48;
+    const raw = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = (i / steps) * Math.PI * 2;
+      raw.push({
+        x: 16 * Math.sin(t) ** 3,
+        y: -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)),
+      });
+    }
+    // Normalize into a padded, centered 28x28 box.
+    const size = 28;
+    const pad = 3;
+    const xs = raw.map((p) => p.x);
+    const ys = raw.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const scale = (size - pad * 2) / Math.max(Math.max(...xs) - minX, Math.max(...ys) - minY);
+    const offX = (size - (Math.max(...xs) - minX) * scale) / 2;
+    const offY = (size - (Math.max(...ys) - minY) * scale) / 2;
+    const points = raw.map((p) => ({
+      x: offX + (p.x - minX) * scale,
+      y: offY + (p.y - minY) * scale,
+    }));
+
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 1);
+    g.fillPoints(points, true);
+    g.generateTexture('hp-heart', size, size);
+    g.clear();
+    g.lineStyle(3, 0xffffff, 1);
+    g.strokePoints(points, true);
+    g.generateTexture('hp-heart-empty', size, size);
+    g.destroy();
+  }
+
   onPointerDown() {
     // A tap dismisses the tutorial explanation panel (works on touch too).
     if (this.tutorial && this.tutorialAwaitingAck) {
@@ -751,7 +793,10 @@ export default class GameScene extends Phaser.Scene {
       fontSize: '16px',
       color: '#ffffff',
     };
-    this.hudHp = this.add.text(10, 8, '', style);
+    // HP is shown as discrete pips (see renderHpPips), not text. hpPipsX is the
+    // left edge of the pip row; it shifts right on touch to clear the MENU button.
+    this.hpPips = [];
+    this.hpPipsX = 10;
     this.hudScore = this.add.text(10, 28, '', style);
     this.hudWave = this.add.text(this.arenaW - 10, 8, '', style).setOrigin(1, 0);
     this.hudCombo = this.add.text(this.arenaW - 10, 28, '', style).setOrigin(1, 0);
@@ -903,8 +948,8 @@ export default class GameScene extends Phaser.Scene {
         onClick: () => this.togglePause(),
       });
       this.pauseResumeButton.setVisible(false);
-      // Keep the left HUD text clear of the MENU button.
-      this.hudHp.setX(96);
+      // Keep the left HUD (HP pips + score) clear of the MENU button.
+      this.hpPipsX = 96;
       this.hudScore.setX(96);
     }
 
@@ -4249,8 +4294,80 @@ export default class GameScene extends Phaser.Scene {
     return pts;
   }
 
+  // Draws the top-left HP indicator as discrete pips: one per runtime.maxHp,
+  // filled for remaining HP and dim for lost HP. The row is rebuilt only when the
+  // pip count changes (mods like Steel Plate / Glass Cannon change maxHp mid-run),
+  // and the loop only runs when HP actually changes to avoid per-frame churn. A
+  // pip emptied by damage gets a brief scale-and-brighten flash before going dim.
+  renderHpPips() {
+    const cfg = CFG.hud.hpPips;
+    const total = this.runtime.maxHp;
+    const current = Math.max(0, this.player.hp);
+    const rebuilt = this.hpPips.length !== total;
+    if (!rebuilt && current === this._lastShownHp) return;
+
+    if (rebuilt) {
+      for (const pip of this.hpPips) pip.destroy();
+      this.hpPips = [];
+      for (let i = 0; i < total; i++) {
+        const px = this.hpPipsX + cfg.size / 2 + i * cfg.gap;
+        const heart = this.add
+          .image(px, cfg.y, 'hp-heart')
+          .setDisplaySize(cfg.size, cfg.size)
+          .setDepth(20);
+        this.hpPips.push(heart);
+      }
+      // A rebuild (run start or maxHp change) must not flash existing pips.
+      this._lastShownHp = current;
+    }
+
+    const prev = this._lastShownHp ?? current;
+    for (let i = 0; i < this.hpPips.length; i++) {
+      const pip = this.hpPips[i];
+      if (!rebuilt && i >= current && i < prev) {
+        this.flashLostPip(pip); // this heart was just emptied by damage
+      } else if (i < current) {
+        this.tweens.killTweensOf(pip);
+        pip
+          .setTexture('hp-heart')
+          .setTint(cfg.fillColor)
+          .setAlpha(1)
+          .setDisplaySize(cfg.size, cfg.size);
+      } else {
+        this.tweens.killTweensOf(pip);
+        pip
+          .setTexture('hp-heart-empty')
+          .setTint(cfg.fillColor)
+          .setAlpha(1)
+          .setDisplaySize(cfg.size, cfg.size);
+      }
+    }
+    this._lastShownHp = current;
+  }
+
+  // Quick "you lost a heart" cue: brighten + scale-punch the filled heart, then
+  // settle it into the empty (outline) state.
+  flashLostPip(pip) {
+    const cfg = CFG.hud.hpPips;
+    this.tweens.killTweensOf(pip);
+    pip
+      .setTexture('hp-heart')
+      .setTint(cfg.flashColor)
+      .setAlpha(1)
+      .setDisplaySize(cfg.size * 1.5, cfg.size * 1.5);
+    this.tweens.add({
+      targets: pip,
+      displayWidth: cfg.size,
+      displayHeight: cfg.size,
+      duration: cfg.flashMs,
+      ease: 'Quad.out',
+      onComplete: () =>
+        pip.setTexture('hp-heart-empty').setTint(cfg.fillColor).setDisplaySize(cfg.size, cfg.size),
+    });
+  }
+
   updateHUD(time = 0) {
-    this.hudHp.setText(`HP: ${Math.max(0, this.player.hp)}/${this.runtime.maxHp}`);
+    this.renderHpPips();
     this.hudScore.setText(`Score: ${this.score}`);
     this.hudWave.setText(`Wave: ${this.wave}`);
     this.hudCombo.setText(`Combo: x${this.comboMultiplier}`);
