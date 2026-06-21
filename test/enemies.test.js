@@ -14,11 +14,18 @@ describe('enemies', () => {
     expect(ENEMY_BESTIARY.length).toBeGreaterThan(0);
   });
 
-  it('registers every Juggernaut frame to an existing asset', () => {
-    const frames = BOSS_SPRITES.juggernaut;
-    expect(Object.keys(frames)).toHaveLength(21);
-    for (const frame of Object.values(frames)) {
-      expect(existsSync(join(process.cwd(), 'public', frame.path))).toBe(true);
+  it('registers every completed boss frame to an existing asset', () => {
+    const expectedFrameCounts = {
+      warden: 21,
+      juggernaut: 21,
+      bombardier: 23,
+    };
+    for (const [id, expectedCount] of Object.entries(expectedFrameCounts)) {
+      const frames = BOSS_SPRITES[id];
+      expect(Object.keys(frames), id).toHaveLength(expectedCount);
+      for (const frame of Object.values(frames)) {
+        expect(existsSync(join(process.cwd(), 'public', frame.path)), frame.path).toBe(true);
+      }
     }
   });
 

@@ -22,6 +22,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  bombardier: {
+    key: 'boss-bombardier-idle-s',
+    path: assetPath('assets/enemies/boss/bombardier/bombardier_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -136,6 +143,7 @@ export const BOSS_SPRITES = {
   warden: bossFrames('warden', ['summon', 'barrage']),
   juggernaut: bossFrames('juggernaut', ['barrage', 'charge']),
   hexweaver: bossFrames('hexweaver', ['beamSweep', 'mirrorClones', 'gravityWell']),
+  bombardier: bossFrames('bombardier', ['aimedVolley', 'barrage', 'charge']),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -341,5 +349,21 @@ export const ENEMY_BESTIARY = [
       'Sweeps rotating arcane beams in phase 1, creates projectile-firing mirror clones in phase 2, and pulls the arena into a damaging gravity well in phase 3.',
     counter:
       'Break or bypass the shield through the orbiting weak points, move with the beam gaps, destroy clones quickly, and fight the gravity pull instead of drifting into its core.',
+  },
+  {
+    id: 'boss-bombardier',
+    name: 'The Bombardier',
+    sprite: 'bombardier',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 40',
+    movement:
+      'Tracks the player from the top of the arena, then braces its artillery chassis for a direct thruster-powered charge.',
+    power:
+      'Its three phases add aimed orange shell volleys, full-circle barrages, and a telegraphed forward ram behind a regenerating shield.',
+    counter:
+      'Keep moving across the aim lines, weave between radial shots, then sidestep the charge while punishing its orbiting weak points.',
   },
 ];
