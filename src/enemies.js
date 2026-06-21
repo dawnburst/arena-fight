@@ -1,6 +1,13 @@
 import { assetPath } from './assetPath.js';
 
 export const ENEMY_SPRITES = {
+  warden: {
+    key: 'boss-warden-idle-s',
+    path: assetPath('assets/enemies/boss/warden/warden_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -72,6 +79,37 @@ export const ENEMY_SPRITES = {
     path: assetPath('assets/enemies/slime/walk.png'),
     frameWidth: 64,
     frameHeight: 64,
+  },
+};
+
+const wardenFrame = (name) => ({
+  key: `boss-warden-${name.replaceAll('_', '-')}`,
+  path: assetPath(`assets/enemies/boss/warden/warden_${name}.png`),
+});
+
+export const BOSS_SPRITES = {
+  warden: {
+    idle_s: ENEMY_SPRITES.warden,
+    idle_n: wardenFrame('idle_n'),
+    idle_w: wardenFrame('idle_w'),
+    idle_e: wardenFrame('idle_e'),
+    idle_se: wardenFrame('idle_se'),
+    idle_sw: wardenFrame('idle_sw'),
+    idle_ne: wardenFrame('idle_ne'),
+    idle_nw: wardenFrame('idle_nw'),
+    walk_s_0: wardenFrame('walk_s_0'),
+    walk_s_1: wardenFrame('walk_s_1'),
+    walk_s_2: wardenFrame('walk_s_2'),
+    walk_s_3: wardenFrame('walk_s_3'),
+    summon_telegraph: wardenFrame('summon_telegraph'),
+    summon_release: wardenFrame('summon_release'),
+    barrage_telegraph: wardenFrame('barrage_telegraph'),
+    barrage_release: wardenFrame('barrage_release'),
+    enrage: wardenFrame('enrage'),
+    death_0: wardenFrame('death_0'),
+    death_1: wardenFrame('death_1'),
+    death_2: wardenFrame('death_2'),
+    death_3: wardenFrame('death_3'),
   },
 };
 
@@ -222,9 +260,11 @@ export const ENEMY_BESTIARY = [
   {
     id: 'boss',
     name: 'Bosses',
-    sprite: 'tank',
+    sprite: 'warden',
     frame: 0,
-    tint: 0x9575cd,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
     firstWave: 'Every 10 waves',
     movement:
       'A huge shielded boss hovers near the top and tracks you, summoning its own minions. A different boss appears each boss wave (The Warden at 10 up to The Annihilator at 100), tougher the deeper you go.',
