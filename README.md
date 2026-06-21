@@ -123,9 +123,10 @@ or break the shield then unload. Across three escalating phases a boss draws fro
 a pool of attacks (radial barrages, spiraling fire, aimed volleys, charges and
 ground-slams, area-denial blasts, shield re-raises), with different bosses
 favouring different moves. Beating one pays a large coin bonus that scales with
-the boss number. The Warden and wave-20 Juggernaut use complete retro pixel-art
-animation sets for movement, attacks, their enraged final phases, and defeat;
-later bosses currently retain the colour-coded fallback body.
+the boss number. The Warden, wave-20 Juggernaut, and wave-40 Bombardier use
+complete retro pixel-art animation sets for movement, attacks, their enraged
+final phases, and defeat; other bosses currently retain the colour-coded
+fallback body.
 
 The wave-30 Hexweaver uses a complete retro sprite set in gameplay and the
 Monsters gallery: directional hover poses, spell telegraphs/releases, phase-3
