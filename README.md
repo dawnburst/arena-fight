@@ -130,7 +130,9 @@ later bosses currently retain the colour-coded fallback body.
 The wave-30 Hexweaver uses a complete retro sprite set in gameplay and the
 Monsters gallery: directional hover poses, spell telegraphs/releases, phase-3
 enrage, and a four-frame death sequence. Its shield and weak points remain
-separate animated gameplay overlays.
+separate animated gameplay overlays. In phase 2 it summons directional Rune
+Prowler creatures that move at range and fire cyan bolts instead of primitive
+circle decoys.
 
 <img width="813" height="600" alt="image" src="https://github.com/user-attachments/assets/33332e4e-fafd-4932-b616-7071bdfd1b82" />
 

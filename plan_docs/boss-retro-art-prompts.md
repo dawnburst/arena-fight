@@ -17,6 +17,7 @@ Integrated states:
 - Telegraph and release frames for each of the three phase powers.
 - One phase-3 enrage frame.
 - Four one-shot death frames.
+- Eight directional Rune Prowler frames replace phase-2 primitive circle decoys.
 
 The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
 locks telegraph/release frames until the real power fires, cancels delayed casts
