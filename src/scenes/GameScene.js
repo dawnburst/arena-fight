@@ -10,7 +10,7 @@ import {
 } from '../backgrounds.js';
 import { buildRuntimeStats, getWeapon, MODS } from '../catalog.js';
 import { CFG } from '../config.js';
-import { BOSS_SPRITES, ENEMY_SPRITES } from '../enemies.js';
+import { BOSS_SPRITES, ENEMY_SPRITES, RUNE_PROWLER_SPRITES } from '../enemies.js';
 import TouchControls from '../input/touchControls.js';
 import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
@@ -45,6 +45,7 @@ const DASHER_MONSTER_SCALE = 0.64;
 const FIRECASTER_SCALE = 0.58;
 const DEFAULT_ENEMY_SCALE = 0.58;
 const ENEMY_HITBOX_MULT = 1.35;
+const RUNE_PROWLER_SCALE = 0.27;
 const ENEMY_TYPE_ORDER = [
   'sniper',
   'teleporter',
@@ -99,6 +100,9 @@ export default class GameScene extends Phaser.Scene {
           this.load.image(sprite.key, sprite.path);
         }
       }
+    }
+    for (const sprite of Object.values(RUNE_PROWLER_SPRITES)) {
+      if (!this.textures.exists(sprite.key)) this.load.image(sprite.key, sprite.path);
     }
     preloadMusic(this);
     preloadSfx(this);
@@ -2459,12 +2463,15 @@ export default class GameScene extends Phaser.Scene {
 
   createDecoy(x, y, boss, now) {
     const p = CFG.boss.powers.mirrorClones;
-    const decoy = this.add.circle(x, y, p.radius, boss.variant.body);
-    decoy.setStrokeStyle(3, boss.variant.accent, 0.9).setDepth(4);
+    const decoy = this.add
+      .sprite(x, y, RUNE_PROWLER_SPRITES.s.key)
+      .setScale(RUNE_PROWLER_SCALE)
+      .setDepth(4);
     this.physics.add.existing(decoy);
     this.enemies.add(decoy);
-    decoy.body.setCircle(p.radius);
-    decoy.body.setOffset(-p.radius, -p.radius);
+    const sourceRadius = p.radius / RUNE_PROWLER_SCALE;
+    decoy.body.setCircle(sourceRadius);
+    decoy.body.setOffset(128 - sourceRadius, 128 - sourceRadius);
     decoy.type = 'decoy';
     decoy.hp = 1;
     decoy.maxHp = 1;
@@ -2472,7 +2479,7 @@ export default class GameScene extends Phaser.Scene {
     decoy.proj = boss.variant.proj;
     decoy.expiresAt = now + p.lifetimeMs;
     decoy.nextFireAt = now + p.fireCooldownMs;
-    this.tweens.add({
+    decoy.pulseTween = this.tweens.add({
       targets: decoy,
       alpha: { from: 0.5, to: 0.95 },
       yoyo: true,
@@ -2483,11 +2490,15 @@ export default class GameScene extends Phaser.Scene {
 
   updateDecoy(decoy, px, py, now) {
     if (now >= decoy.expiresAt) {
+      this.cleanupEnemyExtras(decoy);
       decoy.destroy();
       this.maybeStartNextWave();
       return;
     }
     this.keepRange(decoy, px, py, 150, 260, decoy.speed);
+    const facing = this.bossFacing(px - decoy.x, py - decoy.y);
+    const frame = RUNE_PROWLER_SPRITES[facing] ?? RUNE_PROWLER_SPRITES.s;
+    if (decoy.texture.key !== frame.key) decoy.setTexture(frame.key);
     if (now >= decoy.nextFireAt) {
       decoy.nextFireAt = now + CFG.boss.powers.mirrorClones.fireCooldownMs;
       const aim = Math.atan2(py - decoy.y, px - decoy.x);
@@ -3365,6 +3376,10 @@ export default class GameScene extends Phaser.Scene {
 
   cleanupEnemyExtras(enemy) {
     this.cancelBossAction(enemy);
+    if (enemy.pulseTween) {
+      enemy.pulseTween.remove();
+      enemy.pulseTween = null;
+    }
     if (enemy.shieldMark) enemy.shieldMark.destroy();
     if (enemy.aimLine) enemy.aimLine.destroy();
     if (enemy.core) enemy.core.destroy();
