@@ -831,22 +831,23 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(0, 1);
 
+    // Left column under HP/score: keeps top-center clear for the boss HP bar.
     this.shieldHud = this.add
-      .text(this.arenaW / 2, 38, '', {
+      .text(10, 48, '', {
         ...style,
         fontSize: '14px',
         color: '#ffd54f',
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0, 0)
       .setVisible(false);
 
     this.giftHud = this.add
-      .text(this.arenaW / 2, 58, '', {
+      .text(10, 66, '', {
         ...style,
         fontSize: '14px',
         color: '#ff80ab',
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0, 0)
       .setVisible(false);
 
     const bar = CFG.boss.bar;
@@ -946,8 +947,8 @@ export default class GameScene extends Phaser.Scene {
     this.layoutPauseMenu();
     this.dashCdText?.setPosition(w / 2, h - 18);
     this.hudWeapon?.setPosition(10, h - 8);
-    this.shieldHud?.setPosition(w / 2, 38);
-    this.giftHud?.setPosition(w / 2, 58);
+    this.shieldHud?.setPosition(10, 48);
+    this.giftHud?.setPosition(10, 66);
     this.tutPanel?.setPosition(w / 2, h / 2);
     this.tutTitle?.setPosition(w / 2, h / 2 - 80);
     this.tutBody?.setPosition(w / 2, h / 2 - 18);
