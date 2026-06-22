@@ -2328,7 +2328,13 @@ export default class GameScene extends Phaser.Scene {
     const p = CFG.boss.powers.beamSweep;
     const gfx = this.add.graphics().setDepth(3.9);
     const start = now;
-    const startAngle = Math.random() * Math.PI * 2;
+    // Aim the gaps at the player, not a beam. The beams are evenly spaced by
+    // `step`, so place the player's current direction exactly between two beams
+    // at spawn. The sweep still rotates toward them, but never starts on top of
+    // them — they get a fair chance to move out of the way.
+    const step = (Math.PI * 2) / p.beams;
+    const angToPlayer = Math.atan2(this.player.sprite.y - boss.y, this.player.sprite.x - boss.x);
+    const startAngle = angToPlayer + step / 2;
     const sweepRad = p.sweepDegPerSec * (Math.PI / 180);
     const len = this.arenaW + this.arenaH;
     this.bossEffects.push({
