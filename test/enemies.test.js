@@ -1,7 +1,12 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { BOSS_SPRITES, ENEMY_BESTIARY, ENEMY_SPRITES } from '../src/enemies.js';
+import {
+  BOSS_SPRITES,
+  ENEMY_BESTIARY,
+  ENEMY_SPRITES,
+  RUNE_PROWLER_SPRITES,
+} from '../src/enemies.js';
 
 describe('enemies', () => {
   it('should have enemy sprites and bestiary', () => {
@@ -21,6 +26,13 @@ describe('enemies', () => {
     const frames = BOSS_SPRITES.hexweaver;
     expect(Object.keys(frames)).toHaveLength(23);
     for (const frame of Object.values(frames)) {
+      expect(existsSync(join(process.cwd(), 'public', frame.path))).toBe(true);
+    }
+  });
+
+  it('registers every Rune Prowler direction to an existing asset', () => {
+    expect(Object.keys(RUNE_PROWLER_SPRITES)).toHaveLength(8);
+    for (const frame of Object.values(RUNE_PROWLER_SPRITES)) {
       expect(existsSync(join(process.cwd(), 'public', frame.path))).toBe(true);
     }
   });

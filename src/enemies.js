@@ -138,6 +138,18 @@ export const BOSS_SPRITES = {
   hexweaver: bossFrames('hexweaver', ['beamSweep', 'mirrorClones', 'gravityWell']),
 };
 
+const runeProwlerFrame = (direction) => ({
+  key: `enemy-rune-prowler-idle-${direction}`,
+  path: assetPath(`assets/enemies/boss/hexweaver/rune-prowler/rune_prowler_idle_${direction}.png`),
+});
+
+export const RUNE_PROWLER_SPRITES = Object.fromEntries(
+  ['s', 'n', 'w', 'e', 'se', 'sw', 'ne', 'nw'].map((direction) => [
+    direction,
+    runeProwlerFrame(direction),
+  ]),
+);
+
 export const ENEMY_BESTIARY = [
   {
     id: 'swarmer',
