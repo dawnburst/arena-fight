@@ -212,7 +212,7 @@ export const CFG = {
     hitRadius: 66, // physics overlap radius; covers the orbiting weak points
     contactDamage: 1,
     shieldColor: 0x40c4ff,
-    anchorY: 140, // resting height near the top of the arena
+    anchorY: 185, // resting height: low enough that a phase-1 boss clears the HP bar
     edgeMargin: 90, // keeps the tracked target x inside the arena
     shadowMs: 1500, // harmless shadow telegraph shown before the boss materializes
     introMs: 1200, // entrance / first-attack delay
@@ -328,8 +328,10 @@ export const CFG = {
     },
     bar: {
       x: 400,
-      y: 92,
-      nameY: 70,
+      // Bar rides high, just under the coins counter, so a phase-1 boss spawning
+      // below it is never hidden. Name label sits just below the bar.
+      y: 44,
+      nameY: 66,
       width: 560,
       height: 16,
     },
