@@ -29,6 +29,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  phantom: {
+    key: 'boss-phantom-idle-s',
+    path: assetPath('assets/enemies/boss/phantom/phantom_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -144,6 +151,7 @@ export const BOSS_SPRITES = {
   juggernaut: bossFrames('juggernaut', ['barrage', 'charge']),
   hexweaver: bossFrames('hexweaver', ['beamSweep', 'mirrorClones', 'gravityWell']),
   bombardier: bossFrames('bombardier', ['aimedVolley', 'barrage', 'charge']),
+  phantom: bossFrames('phantom', ['barrage', 'nova', 'charge', 'dotField']),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -365,5 +373,21 @@ export const ENEMY_BESTIARY = [
       'Its three phases add aimed orange shell volleys, full-circle barrages, and a telegraphed forward ram behind a regenerating shield.',
     counter:
       'Keep moving across the aim lines, weave between radial shots, then sidestep the charge while punishing its orbiting weak points.',
+  },
+  {
+    id: 'boss-phantom',
+    name: 'The Phantom',
+    sprite: 'phantom',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 50',
+    movement:
+      'Drifts near the top of the arena with a spectral body and three orbiting weak points through every phase.',
+    power:
+      'Combines radial barrages and nova blasts early, then adds a forward charge and phase-3 red-dot fields that punish standing still.',
+    counter:
+      'Track the weak points, keep moving through barrage gaps, leave room for the nova, and sidestep the charge before the red-dot field closes escape routes.',
   },
 ];
