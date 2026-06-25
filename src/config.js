@@ -374,7 +374,7 @@ export const CFG = {
         proj: 0x64b5f6,
         weakPointsByPhase: [2, 3, 3],
         // Unique kit, one ability per phase (no overlap with other bosses).
-        phasePowers: [['beamSweep'], ['mirrorClones'], ['gravityWell']],
+        phasePowers: [['beamSweep'], ['mirrorClones'], ['mirrorClones', 'gravityWell']],
       },
       {
         id: 'bombardier',
