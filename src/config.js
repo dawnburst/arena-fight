@@ -391,6 +391,7 @@ export const CFG = {
         ],
       },
       {
+        id: 'phantom',
         name: 'The Phantom',
         body: 0x004d40,
         accent: 0x4db6ac,
