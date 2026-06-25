@@ -298,6 +298,11 @@ export const CFG = {
         damageRadius: 36,
         damage: 1,
         radius: 150,
+        // Harmless gray warning before the well starts pulling/damaging.
+        telegraphMs: 1000,
+        // Distance from the player the well spawns, so it never appears on top
+        // of the player and they start outside its damaging core.
+        spawnDist: 170,
       },
       // Phantom phase-3 red-dot field.
       dotField: {

@@ -2029,7 +2029,7 @@ export default class GameScene extends Phaser.Scene {
     if (name === 'nova') return this.bossNova(boss);
     if (name === 'beamSweep') return this.bossBeamSweep(boss, now);
     if (name === 'mirrorClones') return this.bossMirrorClones(boss, now);
-    if (name === 'gravityWell') return this.bossGravityWell(boss, now);
+    if (name === 'gravityWell') return this.bossGravityWell(boss);
     if (name === 'dotField') return this.bossDotField();
     if (name === 'missiles') return this.bossMissiles(boss, now);
   }
@@ -2369,36 +2369,54 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // Hexweaver phase 3: a vortex at the player's position that drags them toward
-  // its damaging core for a few seconds; the player can fight the pull.
-  bossGravityWell(boss, now) {
+  // Hexweaver phase 3: a vortex that drags the player toward its damaging core
+  // for a few seconds; the player can fight the pull. It spawns away from the
+  // player (never on top of them) and shows a harmless gray warning for a second
+  // before it turns active and starts pulling/damaging.
+  bossGravityWell(boss) {
     const p = CFG.boss.powers.gravityWell;
-    const cx = this.player.sprite.x;
-    const cy = this.player.sprite.y;
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    const margin = p.radius * 0.5;
+    const angle = Math.random() * Math.PI * 2;
+    const cx = Phaser.Math.Clamp(px + Math.cos(angle) * p.spawnDist, margin, this.arenaW - margin);
+    const cy = Phaser.Math.Clamp(py + Math.sin(angle) * p.spawnDist, margin, this.arenaH - margin);
+    // Telegraph: gray, harmless ring + core that cannot hit the player yet.
     const ring = this.add
-      .circle(cx, cy, p.radius, boss.variant.accent, 0.12)
-      .setStrokeStyle(3, boss.variant.accent, 0.7)
+      .circle(cx, cy, p.radius, 0x9e9e9e, 0.1)
+      .setStrokeStyle(3, 0xcfcfcf, 0.7)
       .setDepth(3.7);
-    const core = this.add.circle(cx, cy, 16, boss.variant.core, 0.55).setDepth(3.75);
-    const start = now;
-    this.bossEffects.push({
-      tick: (t) => {
-        if (t - start >= p.durationMs) return true;
-        core.rotation += 0.2;
-        const px = this.player.sprite.x;
-        const py = this.player.sprite.y;
-        const dx = cx - px;
-        const dy = cy - py;
-        const d = Math.hypot(dx, dy) || 1;
-        this.player.sprite.body.velocity.x += (dx / d) * p.pullSpeed;
-        this.player.sprite.body.velocity.y += (dy / d) * p.pullSpeed;
-        if (d <= p.damageRadius) this.damagePlayer(p.damage);
-        return false;
-      },
-      destroy: () => {
+    const core = this.add.circle(cx, cy, 16, 0xbdbdbd, 0.5).setDepth(3.75);
+    this.time.delayedCall(p.telegraphMs, () => {
+      if (!this.bossActive) {
         ring.destroy();
         core.destroy();
-      },
+        return;
+      }
+      // Switch to the live colours, then begin pulling and damaging.
+      ring.setFillStyle(boss.variant.accent, 0.12);
+      ring.setStrokeStyle(3, boss.variant.accent, 0.7);
+      core.setFillStyle(boss.variant.core, 0.55);
+      const start = this.time.now;
+      this.bossEffects.push({
+        tick: (t) => {
+          if (!this.bossActive || t - start >= p.durationMs) return true;
+          core.rotation += 0.2;
+          const ppx = this.player.sprite.x;
+          const ppy = this.player.sprite.y;
+          const dx = cx - ppx;
+          const dy = cy - ppy;
+          const d = Math.hypot(dx, dy) || 1;
+          this.player.sprite.body.velocity.x += (dx / d) * p.pullSpeed;
+          this.player.sprite.body.velocity.y += (dy / d) * p.pullSpeed;
+          if (d <= p.damageRadius) this.damagePlayer(p.damage);
+          return false;
+        },
+        destroy: () => {
+          ring.destroy();
+          core.destroy();
+        },
+      });
     });
   }
 
