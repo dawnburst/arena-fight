@@ -328,11 +328,11 @@ export const ENEMY_BESTIARY = [
     detailScale: 0.78,
     firstWave: 'Wave 10',
     movement:
-      'A huge shielded boss hovers near the top and tracks you, summoning its own minions. A different boss appears each boss wave (The Warden at 10 up to The Annihilator at 100), tougher the deeper you go.',
+      'Hovers near the top, tracking you and summoning minions. A different boss appears each boss wave (Wave 10 up to Wave 100), tougher the deeper you go.',
     power:
-      'Energy shield blocks body hits and regenerates each phase; small orbiting weak points always take extra damage. Across three escalating phases it draws from radial barrages, spiraling fire, aimed volleys, charges and ground-slams, area blasts, and shield re-raises.',
+      'A regenerating shield blocks body hits; small orbiting weak points take extra damage. Three phases mix radial barrages, spiraling fire, charges, slams, and area blasts.',
     counter:
-      'Snipe the moving weak points to skip the shield, or break the shield then unload. Dodge the charge windup and stay out of slam range.',
+      'Snipe the moving weak points or break the shield, then unload. Dodge the charge windup and stay clear of slams.',
   },
   {
     id: 'boss-juggernaut',
@@ -343,12 +343,11 @@ export const ENEMY_BESTIARY = [
     galleryScale: 0.27,
     detailScale: 0.78,
     firstWave: 'Wave 20',
-    movement:
-      'Tracks the player near the top of the arena, then launches into a heavy horn-first charge.',
+    movement: 'Tracks you near the top, then launches a heavy horn-first charge.',
     power:
-      'Its shield and orbiting weak points protect three phases while radial lime barrages and telegraphed charges pressure the whole arena.',
+      'A shield and orbiting weak points guard three phases while lime radial barrages and telegraphed charges pressure the arena.',
     counter:
-      'Punish the small orbiting weak points, sidestep the lowered-horn charge warning, and move through gaps in each radial barrage.',
+      'Hit the orbiting weak points, sidestep the lowered-horn charge, and move through gaps in each barrage.',
   },
   {
     id: 'boss-hexweaver',
@@ -360,11 +359,11 @@ export const ENEMY_BESTIARY = [
     detailScale: 0.78,
     firstWave: 'Wave 30',
     movement:
-      'Floats near the top of the arena, tracking the player while its shielded rune nodes orbit through three phases.',
+      'Floats near the top, tracking you while shielded rune nodes orbit through three phases.',
     power:
-      'Sweeps rotating arcane beams in phase 1, creates projectile-firing mirror clones in phase 2, and pulls the arena into a damaging gravity well in phase 3.',
+      'Sweeps arcane beams, spawns projectile-firing mirror clones, then pulls the arena into a damaging gravity well.',
     counter:
-      'Break or bypass the shield through the orbiting weak points, move with the beam gaps, destroy clones quickly, and fight the gravity pull instead of drifting into its core.',
+      'Break the shield via the orbiting weak points, move with the beam gaps, kill clones fast, and fight the gravity pull.',
   },
   {
     id: 'boss-bombardier',
@@ -375,12 +374,11 @@ export const ENEMY_BESTIARY = [
     galleryScale: 0.27,
     detailScale: 0.78,
     firstWave: 'Wave 40',
-    movement:
-      'Tracks the player from the top of the arena, then braces its artillery chassis for a direct thruster-powered charge.',
+    movement: 'Tracks you from the top, then braces for a thruster-powered charge.',
     power:
-      'Its three phases add aimed orange shell volleys, full-circle barrages, and a telegraphed forward ram behind a regenerating shield.',
+      'Three phases add aimed orange shell volleys, full-circle barrages, and a telegraphed ram behind a regenerating shield.',
     counter:
-      'Keep moving across the aim lines, weave between radial shots, then sidestep the charge while punishing its orbiting weak points.',
+      'Cross the aim lines, weave between radial shots, then sidestep the charge while hitting its weak points.',
   },
   {
     id: 'boss-phantom',
@@ -391,12 +389,11 @@ export const ENEMY_BESTIARY = [
     galleryScale: 0.27,
     detailScale: 0.78,
     firstWave: 'Wave 50',
-    movement:
-      'Drifts near the top of the arena with a spectral body and three orbiting weak points through every phase.',
+    movement: 'Drifts near the top with a spectral body and three orbiting weak points.',
     power:
-      'Combines radial barrages and nova blasts early, then adds a forward charge and phase-3 red-dot fields that punish standing still.',
+      'Mixes radial barrages and nova blasts, then adds a forward charge and phase-3 red-dot fields that punish standing still.',
     counter:
-      'Track the weak points, keep moving through barrage gaps, leave room for the nova, and sidestep the charge before the red-dot field closes escape routes.',
+      'Track the weak points, move through barrage gaps, leave room for the nova, and sidestep the charge.',
   },
   {
     id: 'boss-overlord',
@@ -407,11 +404,10 @@ export const ENEMY_BESTIARY = [
     galleryScale: 0.27,
     detailScale: 0.78,
     firstWave: 'Wave 60',
-    movement:
-      'Tracks the player from the top of the arena, then mixes heavy braced attacks with a forward charge.',
+    movement: 'Tracks you from the top, mixing heavy braced attacks with a forward charge.',
     power:
-      'Launches homing missiles, fires radial barrages, rams through a telegraphed charge, and overcharges its core into a nova blast in the final phase.',
+      'Launches homing missiles, fires radial barrages, rams in a telegraphed charge, and overcharges into a nova in the final phase.',
     counter:
-      'Shoot down missiles before they turn into you, move through barrage gaps, sidestep the charge line, and stay outside the nova warning.',
+      'Shoot down missiles, move through barrage gaps, sidestep the charge, and stay outside the nova warning.',
   },
 ];

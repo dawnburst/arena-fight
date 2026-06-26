@@ -393,6 +393,7 @@ export default class MonstersScene extends Phaser.Scene {
     this.detailMovement.setText(`Movement\n${entry.movement}`);
     this.detailPower.setText(`Special Power\n${entry.power}`);
     this.detailCounter.setText(`How to Fight\n${entry.counter}`);
+    this.layoutDetailText();
 
     // Bosses cannot be demoed; everything else gets a working Demo button.
     this.demoBtnBg.clear();
@@ -403,6 +404,35 @@ export default class MonstersScene extends Phaser.Scene {
       this.demoBtnBg.fillStyle(0xffd54f, 1);
       this.demoBtnBg.fillRoundedRect(110, 384, 160, 40, 8);
       this.demoButton.setInteractive({ useHandCursor: true });
+    }
+  }
+
+  // Stack the three description blocks below the HP line and shrink the font
+  // just enough that they always fit inside the detail panel without overlap.
+  // Boss text is long, so a fixed font/position is not safe across every entry.
+  layoutDetailText() {
+    const TEXT_X = 362;
+    const TEXT_TOP = 210;
+    const TEXT_BOTTOM = 498; // panel inner bottom (panel ends at y=504)
+    const WRAP_W = 386;
+    const GAP = 10;
+    const available = TEXT_BOTTOM - TEXT_TOP;
+    const blocks = [this.detailMovement, this.detailPower, this.detailCounter];
+
+    // Largest font (down to 10px) whose stacked blocks fit the panel height.
+    for (const fontSize of [15, 14, 13, 12, 11, 10]) {
+      for (const block of blocks) {
+        block.setWordWrapWidth(WRAP_W);
+        block.setFontSize(fontSize);
+      }
+      const total = blocks.reduce((sum, b) => sum + b.height, 0) + GAP * (blocks.length - 1);
+      if (total <= available) break;
+    }
+
+    let y = TEXT_TOP;
+    for (const block of blocks) {
+      block.setPosition(TEXT_X, y);
+      y += block.height + GAP;
     }
   }
 
