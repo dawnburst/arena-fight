@@ -9,7 +9,7 @@ const ROW_HEIGHT = 30;
 const HEADER_HEIGHT = 16;
 const ICON_SIZE = 28;
 const LIST_TOP = 92;
-const STORE_ITEMS = [...WEAPONS, ...MODS].filter((it) => it.price > 0);
+const STORE_ITEMS = [...WEAPONS, ...MODS];
 const itemIconKey = (id) => `store-item-${id}`;
 const tierColorNumber = (tier) => Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier]).color;
 
@@ -319,7 +319,9 @@ export default class StoreScene extends Phaser.Scene {
 
     this.entries = [];
     for (const tier of TIERS) {
-      const items = source.filter((it) => it.tier === tier && it.price > 0);
+      const items = source.filter(
+        (it) => it.tier === tier && (this.tab === 'weapons' || it.price > 0),
+      );
       for (const it of items) {
         this.entries.push({
           id: it.id,
