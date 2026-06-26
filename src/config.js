@@ -405,6 +405,7 @@ export const CFG = {
         ],
       },
       {
+        id: 'overlord',
         name: 'The Overlord',
         body: 0xb71c1c,
         accent: 0xef5350,
