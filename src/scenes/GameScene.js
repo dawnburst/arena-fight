@@ -193,6 +193,11 @@ export default class GameScene extends Phaser.Scene {
     this.preCheatPaused = false;
     this.activeSpawnEvent = null;
     this.nextWaveDelayedCall = null;
+    // Reset with the other spawn guards: the scene instance is reused across
+    // scene.start(), so a run that ended/restarted mid inter-wave gap (with this
+    // flag still true and its clearing timer shut down) would otherwise leave
+    // maybeStartNextWave() permanently short-circuited — waves never advance.
+    this.nextWaveScheduled = false;
 
     this.boss = null;
     this.bossActive = false;
