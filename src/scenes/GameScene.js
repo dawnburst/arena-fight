@@ -110,8 +110,7 @@ export default class GameScene extends Phaser.Scene {
       if (!this.textures.exists(sprite.key)) this.load.image(sprite.key, sprite.path);
     }
     // HUD loadout icons: reuse the store/loadout icon key scheme so textures are
-    // shared once loaded. Free items (the default Pistol) ship no asset, so skip
-    // them by price to avoid a 404 — the HUD draws a lettered fallback instead.
+    // shared once loaded.
     const save = Save.get();
     const loadoutIds = [
       ...(save.loadout?.weapons || [save.loadout?.weapon]),
@@ -119,7 +118,7 @@ export default class GameScene extends Phaser.Scene {
     ].filter(Boolean);
     for (const id of loadoutIds) {
       const def = [...WEAPONS, ...MODS].find((it) => it.id === id);
-      if (!def || def.price <= 0) continue;
+      if (!def) continue;
       const key = loadoutIconKey(id);
       if (!this.textures.exists(key)) {
         this.load.image(key, assetPath(`assets/items/${id}.png`));
@@ -989,7 +988,6 @@ export default class GameScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(16)
         .setVisible(hasIcon);
-      // Free items (default Pistol) ship no asset: show the initial instead.
       const label = hasIcon
         ? null
         : this.add

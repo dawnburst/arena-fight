@@ -21,9 +21,7 @@ export default class LoadoutScene extends Phaser.Scene {
   }
 
   preload() {
-    // Free items (the default Pistol) have no icon asset, so skip them.
     for (const item of [...WEAPONS, ...MODS]) {
-      if (item.price <= 0) continue;
       const key = itemIconKey(item.id);
       if (!this.textures.exists(key)) {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
