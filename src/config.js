@@ -484,6 +484,39 @@ export const CFG = {
     maxMultiplier: 8,
     scorePerKillBase: 100,
   },
+  // Kill-burst particle pops (GameScene.spawnKillBurst): a short shower of small
+  // colored shards at each non-boss kill. Count and size scale with the combo
+  // multiplier so chained kills feel bigger. Pooled and capped to avoid leaks.
+  kill: {
+    burstBaseCount: 6, // shards emitted at combo x1
+    burstPerCombo: 2, // extra shards per combo step above x1
+    lifespanMs: 380, // shard lifetime
+    speedMin: 80, // initial shard speed (px/s), min
+    speedMax: 220, // initial shard speed (px/s), max
+    shardSize: 3, // base shard square size (px) at combo x1
+    shardSizePerCombo: 0.4, // extra px of size per combo step
+    drag: 3.2, // per-second velocity damping factor
+    maxShards: 140, // hard pool cap (object-leak guard)
+    defaultColor: 0xe53935, // fallback shard tint when type has no entry
+    // Per-type shard tint. Types with an explicit CFG color reuse it; sprite-only
+    // types use an approximation of their art palette (tunable).
+    shardColors: {
+      swarmer: 0xe53935,
+      'splitter-child': 0xb71c1c,
+      dasher: 0x2e7d32,
+      firecaster: 0xff7043,
+      tank: 0x607d8b,
+      splitter: 0x8e24aa,
+      bomber: 0xff8a00,
+      healer: 0x26c6da,
+      summoner: 0x7e57c2,
+      shielded: 0x90a4ae,
+      teleporter: 0xab47bc,
+      sniper: 0xc62828,
+      egg: 0xc0ca33,
+      slime: 0x7cb342,
+    },
+  },
   // In-game pause menu (GameScene.buildPauseMenu): Resume / Restart / Settings /
   // Quit, navigable by keyboard, mouse, and touch.
   pause: {

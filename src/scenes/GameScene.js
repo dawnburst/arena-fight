@@ -46,6 +46,9 @@ const FIRECASTER_SCALE = 0.58;
 const DEFAULT_ENEMY_SCALE = 0.58;
 const ENEMY_HITBOX_MULT = 1.35;
 const RUNE_PROWLER_SCALE = 0.27;
+// Kill-burst shards render above gameplay/FX (enemies 4, bullets/boss FX ≤4.7)
+// but below the HUD (≥20) so they never cover score/combo readouts.
+const KILL_SHARD_DEPTH = 7;
 const ENEMY_TYPE_ORDER = [
   'sniper',
   'teleporter',
@@ -256,6 +259,7 @@ export default class GameScene extends Phaser.Scene {
       this.touch?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
       this.input.setDefaultCursor('default');
+      this.destroyKillShards();
     });
 
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitEnemy, null, this);
@@ -272,6 +276,7 @@ export default class GameScene extends Phaser.Scene {
     this.createEnemyAnimations();
     this.createBoomerangTexture();
     this.createHeartTextures();
+    this.initKillBurst();
     this.createHUD();
 
     this.input.keyboard.on('keydown', this.onKeyDown, this);
@@ -1040,6 +1045,7 @@ export default class GameScene extends Phaser.Scene {
     this.updateEnemyProjectiles(time);
     this.updateHazards(time);
     this.updateCoins(time, delta);
+    this.updateKillShards(delta);
     this.despawnExpiredBullets(time);
     this.maybeDecayCombo(time);
     this.updateShield(time);
@@ -3423,6 +3429,9 @@ export default class GameScene extends Phaser.Scene {
       playSfx(this, 'enemyDeath');
     }
     this.killEnemyScoring(x, y);
+    // Bosses keep their dedicated bossDeathBurst; every other kill pops shards
+    // tinted to the enemy, sized by the now-updated combo multiplier.
+    if (type !== 'boss') this.spawnKillBurst(x, y, type);
     if (type === 'splitter') {
       for (let i = 0; i < CFG.splitter.childCount; i++) {
         const angle = (Math.PI * 2 * i) / CFG.splitter.childCount;
@@ -3451,6 +3460,80 @@ export default class GameScene extends Phaser.Scene {
     this.lastKillAt = this.time.now;
     this.score += CFG.combo.scorePerKillBase * this.comboMultiplier;
     this.dropCoinsForKill(x, y);
+  }
+
+  // ── Kill-burst shards ───────────────────────────────────────────────────
+  // A pooled set of small square game objects that fly outward from a kill and
+  // fade out. Simulated manually in updateKillShards() (called after the paused
+  // guard in update()) so the effect freezes cleanly on pause / game over.
+
+  initKillBurst() {
+    this.killShards = [];
+  }
+
+  // Reuse an inactive shard, or grow the pool up to CFG.kill.maxShards. Returns
+  // null when the cap is hit so a high-combo burst simply emits fewer shards
+  // instead of leaking objects.
+  getKillShard() {
+    for (const shard of this.killShards) {
+      if (!shard.active) return shard;
+    }
+    if (this.killShards.length >= CFG.kill.maxShards) return null;
+    const shard = this.add
+      .rectangle(0, 0, CFG.kill.shardSize, CFG.kill.shardSize, 0xffffff)
+      .setDepth(KILL_SHARD_DEPTH)
+      .setActive(false)
+      .setVisible(false);
+    this.killShards.push(shard);
+    return shard;
+  }
+
+  spawnKillBurst(x, y, type) {
+    const k = CFG.kill;
+    const color = k.shardColors[type] ?? k.defaultColor;
+    const step = this.comboMultiplier - 1;
+    const count = k.burstBaseCount + k.burstPerCombo * step;
+    const size = k.shardSize + k.shardSizePerCombo * step;
+    for (let i = 0; i < count; i++) {
+      const shard = this.getKillShard();
+      if (!shard) break;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Phaser.Math.FloatBetween(k.speedMin, k.speedMax);
+      shard.vx = Math.cos(angle) * speed;
+      shard.vy = Math.sin(angle) * speed;
+      shard.life = k.lifespanMs;
+      shard.maxLife = k.lifespanMs;
+      shard.setPosition(x, y);
+      shard.setFillStyle(color, 1);
+      shard.setDisplaySize(size, size);
+      shard.setAlpha(1);
+      shard.setActive(true).setVisible(true);
+    }
+  }
+
+  updateKillShards(delta) {
+    if (!this.killShards) return;
+    const dt = delta / 1000;
+    const damp = Math.max(0, 1 - CFG.kill.drag * dt);
+    for (const shard of this.killShards) {
+      if (!shard.active) continue;
+      shard.life -= delta;
+      if (shard.life <= 0) {
+        shard.setActive(false).setVisible(false);
+        continue;
+      }
+      shard.x += shard.vx * dt;
+      shard.y += shard.vy * dt;
+      shard.vx *= damp;
+      shard.vy *= damp;
+      shard.setAlpha(shard.life / shard.maxLife);
+    }
+  }
+
+  destroyKillShards() {
+    if (!this.killShards) return;
+    for (const shard of this.killShards) shard.destroy();
+    this.killShards = [];
   }
 
   dropCoinsForKill(x, y) {
