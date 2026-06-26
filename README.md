@@ -50,6 +50,7 @@ To serve on a different host port, change the left side of the `-p` mapping (e.g
 | Aim | Mouse (sniper-target cursor in the arena) |
 | Fire (hold) | Left mouse button |
 | Dash | `Space` |
+| Swap weapon | `C` (when a second weapon is equipped) |
 | Pause / Resume | `P` or `Esc` |
 | Fullscreen | `F` |
 | Menu navigation | Mouse or arrow keys + `Enter` |
