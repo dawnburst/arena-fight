@@ -93,7 +93,7 @@ during a normal run.
 
 ## Settings
 
-The Settings menu lets you choose the arena background and control the looping background music:
+The Settings menu lets you choose the arena background and control the looping background music. Boss waves cross-fade to a dedicated, more intense boss track and resolve back to the normal track when the boss is defeated (respecting the music on/off and volume settings):
 
 - Music on/off toggle.
 - Volume slider.

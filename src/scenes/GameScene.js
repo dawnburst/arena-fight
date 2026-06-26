@@ -1,7 +1,14 @@
 import Phaser from 'phaser';
 import { evaluateAchievements } from '../achievements.js';
 import { assetPath } from '../assetPath.js';
-import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
+import {
+  enterBossMusic,
+  exitBossMusic,
+  playSfx,
+  preloadMusic,
+  preloadSfx,
+  syncMusic,
+} from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
   backgroundKey,
@@ -282,6 +289,8 @@ export default class GameScene extends Phaser.Scene {
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       if (this.boss) this.cancelBossAction(this.boss);
+      // Belt-and-suspenders: never let the boss track leak into a menu scene.
+      exitBossMusic(this);
       this.touch?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
       this.input.setDefaultCursor('default');
@@ -1852,6 +1861,9 @@ export default class GameScene extends Phaser.Scene {
     );
     this.cameras.main.shake(250, 0.006);
     playSfx(this, 'bossSpawn');
+    // Swap to the intense boss soundtrack as the telegraph begins, so the music
+    // ramps with the warning rather than after the boss materializes.
+    enterBossMusic(this);
     this.showBossShadow(tier);
   }
 
@@ -2883,6 +2895,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   teardownBossState() {
+    // Resolve back to normal music on every boss-end path (boss death, jumpToWave).
+    exitBossMusic(this);
     this.clearBossShadow();
     this.clearBossEffects();
     this.boss = null;
@@ -3896,6 +3910,8 @@ export default class GameScene extends Phaser.Scene {
   endGame() {
     this.gameOver = true;
     this.cancelSlowMo();
+    // Player can die mid-boss; stop the boss track so it doesn't ride into the menu.
+    exitBossMusic(this);
     if (this.boss) this.cancelBossAction(this.boss);
     playSfx(this, 'lose');
     this.player.sprite.setTexture(this.playerFrameKey(this.player.facing, 'death'));
