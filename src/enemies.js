@@ -36,6 +36,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  overlord: {
+    key: 'boss-overlord-idle-s',
+    path: assetPath('assets/enemies/boss/overlord/overlord_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -152,6 +159,7 @@ export const BOSS_SPRITES = {
   hexweaver: bossFrames('hexweaver', ['beamSweep', 'mirrorClones', 'gravityWell']),
   bombardier: bossFrames('bombardier', ['aimedVolley', 'barrage', 'charge']),
   phantom: bossFrames('phantom', ['barrage', 'nova', 'charge', 'dotField']),
+  overlord: bossFrames('overlord', ['missiles', 'barrage', 'charge', 'nova']),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -389,5 +397,21 @@ export const ENEMY_BESTIARY = [
       'Combines radial barrages and nova blasts early, then adds a forward charge and phase-3 red-dot fields that punish standing still.',
     counter:
       'Track the weak points, keep moving through barrage gaps, leave room for the nova, and sidestep the charge before the red-dot field closes escape routes.',
+  },
+  {
+    id: 'boss-overlord',
+    name: 'The Overlord',
+    sprite: 'overlord',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 60',
+    movement:
+      'Tracks the player from the top of the arena, then mixes heavy braced attacks with a forward charge.',
+    power:
+      'Launches homing missiles, fires radial barrages, rams through a telegraphed charge, and overcharges its core into a nova blast in the final phase.',
+    counter:
+      'Shoot down missiles before they turn into you, move through barrage gaps, sidestep the charge line, and stay outside the nova warning.',
   },
 ];

@@ -18,7 +18,9 @@ describe('enemies', () => {
     const expectedFrameCounts = {
       warden: 21,
       juggernaut: 21,
+      hexweaver: 23,
       bombardier: 23,
+      overlord: 25,
     };
     for (const [id, expectedCount] of Object.entries(expectedFrameCounts)) {
       const frames = BOSS_SPRITES[id];
@@ -26,14 +28,6 @@ describe('enemies', () => {
       for (const frame of Object.values(frames)) {
         expect(existsSync(join(process.cwd(), 'public', frame.path)), frame.path).toBe(true);
       }
-    }
-  });
-
-  it('registers every Hexweaver frame to an existing asset', () => {
-    const frames = BOSS_SPRITES.hexweaver;
-    expect(Object.keys(frames)).toHaveLength(23);
-    for (const frame of Object.values(frames)) {
-      expect(existsSync(join(process.cwd(), 'public', frame.path))).toBe(true);
     }
   });
 
