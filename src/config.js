@@ -486,6 +486,13 @@ export const CFG = {
     maxMultiplier: 8,
     scorePerKillBase: 100,
   },
+  // "Bullet time" — a dominant slow-motion of the whole arena on the climactic boss
+  // kill. scale is the playback speed (0.3 = 30% speed); durationMs is real wall-clock.
+  // See GameScene.triggerSlowMo().
+  bulletTime: {
+    scale: 0.3,
+    durationMs: 1000,
+  },
   // Kill-burst particle pops (GameScene.spawnKillBurst): a short shower of small
   // colored shards at each non-boss kill. Count and size scale with the combo
   // multiplier so chained kills feel bigger. Pooled and capped to avoid leaks.

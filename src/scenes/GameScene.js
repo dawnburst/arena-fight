@@ -170,6 +170,10 @@ export default class GameScene extends Phaser.Scene {
     this.paused = false;
     this.gameOver = false;
 
+    // Bullet-time (slow-motion) state; see triggerSlowMo()/endSlowMo().
+    this.slowMoActive = false;
+    this.slowMoTimer = null;
+
     this.coinsThisRun = 0;
     this.burstShotsRemaining = 0;
     this.burstNextAt = 0;
@@ -282,6 +286,7 @@ export default class GameScene extends Phaser.Scene {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
       this.input.setDefaultCursor('default');
       this.destroyKillShards();
+      this.cancelSlowMo();
     });
 
     this.physics.add.overlap(this.bullets, this.enemies, this.onBulletHitEnemy, null, this);
@@ -2809,6 +2814,8 @@ export default class GameScene extends Phaser.Scene {
     this.playBossDeathAnimation(boss);
     this.cleanupEnemyExtras(boss);
     boss.destroy();
+    // The boss kill is the one climactic beat that earns a bullet-time slow-mo.
+    this.triggerSlowMo();
     this.onEnemyKilled('boss', ex, ey);
   }
 
@@ -3888,6 +3895,7 @@ export default class GameScene extends Phaser.Scene {
 
   endGame() {
     this.gameOver = true;
+    this.cancelSlowMo();
     if (this.boss) this.cancelBossAction(this.boss);
     playSfx(this, 'lose');
     this.player.sprite.setTexture(this.playerFrameKey(this.player.facing, 'death'));
@@ -3977,7 +3985,49 @@ export default class GameScene extends Phaser.Scene {
     this.comboMultiplier = 1;
   }
 
+  // Drop the whole arena into slow motion for CFG.bulletTime.durationMs (real time)
+  // to punch up the boss kill. Slows both the Clock (this.time.timeScale, drives AI
+  // cooldowns / spawn timers) and the Arcade physics step (this.physics.world.timeScale
+  // > 1 = slower, drives all body movement). Restored via a wall-clock timer since the
+  // Clock is slowed while it runs. Never fires when another system owns the game's time
+  // state; a fresh trigger restarts any in-flight burst.
+  triggerSlowMo() {
+    if (this.demo || this.tutorial || this.paused || this.gameOver || this.cheatPromptActive) {
+      return;
+    }
+    const s = CFG.bulletTime.scale;
+    if (this.slowMoTimer != null) globalThis.clearTimeout(this.slowMoTimer);
+    this.slowMoActive = true;
+    this.time.timeScale = s;
+    this.physics.world.timeScale = 1 / s;
+    this.cameras.main.flash(160, 90, 140, 220, true);
+    this.slowMoTimer = globalThis.setTimeout(() => this.endSlowMo(), CFG.bulletTime.durationMs);
+  }
+
+  // Restore real-time playback.
+  endSlowMo() {
+    if (!this.slowMoActive) return;
+    this.slowMoActive = false;
+    this.slowMoTimer = null;
+    this.time.timeScale = 1;
+    this.physics.world.timeScale = 1;
+  }
+
+  // Force real-time playback immediately — used by the paths that own the game's
+  // time state (pause, cheat, death, exit, wave jump, shutdown) so a slowed Clock or
+  // physics step can never leak into a menu, transition, or the next run.
+  cancelSlowMo() {
+    if (this.slowMoTimer != null) {
+      globalThis.clearTimeout(this.slowMoTimer);
+      this.slowMoTimer = null;
+    }
+    this.slowMoActive = false;
+    this.time.timeScale = 1;
+    this.physics.world.timeScale = 1;
+  }
+
   togglePause() {
+    this.cancelSlowMo();
     this.paused = !this.paused;
     if (this.paused) {
       this.physics.pause();
@@ -4267,6 +4317,7 @@ export default class GameScene extends Phaser.Scene {
 
   exitToMainMenu() {
     if (this.gameOver) return;
+    this.cancelSlowMo();
     this.input.setDefaultCursor('default');
     this.paused = false;
     this.cheatPromptActive = false;
@@ -4686,6 +4737,7 @@ export default class GameScene extends Phaser.Scene {
   openCheat() {
     if (!CHEATS_ENABLED) return;
     if (this.gameOver) return;
+    this.cancelSlowMo();
     this.cheatPromptActive = true;
     this.cheatBuffer = '';
     this.preCheatPaused = this.paused;
@@ -4760,6 +4812,7 @@ export default class GameScene extends Phaser.Scene {
 
   jumpToWave(n) {
     if (!CHEATS_ENABLED) return;
+    this.cancelSlowMo();
     if (this.activeSpawnEvent) {
       this.activeSpawnEvent.remove(false);
       this.activeSpawnEvent = null;
