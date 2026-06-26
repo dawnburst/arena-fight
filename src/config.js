@@ -25,6 +25,18 @@ export const CFG = {
       flashColor: 0xffffff, // bright pop on the just-lost heart
       flashMs: 220,
     },
+    // Thin "enemies left this wave" bar + counter under the top-right Wave label.
+    // Drains right→left as the wave is cleared; hidden on boss waves (the boss HP
+    // bar shows that progress) and in the demo/tutorial sandbox.
+    waveProgress: {
+      barWidth: 90, // px
+      barHeight: 5,
+      bgColor: 0x000000,
+      bgAlpha: 0.5,
+      fillColor: 0x9ccc65, // normal: matches the green "left" label
+      lowColor: 0xffb74d, // amber when the wave is nearly cleared (anticipation)
+      lowFraction: 0.25, // switch to lowColor at/under this remaining fraction
+    },
   },
   bullet: {
     speed: 520,
