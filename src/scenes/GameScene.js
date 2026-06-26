@@ -174,6 +174,9 @@ export default class GameScene extends Phaser.Scene {
     this.dashReadyAnnounced = true;
     this.enemySpeedThisWave = CFG.enemy.speed;
     this.pendingSpawns = 0;
+    // Total enemies scheduled for the current normal wave; drives the wave
+    // progress bar/counter (remaining = pendingSpawns + live enemies).
+    this.waveTotalEnemies = 0;
     this.paused = false;
     this.gameOver = false;
 
@@ -854,6 +857,23 @@ export default class GameScene extends Phaser.Scene {
     this.hudScore = this.add.text(10, 28, '', style);
     this.hudWave = this.add.text(this.arenaW - 10, 8, '', style).setOrigin(1, 0);
     this.hudCombo = this.add.text(this.arenaW - 10, 28, '', style).setOrigin(1, 0);
+
+    // Wave progress: a small "N left" counter + a thin bar under the Wave/Combo
+    // labels (top-right). Positioned in layoutHud(), updated in updateWaveProgress().
+    const wp = CFG.hud.waveProgress;
+    this.hudWaveLeft = this.add
+      .text(this.arenaW - 10, 48, '', { ...style, fontSize: '12px', color: '#9ccc65' })
+      .setOrigin(1, 0)
+      .setVisible(false);
+    this.waveBarBg = this.add
+      .rectangle(0, 0, wp.barWidth, wp.barHeight, wp.bgColor, wp.bgAlpha)
+      .setOrigin(0, 0.5)
+      .setVisible(false);
+    this.waveBarFill = this.add
+      .rectangle(0, 0, wp.barWidth, wp.barHeight, wp.fillColor)
+      .setOrigin(0, 0.5)
+      .setVisible(false);
+
     this.hudCoins = this.add
       .text(this.arenaW / 2, 8, '', { ...style, color: '#ffd54f' })
       .setOrigin(0.5, 0);
@@ -1068,6 +1088,10 @@ export default class GameScene extends Phaser.Scene {
     const h = this.arenaH;
     this.hudWave?.setPosition(w - 10, 8);
     this.hudCombo?.setPosition(w - 10, 28);
+    this.hudWaveLeft?.setPosition(w - 10, 48);
+    const wp = CFG.hud.waveProgress;
+    this.waveBarBg?.setPosition(w - 10 - wp.barWidth, 70);
+    this.waveBarFill?.setPosition(w - 10 - wp.barWidth, 70);
     this.hudCoins?.setPosition(w / 2, 8);
     this.layoutPauseMenu();
     this.dashCdText?.setPosition(w / 2, h - 18);
@@ -3354,6 +3378,7 @@ export default class GameScene extends Phaser.Scene {
 
     const count = CFG.waves.baseCount + CFG.waves.growthPerWave * (n - 1);
     this.pendingSpawns = count;
+    this.waveTotalEnemies = count; // baseline for the wave progress bar
 
     this.activeSpawnEvent = this.time.addEvent({
       delay: CFG.waves.spawnIntervalMs,
@@ -4950,6 +4975,7 @@ export default class GameScene extends Phaser.Scene {
     this.hudWave.setText(`Wave: ${this.wave}`);
     this.hudCombo.setText(`Combo: x${this.comboMultiplier}`);
     this.hudCoins.setText(`¢ ${this.coinsThisRun}`);
+    this.updateWaveProgress();
 
     const remaining = Math.max(0, this.player.dashReadyAt - time);
     if (remaining > 0) {
@@ -4980,5 +5006,31 @@ export default class GameScene extends Phaser.Scene {
       const secs = Math.max(0, (this.tempModEndsAt - time) / 1000).toFixed(1);
       this.giftHud.setText(`\u{1F381} ${this.tempMod.name}  ${secs}s`);
     }
+  }
+
+  // Top-right "N left" counter + thin bar showing how much of the current normal
+  // wave remains. Hidden during boss waves (the boss HP bar covers progress) and
+  // in the demo/tutorial sandbox, where there is no wave progression to track.
+  updateWaveProgress() {
+    if (!this.waveBarFill) return;
+    const show =
+      !this.demo &&
+      !this.tutorial &&
+      !this.bossActive &&
+      !this.bossSpawning &&
+      this.wave > 0 &&
+      !this.isBossWave(this.wave) &&
+      this.waveTotalEnemies > 0;
+    this.hudWaveLeft.setVisible(show);
+    this.waveBarBg.setVisible(show);
+    this.waveBarFill.setVisible(show);
+    if (!show) return;
+
+    const wp = CFG.hud.waveProgress;
+    const remaining = Math.max(0, this.pendingSpawns + this.enemies.countActive(true));
+    const frac = Phaser.Math.Clamp(remaining / this.waveTotalEnemies, 0, 1);
+    this.waveBarFill.scaleX = frac;
+    this.waveBarFill.setFillStyle(frac <= wp.lowFraction ? wp.lowColor : wp.fillColor);
+    this.hudWaveLeft.setText(`${remaining} left`);
   }
 }
