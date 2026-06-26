@@ -8,7 +8,7 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
-import { buildRuntimeStats, getWeapon, MODS } from '../catalog.js';
+import { buildRuntimeStats, getWeapon, MODS, WEAPONS } from '../catalog.js';
 import { CFG } from '../config.js';
 import { BOSS_SPRITES, ENEMY_SPRITES, RUNE_PROWLER_SPRITES } from '../enemies.js';
 import TouchControls from '../input/touchControls.js';
@@ -64,6 +64,8 @@ const ENEMY_TYPE_ORDER = [
   'dasher',
 ];
 const CHEATS_ENABLED = import.meta.env.DEV;
+// Shares the Store/Loadout icon key scheme so item textures are reused once loaded.
+const loadoutIconKey = (id) => `store-item-${id}`;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -106,6 +108,22 @@ export default class GameScene extends Phaser.Scene {
     }
     for (const sprite of Object.values(RUNE_PROWLER_SPRITES)) {
       if (!this.textures.exists(sprite.key)) this.load.image(sprite.key, sprite.path);
+    }
+    // HUD loadout icons: reuse the store/loadout icon key scheme so textures are
+    // shared once loaded. Free items (the default Pistol) ship no asset, so skip
+    // them by price to avoid a 404 — the HUD draws a lettered fallback instead.
+    const save = Save.get();
+    const loadoutIds = [
+      ...(save.loadout?.weapons || [save.loadout?.weapon]),
+      ...(save.loadout?.mods || []),
+    ].filter(Boolean);
+    for (const id of loadoutIds) {
+      const def = [...WEAPONS, ...MODS].find((it) => it.id === id);
+      if (!def || def.price <= 0) continue;
+      const key = loadoutIconKey(id);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, assetPath(`assets/items/${id}.png`));
+      }
     }
     preloadMusic(this);
     preloadSfx(this);
@@ -864,6 +882,10 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setVisible(false);
 
+    // Bottom-left loadout icons: the equipped weapon(s) and mods as small
+    // pictures above the weapon text label. The active weapon is highlighted.
+    this.createLoadoutIcons(style);
+
     const bar = CFG.boss.bar;
     const barLeft = bar.x - bar.width / 2;
     this.bossBarBg = this.add
@@ -948,6 +970,83 @@ export default class GameScene extends Phaser.Scene {
     this.updateHUD();
   }
 
+  // Builds the bottom-left loadout strip: a framed icon per equipped weapon
+  // (1–2) followed by a framed icon per equipped mod (0–2). Positioning is done
+  // in layoutLoadoutIcons so the strip reflows on resize without rebuilding.
+  createLoadoutIcons(style) {
+    const SIZE = 34;
+    const makeSlot = (id, accent) => {
+      const key = loadoutIconKey(id);
+      const hasIcon = this.textures.exists(key);
+      const frame = this.add
+        .rectangle(0, 0, SIZE, SIZE, 0x000000, 0.45)
+        .setStrokeStyle(2, accent, 0.9)
+        .setOrigin(0.5)
+        .setDepth(15);
+      const icon = this.add
+        .image(0, 0, hasIcon ? key : '__DEFAULT')
+        .setDisplaySize(SIZE - 6, SIZE - 6)
+        .setOrigin(0.5)
+        .setDepth(16)
+        .setVisible(hasIcon);
+      // Free items (default Pistol) ship no asset: show the initial instead.
+      const label = hasIcon
+        ? null
+        : this.add
+            .text(0, 0, (id[0] || '?').toUpperCase(), {
+              ...style,
+              fontSize: '16px',
+            })
+            .setOrigin(0.5)
+            .setDepth(16);
+      return { frame, icon, label, accent };
+    };
+
+    this.loadoutWeaponSlots = [];
+    for (const weapon of this.weapons) {
+      if (weapon) this.loadoutWeaponSlots.push(makeSlot(weapon.id, 0x4fc3f7));
+    }
+    this.loadoutModSlots = [];
+    for (const id of (Save.get().loadout?.mods || []).filter(Boolean)) {
+      this.loadoutModSlots.push(makeSlot(id, 0xffb74d));
+    }
+
+    this.updateLoadoutIconHighlight();
+    this.layoutLoadoutIcons();
+  }
+
+  // Lays the loadout strip left-to-right above the weapon text label, weapons
+  // first then a small gap then mods. Anchored to the live arena height.
+  layoutLoadoutIcons() {
+    const h = this.arenaH;
+    const SIZE = 34;
+    const GAP = 4;
+    const GROUP_GAP = 12;
+    const cy = h - 28 - SIZE / 2;
+    let cx = 10 + SIZE / 2;
+    const place = (slot) => {
+      slot.frame.setPosition(cx, cy);
+      slot.icon.setPosition(cx, cy);
+      slot.label?.setPosition(cx, cy);
+      cx += SIZE + GAP;
+    };
+    for (const slot of this.loadoutWeaponSlots || []) place(slot);
+    if (this.loadoutModSlots?.length) cx += GROUP_GAP;
+    for (const slot of this.loadoutModSlots || []) place(slot);
+  }
+
+  // Brightens the active weapon's frame/icon and dims the inactive one so the
+  // player can see at a glance which weapon [C] is currently firing.
+  updateLoadoutIconHighlight() {
+    (this.loadoutWeaponSlots || []).forEach((slot, i) => {
+      const active = i === this.activeWeaponIndex;
+      slot.frame.setStrokeStyle(2, slot.accent, active ? 1 : 0.3);
+      slot.frame.setFillStyle(0x000000, active ? 0.55 : 0.3);
+      slot.icon.setAlpha(active ? 1 : 0.4);
+      slot.label?.setAlpha(active ? 1 : 0.4);
+    });
+  }
+
   // Repositions every center/right/bottom-anchored HUD element from the live
   // arena size. Left-anchored items (HP/score at x=10) never move. Called once at
   // the end of createHUD and again from handleResize so the HUD reflows on a
@@ -963,6 +1062,7 @@ export default class GameScene extends Phaser.Scene {
     this.hudWeapon?.setPosition(10, h - 8);
     this.shieldHud?.setPosition(10, 48);
     this.giftHud?.setPosition(10, 66);
+    this.layoutLoadoutIcons();
     this.tutPanel?.setPosition(w / 2, h / 2);
     this.tutTitle?.setPosition(w / 2, h / 2 - 80);
     this.tutBody?.setPosition(w / 2, h / 2 - 18);
@@ -1390,6 +1490,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.weapons[1]) return;
     this.activeWeaponIndex = this.activeWeaponIndex === 0 ? 1 : 0;
     this.weaponDef = this.weapons[this.activeWeaponIndex];
+    this.updateLoadoutIconHighlight();
     this.burstShotsRemaining = 0;
     this.player.nextFireAt = time + CFG.player.weaponSwapDelayMs;
     this.showFloatingText(
