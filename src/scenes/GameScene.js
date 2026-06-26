@@ -4038,8 +4038,11 @@ export default class GameScene extends Phaser.Scene {
       this.slowMoTimer = null;
     }
     this.slowMoActive = false;
-    this.time.timeScale = 1;
-    this.physics.world.timeScale = 1;
+    // Called from the scene SHUTDOWN handler, by which point Phaser may have already
+    // torn down the clock / physics world — guard so teardown never throws and
+    // strands the scene transition.
+    if (this.time) this.time.timeScale = 1;
+    if (this.physics?.world) this.physics.world.timeScale = 1;
   }
 
   togglePause() {
