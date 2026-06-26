@@ -67,3 +67,27 @@ The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
 uses the shared boss-art telegraph/release locks for barrage, nova, and dot-field
 casts, the existing charge windup/release lock for lunges, and the south-facing
 portrait in the Monsters gallery.
+
+## Wave 60 — The Overlord · id `overlord`
+
+**Implementation status (2026-06-26): complete.** All 25 frames were generated,
+normalized to transparent 256×256 RGBA PNGs, and integrated from
+`public/assets/enemies/boss/overlord/`.
+
+Colours: body `#b71c1c`, accent `#ef5350`, core `#ffca28`, projectile
+`#ff5252`. Phase powers are `missiles`, `barrage`, `charge`, and `nova`;
+weak-point counts are 2 / 3 / 3.
+
+Integrated states:
+
+- Eight directional idle poses: S, N, W, E, SE, SW, NE, NW.
+- Four south-facing walk-cycle frames.
+- Telegraph and release frames for each of the four phase powers.
+- One phase-3 enrage frame.
+- Four one-shot death frames.
+
+The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
+locks missile, barrage, and nova attack art through the real release, uses the
+charge telegraph/release frames across the existing windup and lunge states,
+preserves world-space collision size, and uses the south-facing portrait in the
+Monsters gallery.
