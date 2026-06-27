@@ -1566,7 +1566,11 @@ export default class GameScene extends Phaser.Scene {
     const lifetime = mods.lifetimeMsOverride
       ? mods.lifetimeMsOverride
       : this.runtime.bulletLifetimeMs;
-    const color = mods.aoeRadius ? 0xff7043 : CFG.bullet.color;
+    // Over the dark hell arena on boss waves, the standard dark bullet would
+    // nearly disappear — switch to the light boss color (read per shot from the
+    // same flag that drives the background swap).
+    const baseColor = this.bossBackgroundActive ? CFG.bullet.bossColor : CFG.bullet.color;
+    const color = mods.aoeRadius ? 0xff7043 : baseColor;
 
     this.player.shootUntil = time + 90;
     const spawnX = px + Math.cos(angle) * PLAYER_BULLET_OFFSET;

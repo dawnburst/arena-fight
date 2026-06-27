@@ -41,7 +41,8 @@ export const CFG = {
   bullet: {
     speed: 520,
     radius: 4,
-    color: 0x37474f,
+    color: 0x37474f, // normal-wave color
+    bossColor: 0xfff3b0, // light/bright color used over the dark hell arena on boss waves
     lifetimeMs: 1200,
   },
   enemy: {
