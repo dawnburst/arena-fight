@@ -140,6 +140,30 @@ spiral casts, the existing charge windup/release lock for lunges, preserves
 world-space collision size, and uses the south-facing portrait in the Monsters
 gallery.
 
+## Wave 90 — The Voidcaller · id `voidcaller`
+
+**Implementation status (2026-06-27): complete.** All 27 frames were generated,
+normalized to transparent 256×256 RGBA PNGs, and integrated from
+`public/assets/enemies/boss/voidcaller/`.
+
+Colours: body `#4a0072`, accent `#ce93d8`, core `#ea80fc`, projectile
+`#e040fb`. Phase powers are `spiral`, `summon`, `nova`, `aimedVolley`, and
+`charge`; weak-point counts are 3 / 3 / 4.
+
+Integrated states:
+
+- Eight directional idle poses: S, N, W, E, SE, SW, NE, NW.
+- Four south-facing hover/walk-cycle frames.
+- Telegraph and release frames for each of the five phase powers.
+- One phase-3 enrage frame.
+- Four one-shot death frames.
+
+The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
+uses the shared boss-art telegraph/release locks for spiral, summon, nova, and
+aimed-volley casts, the existing charge windup/release lock for blink lunges,
+preserves world-space collision size, and uses the south-facing portrait in the
+Monsters gallery.
+
 ## Boss-Wave Background — Hell Arena · `hell-arena.png`
 
 **Implementation status (2026-06-27): complete.** Saved as
