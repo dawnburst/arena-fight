@@ -21,6 +21,16 @@ export const ARENA_BACKGROUNDS = [
   },
 ];
 
+// Boss-wave-only background. Kept out of ARENA_BACKGROUNDS so it never appears
+// in the Settings background picker; GameScene swaps to it on boss waves and
+// reverts to the player's selected background afterwards.
+export const BOSS_BACKGROUND = {
+  id: 'hell-arena',
+  name: 'Hell Arena',
+  description: 'Scorched obsidian ground, lava cracks, embers, red glow.',
+  file: 'hell-arena.png',
+};
+
 export const DEFAULT_BACKGROUND_ID = ARENA_BACKGROUNDS[0].id;
 
 export const BACKGROUNDS_BY_ID = Object.fromEntries(
