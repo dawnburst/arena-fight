@@ -64,7 +64,7 @@ left stick moves, the right stick aims and fires automatically, and there are
 on-screen dash, pause, and weapon-switch buttons. The controls hug the screen
 corners. A top-left **MENU** button opens the pause menu (Resume, Restart Run,
 Settings, Quit to Menu — all tappable), and
-every menu screen (Store, Loadout, Settings, Monsters) gets on-screen **BACK** and
+every menu screen (Store, Loadout, Settings, Monsters, Achievements) gets on-screen **BACK** and
 navigation buttons so the whole game is playable without a keyboard. Play in
 **landscape** — held in portrait, the game pauses and asks you to rotate. Touch
 mode is detected automatically and can be forced on or off in Settings.
@@ -108,6 +108,26 @@ The Settings menu lets you choose the arena background and control the looping b
 ## Goal
 
 Survive escalating waves of monsters. Each kill builds your score, coins persist in your wallet, and store upgrades help future runs.
+
+## Achievements
+
+Open the **ACHIEVEMENTS** screen from the main menu (shortcut `A`) to browse a
+tiered badge gallery, grouped by category (Combat / Progression /
+Mastery / Collection):
+
+- **Tiered achievements** (Wave Climber, Slayer, Treasure Hoarder, Boss Hunter,
+  Combo Adept) each have **Bronze → Silver → Gold → Diamond** tiers with rising
+  targets and points. Tap/click a badge for a detail popup with a `current/target`
+  progress bar.
+- **One-off achievements** (First Blood, Sharpshooter, Untouchable, Arsenal)
+  unlock in a single step.
+- Badges show in **full colour once unlocked** and **greyed-out while locked**.
+- The main menu shows a **Best** showcase — your best wave, best score, bosses
+  defeated, rarest badge, and achievement level — and when a run ends, every new
+  badge **pops in and turns from grey to colour** with its points.
+
+Total points feed a simple level curve (every `CFG.achievements.pointsPerLevel`
+points = one level). Progress and unlocks persist in your save.
 
 ## Bosses
 

@@ -20,6 +20,7 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
 - `SettingsScene` controls arena background, music on/off and volume, sound-effect on/off and volume, the touch-controls mode (Auto / On / Off), and the fullscreen toggle (On / Off).
 - Touch/mobile mode persists in `Save.settings` as `touchControls` (`'auto' | 'on' | 'off'`); resolved at boot by `src/input/touchMode.js`.
+- Achievements are tiered (`src/achievements.js`): tiered entries declare ascending `tiers` targets + a `progress(ctx)` evaluator (one unlockable id per tier, `<id>-N`), boolean entries declare `check(ctx)` + `points`. Tier metals carry points (Bronze 10 / Silver 25 / Gold 50 / Diamond 100). `evaluateAchievements(ctx, unlockedIds)` returns newly-passing ids; helpers `tierProgress`, `unlockedPoints`, `bestUnlock`, `playerLevel` drive the UI. `AchievementsScene` (reached via the menu **ACHIEVEMENTS** button / `A`) is a category-tabbed grid of badge tiles — full colour when unlocked, grey-tinted while locked — with a tap-to-open detail popup showing a `current/target` progress bar. Badges are PNGs at `public/assets/achievements/<tierId>.png`; `sceneUtils.addBadge`/`applyBadgeState` render them (with a drawn-medallion fallback when a PNG is missing). `MainMenuScene` adds a "Best" showcase (Best Wave / Best Score / Bosses Defeated, rarest badge, achievement level/points) and a grey→colour badge reveal for new unlocks at game over. `Save.achievements` is still an array of ids; the `v3 → v4` migration (`CURRENT_VERSION = 4`) remaps the old flat ids to tiers (recomputed from lifetime stats). `CFG.achievements.pointsPerLevel` tunes the points→level curve.
 - Static generated assets live under `public/assets/...`; Phaser code resolves them through `src/assetPath.js` so builds work at `/arena-fight/` on GitHub Pages. Windows `*:Zone.Identifier` sidecars are ignored.
 - The wave-10 Warden and wave-20 Juggernaut each have complete 21-frame 256×256 sprite sets, the wave-30 Hexweaver and wave-40 Bombardier each have 23 frames, and the wave-50 Phantom and wave-60 Overlord each have 25 frames under `public/assets/enemies/boss/`; `BOSS_SPRITES` registers their directional idle, movement, power, enrage, and death frames.
 - `src/viewport.js` owns the responsive scale strategy. **Desktop windowed** stays `Scale.NONE` 800×600 (unchanged); **desktop fullscreen** switches to `Scale.FIT` (4:3 scaled up, centered) and back to 800×600 on exit; **mobile/touch** uses `Scale.FIT` with a fixed logical height (600) and a width set to `round(600 × innerW/innerH)` (clamped 600–1400) so the canvas fills the device with no letterbox bars — the arena simply gets wider. On mobile, window resize/rotate recomputes that width via `game.scale.setGameSize(w, 600)`, which emits Phaser's `RESIZE` event. `GameScene` reflows live on resize (`handleResize` updates `this.arenaW/arenaH`, world bounds, background fit, HUD via `layoutHud()`, and touch-control anchors) with **no scene restart**; menu scenes rebuild via restart-on-resize. Fullscreen defaults off (`Save.settings.fullscreen`) on both desktop and touch; it is opt-in via `F` or the Settings row, and auto-enters on the first Intro tap only when the preference is on. Shared cover-fit background helper: `src/scenes/sceneUtils.js` → `coverBackground(scene, key, existing?)`.
@@ -864,8 +865,9 @@ CONTINUE/NEW GAME flow (`MainMenuScene`).
 
 Migrations live in `MIGRATIONS` (keyed by source version): `v1 → v2` collapses the
 legacy single-weapon loadout into the two-slot `weapons` array; `v2 → v3` stamps
-the version so the deep-merge backfills the new `progress` block. `CURRENT_VERSION`
-is **3**.
+the version so the deep-merge backfills the new `progress` block; `v3 → v4` remaps
+the old flat achievement ids onto the tiered scheme (recomputed from lifetime
+stats). `CURRENT_VERSION` is **4**.
 
 Resilience: corrupt JSON, missing fields, a `version` newer than `CURRENT_VERSION`,
 or a missing migration → fall back to defaults with a `console.warn` (the raw bytes
@@ -900,7 +902,7 @@ are deep-merged against defaults, so older saves upgrade without a wipe.
 - ~~**No tutorial.**~~ Resolved: an interactive, scripted step-by-step tutorial launched from the menu **TUTORIAL** action (you can't die). See §6.20.
 - **Beam weapon is fake.** It's a very high fire rate with longer-lived bullets. A true hitscan beam would require dedicated rendering code.
 - **Boomerang doesn't hit enemies on the return path** if it gets too fast or off-screen — its body is small. Mostly works in practice.
-- ~~**No save migrations.**~~ Resolved: `src/save.js` has a versioned `MIGRATIONS` pipeline (`CURRENT_VERSION` 3) plus a deep-merge backfill, so schema bumps upgrade in place instead of wiping.
+- ~~**No save migrations.**~~ Resolved: `src/save.js` has a versioned `MIGRATIONS` pipeline (`CURRENT_VERSION` 4) plus a deep-merge backfill, so schema bumps upgrade in place instead of wiping.
 - **Cheat key is global.** Pressing backtick during pause or shield-anim works fine, but during the game-over scene there's no equivalent shortcut.
 - **Touch settings apply on reload.** Scale mode, multitouch pointer count, and the orientation lock are boot-time decisions; changing the touch-controls mode in Settings takes effect on the next reload (the row is labelled accordingly).
 - **The store catalog is hard-coded** in `catalog.js`. No external content / no DLC concept.
