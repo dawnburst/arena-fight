@@ -50,6 +50,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  colossus: {
+    key: 'boss-colossus-idle-s',
+    path: assetPath('assets/enemies/boss/colossus/colossus_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -168,6 +175,7 @@ export const BOSS_SPRITES = {
   phantom: bossFrames('phantom', ['barrage', 'nova', 'charge', 'dotField']),
   overlord: bossFrames('overlord', ['missiles', 'barrage', 'charge', 'nova']),
   tempest: bossFrames('tempest', ['spiral', 'aimedVolley', 'charge', 'nova']),
+  colossus: bossFrames('colossus', ['charge', 'barrage', 'shieldSlam', 'spiral']),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -432,5 +440,20 @@ export const ENEMY_BESTIARY = [
       'Layers spiral shot patterns, aimed cyan volleys, a telegraphed charge, and a final-phase nova behind a regenerating shield.',
     counter:
       'Keep moving through spiral gaps, cross the aimed fan before it releases, and sidestep the charge before punishing the weak points.',
+  },
+  {
+    id: 'boss-colossus',
+    name: 'The Colossus',
+    sprite: 'colossus',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 80',
+    movement: 'Tracks from the top as a slow fortress golem, then lunges with heavy charges.',
+    power:
+      'Alternates crushing charges, radial barrages, shield re-raises, and spiraling cold-gray fire through three phases.',
+    counter:
+      'Break or bypass the shield with weak-point shots, sidestep each charge, and use the shield-slam window to reposition.',
   },
 ];

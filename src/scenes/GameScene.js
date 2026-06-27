@@ -2241,7 +2241,7 @@ export default class GameScene extends Phaser.Scene {
           boss.powerNextAt.shieldSlam = now + 1000; // retry soon once the shield is down
           continue;
         }
-        this.bossShieldSlam(boss);
+        this.castBossPower(boss, name, now);
       } else {
         this.castBossPower(boss, name, now);
       }
@@ -2286,6 +2286,7 @@ export default class GameScene extends Phaser.Scene {
     if (name === 'gravityWell') return this.bossGravityWell(boss);
     if (name === 'dotField') return this.bossDotField();
     if (name === 'missiles') return this.bossMissiles(boss, now);
+    if (name === 'shieldSlam') return this.bossShieldSlam(boss);
   }
 
   positionBossParts(boss, now) {
@@ -2342,7 +2343,7 @@ export default class GameScene extends Phaser.Scene {
     this.setBossSpriteFrame(boss, `${name}_telegraph`);
     boss.actionEvent = this.time.delayedCall(telegraphMs, () => {
       boss.actionEvent = null;
-      if (!boss.active || this.gameOver) return;
+      if (!boss.active || this.boss !== boss || !this.bossActive || this.gameOver) return;
       this.setBossSpriteFrame(boss, `${name}_release`);
       this.executeBossPower(boss, name, this.time.now);
     });
