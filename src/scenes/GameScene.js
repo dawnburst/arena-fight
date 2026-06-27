@@ -144,6 +144,9 @@ export default class GameScene extends Phaser.Scene {
     // onboarding hint is forced. Distinct from `demo` (the Monsters sandbox,
     // which freezes wave progression and scoring).
     this.tutorial = !!data.tutorial;
+    // Checkpoint continue: start the climb at an arbitrary wave (default 1).
+    // Difficulty/boss cadence key off this.wave, so a mid-game start is scaled.
+    this.startWave = Math.max(1, Math.floor(data.startWave) || 1);
     syncMusic(this);
     // Live arena dimensions: 800x600 on desktop, wider (height fixed at 600) on
     // mobile. Spawn/clamp/HUD code reads these so it self-adjusts after a resize.
@@ -335,7 +338,7 @@ export default class GameScene extends Phaser.Scene {
     } else {
       this.runStats.startTime = this.time.now;
       playSfx(this, 'gameStart');
-      this.startNextWave();
+      this.beginAtWave(this.startWave);
       this.scheduleNextShieldBonus();
       this.scheduleNextGift();
     }
@@ -3426,6 +3429,16 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // Set the run's starting point and kick off the first wave. Shared by the
+  // initial run boot (new game / checkpoint continue) and the jumpToWave cheat
+  // so the "start at wave N" logic stays in one place. Enemy difficulty scales
+  // off this.wave, so a mid-game start is correctly difficult. `n` is the wave
+  // the player will be ON after this call (startNextWave increments from n-1).
+  beginAtWave(n) {
+    this.wave = Math.max(1, Math.floor(n)) - 1;
+    this.startNextWave();
+  }
+
   startNextWave() {
     this.wave += 1;
     const n = this.wave;
@@ -3656,6 +3669,10 @@ export default class GameScene extends Phaser.Scene {
       this.payBossReward(x, y);
       this.bossDeathBurst(x, y);
       if (CFG.boss.clearAddsOnBossDeath) this.clearBossAdds();
+      // Genuine boss defeat → advance the persistent checkpoint. Recorded here
+      // (not in teardownBossState, which jumpToWave/player-death also hit) so
+      // only a real kill moves it. setCheckpointWave is monotonic + capped.
+      Save.setCheckpointWave(this.wave);
       this.teardownBossState();
     }
   }
@@ -4944,8 +4961,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.pendingSpawns = 0;
-    this.wave = n - 1;
-    this.startNextWave();
+    this.beginAtWave(n);
   }
 
   buildStarPoints(outerR, innerR, spikes) {
