@@ -92,6 +92,30 @@ charge telegraph/release frames across the existing windup and lunge states,
 preserves world-space collision size, and uses the south-facing portrait in the
 Monsters gallery.
 
+## Wave 70 — The Tempest · id `tempest`
+
+**Implementation status (2026-06-27): complete.** All 25 frames were generated,
+normalized to transparent 256×256 RGBA PNGs, and integrated from
+`public/assets/enemies/boss/tempest/`.
+
+Colours: body `#006064`, accent `#26c6da`, core `#e0f7fa`, projectile
+`#00e5ff`. Phase powers are `spiral`, `aimedVolley`, `charge`, and `nova`;
+weak-point counts are 3 / 3 / 4.
+
+Integrated states:
+
+- Eight directional idle poses: S, N, W, E, SE, SW, NE, NW.
+- Four south-facing hover/walk-cycle frames.
+- Telegraph and release frames for each of the four phase powers.
+- One phase-3 enrage frame.
+- Four one-shot death frames.
+
+The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
+locks spiral, aimed-volley, and nova attack art through the real release, uses
+the charge telegraph/release frames across the existing windup and lunge states,
+preserves world-space collision size, and uses the south-facing portrait in the
+Monsters gallery.
+
 ## Boss-Wave Background — Hell Arena · `hell-arena.png`
 
 **Implementation status (2026-06-27): complete.** Saved as
