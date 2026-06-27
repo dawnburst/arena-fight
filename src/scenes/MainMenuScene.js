@@ -7,6 +7,7 @@ import {
   backgroundPath,
   resolveBackground,
 } from '../backgrounds.js';
+import { CFG } from '../config.js';
 import { ENEMY_BESTIARY } from '../enemies.js';
 import { Save } from '../save.js';
 import { coverBackground } from './sceneUtils.js';
@@ -83,25 +84,63 @@ export default class MainMenuScene extends Phaser.Scene {
     });
 
     this.actionIndex = 0;
+    // Boss checkpoint: the highest cleared boss wave. When > 0, a CONTINUE entry
+    // resumes the climb at checkpoint + 1; NEW GAME still starts fresh at wave 1
+    // (it does NOT erase the checkpoint). LOADOUT/STORE inherit the dominant
+    // play intent via startWave so a loadout chosen before continuing is honored.
+    const checkpointWave = Save.getCheckpointWave();
+    const continueWave = checkpointWave + 1;
+    const playStartWave = checkpointWave > 0 ? continueWave : 1;
+    // Stashed for onKey's direct STORE/LOADOUT shortcuts so they inherit the
+    // same play intent as the menu buttons.
+    this.playStartWave = playStartWave;
     const submenuData = () => ({
       returnScene: 'MainMenuScene',
+      startWave: playStartWave,
       ...(this.gameOverData || {}),
     });
-    const firstAction = this.gameOverData
-      ? {
-          label: 'RETRY',
-          shortcut: 'r',
-          color: 0x69f0ae,
-          action: () => this.scene.start('GameScene', { tutorial: false }),
-        }
-      : {
-          label: 'START',
+
+    // Idle menu: surface the checkpoint just under the title. (On the death
+    // screen the same info is shown by createGameOverDetails instead, to avoid
+    // colliding with the "run ended" / GAME OVER stack.)
+    if (checkpointWave > 0 && !this.gameOverData) {
+      const cleared = Math.floor(checkpointWave / CFG.boss.everyNWaves);
+      this.add.text(
+        62,
+        130,
+        `Checkpoint · Boss ${cleared} cleared · Continue at Wave ${continueWave}`,
+        { ...style, fontSize: '14px', color: '#69f0ae' },
+      );
+    }
+
+    let playActions;
+    if (checkpointWave > 0) {
+      playActions = [
+        {
+          label: 'CONTINUE',
           shortcut: 'enter',
           color: 0x69f0ae,
-          action: () => this.scene.start('GameScene', { tutorial: false }),
-        };
+          action: () => this.scene.start('GameScene', { tutorial: false, startWave: continueWave }),
+        },
+        {
+          label: 'NEW GAME',
+          shortcut: 'n',
+          color: 0xffab40,
+          action: () => this.scene.start('GameScene', { tutorial: false, startWave: 1 }),
+        },
+      ];
+    } else {
+      playActions = [
+        {
+          label: this.gameOverData ? 'RETRY' : 'START',
+          shortcut: 'enter',
+          color: 0x69f0ae,
+          action: () => this.scene.start('GameScene', { tutorial: false, startWave: 1 }),
+        },
+      ];
+    }
     this.actions = [
-      firstAction,
+      ...playActions,
       {
         label: 'TUTORIAL',
         shortcut: 't',
@@ -159,6 +198,17 @@ export default class MainMenuScene extends Phaser.Scene {
       fontSize: '30px',
       color: '#ff4242',
     });
+
+    // Reward the death with the checkpoint: CONTINUE (the primary action on the
+    // right) resumes from here instead of wave 1.
+    const checkpointWave = Save.getCheckpointWave();
+    if (checkpointWave > 0) {
+      this.add.text(62, 190, `You'll continue from Wave ${checkpointWave + 1}`, {
+        ...style,
+        fontSize: '13px',
+        color: '#69f0ae',
+      });
+    }
 
     // Two-column stat grid: left col x=62, right col x=300.
     const fired = summary.shotsFired ?? 0;
@@ -308,7 +358,7 @@ export default class MainMenuScene extends Phaser.Scene {
         'arrowright',
         'enter',
         ' ',
-        'r',
+        'n',
         't',
         's',
         'l',
@@ -325,16 +375,18 @@ export default class MainMenuScene extends Phaser.Scene {
       this.selectAction(this.actionIndex + 1);
     else if (event.key === 'Enter' || event.key === ' ' || event.code === 'Space')
       this.activateAction(this.actionIndex);
-    else if (k === 'r' && this.gameOverData) this.scene.start('GameScene', { tutorial: false });
+    else if (k === 'n') this.scene.start('GameScene', { tutorial: false, startWave: 1 });
     else if (k === 't') this.scene.start('GameScene', { tutorial: true });
     else if (k === 's')
       this.scene.start('StoreScene', {
         returnScene: 'MainMenuScene',
+        startWave: this.playStartWave,
         ...(this.gameOverData || {}),
       });
     else if (k === 'l')
       this.scene.start('LoadoutScene', {
         returnScene: 'MainMenuScene',
+        startWave: this.playStartWave,
         ...(this.gameOverData || {}),
       });
     else if (k === 'm') this.scene.start('MonstersScene');
