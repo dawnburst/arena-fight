@@ -20,7 +20,9 @@ describe('enemies', () => {
       juggernaut: 21,
       hexweaver: 23,
       bombardier: 23,
+      phantom: 25,
       overlord: 25,
+      tempest: 25,
     };
     for (const [id, expectedCount] of Object.entries(expectedFrameCounts)) {
       const frames = BOSS_SPRITES[id];
