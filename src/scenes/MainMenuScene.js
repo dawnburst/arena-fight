@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
-import { ACHIEVEMENT_COUNT, ACHIEVEMENTS_BY_ID } from '../achievements.js';
+import {
+  ACHIEVEMENT_TIER_COUNT,
+  ACHIEVEMENT_TIERS,
+  achievementBadgeKey,
+  achievementBadgePath,
+  bestUnlock,
+  playerLevel,
+  TIER_BY_ID,
+  unlockedPoints,
+} from '../achievements.js';
 import { playSfx, preloadMusic, preloadSfx, syncMusic } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
@@ -10,7 +19,9 @@ import {
 import { CFG } from '../config.js';
 import { ENEMY_BESTIARY } from '../enemies.js';
 import { Save } from '../save.js';
-import { coverBackground } from './sceneUtils.js';
+import { addBadge, applyBadgeState, coverBackground } from './sceneUtils.js';
+
+const MENU_FONT = 'ui-monospace, Menlo, Consolas, monospace';
 
 // enemy `type` string → display name for the run-summary kills breakdown.
 const ENEMY_LABELS = {
@@ -45,6 +56,13 @@ export default class MainMenuScene extends Phaser.Scene {
         this.load.image(key, backgroundPath(background));
       }
     }
+    // Achievement badges: needed for the Best showcase and the end-of-run reveal.
+    for (const tier of ACHIEVEMENT_TIERS) {
+      const key = achievementBadgeKey(tier.tierId);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, achievementBadgePath(tier.tierId));
+      }
+    }
     preloadMusic(this);
     preloadSfx(this);
   }
@@ -75,6 +93,8 @@ export default class MainMenuScene extends Phaser.Scene {
 
     if (this.gameOverData) {
       this.createGameOverDetails(style);
+    } else {
+      this.createBestShowcase(style);
     }
 
     this.add.text(62, this.scale.height - 46, `Arena: ${selectedBackground.name}`, {
@@ -166,6 +186,12 @@ export default class MainMenuScene extends Phaser.Scene {
         action: () => this.scene.start('MonstersScene'),
       },
       {
+        label: 'ACHIEVEMENTS',
+        shortcut: 'a',
+        color: 0xffab40,
+        action: () => this.scene.start('AchievementsScene', submenuData()),
+      },
+      {
         label: 'SETTINGS',
         shortcut: 'o',
         color: 0xce93d8,
@@ -244,32 +270,18 @@ export default class MainMenuScene extends Phaser.Scene {
       nextY += 18 + 18 * Math.ceil(parts.length / 5);
     }
 
-    // Newly unlocked achievements (gold), then lifetime progress + wallet.
-    const unlocked = data.newAchievements || [];
-    nextY = Math.max(nextY, 360);
+    // Newly unlocked achievements: animate each badge popping grey → colour.
+    const unlocked = (data.newAchievements || []).filter((id) => TIER_BY_ID[id]);
+    nextY = Math.max(nextY, 356);
     if (unlocked.length) {
-      this.add.text(62, nextY, '🏆 Achievement unlocked!', {
-        ...style,
-        fontSize: '15px',
-        color: '#ffd54f',
-      });
-      unlocked.forEach((id, i) => {
-        const ach = ACHIEVEMENTS_BY_ID[id];
-        if (!ach) return;
-        this.add.text(78, nextY + 22 + i * 20, `• ${ach.name} — ${ach.description}`, {
-          ...style,
-          fontSize: '12px',
-          color: '#ffe082',
-        });
-      });
-      nextY += 22 + unlocked.length * 20 + 6;
+      this.revealUnlocks(unlocked, 62, nextY);
     }
 
     const totalUnlocked = (Save.get().achievements || []).length;
     this.add.text(
       62,
       this.scale.height - 84,
-      `Achievements: ${totalUnlocked} / ${ACHIEVEMENT_COUNT}`,
+      `Achievements: ${totalUnlocked} / ${ACHIEVEMENT_TIER_COUNT}`,
       {
         ...style,
         fontSize: '14px',
@@ -281,6 +293,101 @@ export default class MainMenuScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#d0d0d0',
     });
+  }
+
+  // End-of-run announcement: a celebratory headline + each newly earned badge
+  // popping in and turning from grey to full colour (gray→color "earned" feel).
+  revealUnlocks(ids, x, y) {
+    const points = ids.reduce((sum, id) => sum + (TIER_BY_ID[id]?.points || 0), 0);
+    const first = TIER_BY_ID[ids[0]];
+    const headline =
+      ids.length === 1
+        ? `Achievement Unlocked — ${first.name}${first.label ? ` (${first.label})` : ''}`
+        : `${ids.length} Achievements Unlocked!`;
+    this.add.text(x, y, `🏆 ${headline}`, {
+      fontFamily: MENU_FONT,
+      fontSize: '15px',
+      color: '#ffd54f',
+    });
+    this.add.text(x, y + 20, `+${points} pts`, {
+      fontFamily: MENU_FONT,
+      fontSize: '12px',
+      color: '#ffe082',
+    });
+
+    const size = 48;
+    ids.forEach((id, i) => {
+      const tier = TIER_BY_ID[id];
+      const bx = x + 24 + i * (size + 16);
+      const by = y + 64;
+      const badge = addBadge(this, bx, by, tier, { size, unlocked: false });
+      const tsx = badge.scaleX;
+      const tsy = badge.scaleY;
+      badge.setScale(0);
+      this.tweens.add({
+        targets: badge,
+        scaleX: tsx,
+        scaleY: tsy,
+        duration: 320,
+        delay: i * 200,
+        ease: 'Back.out',
+        onComplete: () => {
+          applyBadgeState(badge, true);
+          if (i === 0) playSfx(this, 'modGrant');
+        },
+      });
+    });
+  }
+
+  // Main-menu "Best" showcase: the player's proudest stats, rarest badge, and
+  // achievement level. Shown only on the idle menu (the game-over screen uses the
+  // left column for the run summary).
+  createBestShowcase(style) {
+    const save = Save.get();
+    const stats = save.stats || {};
+    const x = 58;
+    let y = 150;
+    this.add.text(x, y, 'BEST', { ...style, fontSize: '20px', color: '#ffd54f' });
+    y += 30;
+
+    const rows = [
+      `Best Wave: ${stats.bestWave || 0}`,
+      `Best Score: ${stats.bestScore || 0}`,
+      `Bosses Defeated: ${stats.bossesDefeated || 0}`,
+    ];
+    rows.forEach((row, i) => {
+      this.add.text(x, y + i * 24, row, { ...style, fontSize: '16px', color: '#eeeeee' });
+    });
+    y += rows.length * 24 + 14;
+
+    const points = unlockedPoints(save.achievements);
+    const level = playerLevel(points, CFG.achievements?.pointsPerLevel ?? 100);
+    this.add.text(x, y, `Level ${level}  ·  ${points} pts`, {
+      ...style,
+      fontSize: '14px',
+      color: '#d7c4f5',
+    });
+    y += 30;
+
+    const best = bestUnlock(save.achievements);
+    this.add.text(x, y, 'Rarest unlock', { ...style, fontSize: '13px', color: '#ffd54f' });
+    if (best) {
+      const badge = addBadge(this, x + 26, y + 50, best, { size: 52, unlocked: true });
+      void badge;
+      const name = best.label ? `${best.name} — ${best.label}` : best.name;
+      this.add.text(x + 60, y + 36, name, { ...style, fontSize: '14px', color: '#ffffff' });
+      this.add.text(x + 60, y + 56, `+${best.points} pts`, {
+        ...style,
+        fontSize: '12px',
+        color: '#ffe082',
+      });
+    } else {
+      this.add.text(x, y + 24, 'None yet — go earn one!', {
+        ...style,
+        fontSize: '13px',
+        color: '#999999',
+      });
+    }
   }
 
   createMenu(style) {
@@ -363,6 +470,7 @@ export default class MainMenuScene extends Phaser.Scene {
         's',
         'l',
         'm',
+        'a',
         'o',
       ].includes(k) ||
       event.code === 'Space'
@@ -390,6 +498,11 @@ export default class MainMenuScene extends Phaser.Scene {
         ...(this.gameOverData || {}),
       });
     else if (k === 'm') this.scene.start('MonstersScene');
+    else if (k === 'a')
+      this.scene.start('AchievementsScene', {
+        returnScene: 'MainMenuScene',
+        ...(this.gameOverData || {}),
+      });
     else if (k === 'o') this.scene.start('SettingsScene');
   }
 
