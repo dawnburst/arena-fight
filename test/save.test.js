@@ -202,7 +202,7 @@ describe('save', () => {
     localStorage.setItem('arenaFight.save.v1', JSON.stringify({ version: 999, wallet: 500 }));
     Save._clearCache();
     const state = Save.get();
-    expect(state.version).toBe(3);
+    expect(state.version).toBe(4);
     expect(state.wallet).toBe(0);
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
@@ -258,7 +258,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(3);
+      expect(state.version).toBe(4);
       expect(state.wallet).toBe(320);
       expect(state.ownedWeapons).toEqual(['pistol', 'shotgun']);
       expect(state.ownedMods).toEqual(['quick-draw']);
@@ -274,7 +274,7 @@ describe('save', () => {
       Save._clearCache();
       Save.get();
       const persisted = JSON.parse(localStorage.getItem('arenaFight.save.v1'));
-      expect(persisted.version).toBe(3);
+      expect(persisted.version).toBe(4);
       expect(persisted.wallet).toBe(99);
       expect(persisted.loadout.weapons).toEqual(['shotgun', null]);
     });
@@ -294,7 +294,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(3);
+      expect(state.version).toBe(4);
       expect(state.wallet).toBe(42);
       expect(state.loadout.weapons).toEqual(['burst', null]);
     });
@@ -318,7 +318,7 @@ describe('save', () => {
       localStorage.setItem('arenaFight.save.v1', JSON.stringify([1, 2, 3]));
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(3);
+      expect(state.version).toBe(4);
       expect(state.wallet).toBe(0);
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
@@ -335,9 +335,44 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(3);
+      expect(state.version).toBe(4);
       expect(state.wallet).toBe(50);
       expect(state.progress.checkpointWave).toBe(0);
+    });
+
+    it('v3 → v4: remaps flat achievement ids to tiers and recomputes from stats', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({
+          version: 2,
+          wallet: 50,
+          loadout: { weapon: 'pistol', weapons: ['pistol', null] },
+          stats: { bestWave: 80, totalKills: 600, bossesDefeated: 3, bestCombo: 9 },
+          achievements: ['first-blood', 'wave-50', 'combo-master', 'boss-slayer'],
+        }),
+      );
+      Save._clearCache();
+      const state = Save.get();
+      expect(state.version).toBe(4);
+      const owned = new Set(state.achievements);
+      // Preserved boolean id.
+      expect(owned.has('first-blood')).toBe(true);
+      // Recomputed tiers from stats (bestWave 80 → tiers 10/25/70).
+      expect(owned.has('wave-climber-1')).toBe(true);
+      expect(owned.has('wave-climber-2')).toBe(true);
+      expect(owned.has('wave-climber-3')).toBe(true);
+      expect(owned.has('wave-climber-4')).toBe(false); // needs wave 100
+      // totalKills 600 → slayer 100 + 500.
+      expect(owned.has('slayer-1')).toBe(true);
+      expect(owned.has('slayer-2')).toBe(true);
+      expect(owned.has('slayer-3')).toBe(false);
+      // Legacy id remap safety net.
+      expect(owned.has('boss-hunter-1')).toBe(true);
+      expect(owned.has('combo-1')).toBe(true);
+      expect(owned.has('combo-2')).toBe(true);
+      // Old flat ids are gone.
+      expect(owned.has('wave-50')).toBe(false);
+      expect(owned.has('boss-slayer')).toBe(false);
     });
   });
 

@@ -4,7 +4,7 @@ const KEY = 'arenaFight.save.v1';
 const BACKUP_KEY = 'arenaFight.save.backup';
 
 // Bump whenever the persisted schema changes and add a matching MIGRATIONS entry.
-const CURRENT_VERSION = 3;
+const CURRENT_VERSION = 4;
 
 const DEFAULTS = () => ({
   version: CURRENT_VERSION,
@@ -61,6 +61,49 @@ const MIGRATIONS = {
   // deep-merge against DEFAULTS backfills `progress.checkpointWave`, so this is
   // a version-stamp-only step.
   2: (s) => ({ ...s, version: 3 }),
+  // v3 -> v4: migrate the flat boolean achievement ids to the tiered scheme.
+  // Tiered unlocks are recomputed from the persisted cumulative stats (which
+  // survive), and legacy boolean ids are remapped so no earned badge is lost.
+  // Thresholds are inlined (frozen) and must match src/achievements.js tiers.
+  3: (s) => {
+    const old = new Set(s.achievements || []);
+    const stats = s.stats || {};
+    const next = new Set();
+
+    // Boolean achievements that kept their id across the schema change.
+    for (const id of ['first-blood', 'sharpshooter', 'untouchable', 'arsenal']) {
+      if (old.has(id)) next.add(id);
+    }
+
+    // Recompute tiered unlocks from lifetime stats.
+    const addTiers = (base, value, targets) => {
+      targets.forEach((t, i) => {
+        if ((value || 0) >= t) next.add(`${base}-${i + 1}`);
+      });
+    };
+    addTiers('wave-climber', stats.bestWave, [10, 25, 70, 100]);
+    addTiers('slayer', stats.totalKills, [100, 500, 5000, 50000]);
+    addTiers('treasure', stats.totalCoinsEarned, [1000, 5000, 50000, 500000]);
+    addTiers('boss-hunter', stats.bossesDefeated, [1, 5, 30, 150]);
+    addTiers('combo', stats.bestCombo, [5, 8, 16, 30]);
+
+    // Safety net: remap legacy single-shot ids for saves whose cumulative
+    // counters predate the stat (so the stat is 0 but the badge was earned).
+    if (old.has('boss-slayer')) next.add('boss-hunter-1');
+    if (old.has('wave-10')) next.add('wave-climber-1');
+    if (old.has('wave-20')) next.add('wave-climber-1');
+    if (old.has('wave-50')) {
+      // Old "reached wave 50" no longer clears the harder Gold tier (wave 70).
+      next.add('wave-climber-1');
+      next.add('wave-climber-2');
+    }
+    if (old.has('combo-master')) {
+      next.add('combo-1');
+      next.add('combo-2');
+    }
+
+    return { ...s, version: 4, achievements: [...next] };
+  },
 };
 
 function isPlainObject(value) {
