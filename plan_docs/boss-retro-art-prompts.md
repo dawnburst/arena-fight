@@ -116,6 +116,30 @@ the charge telegraph/release frames across the existing windup and lunge states,
 preserves world-space collision size, and uses the south-facing portrait in the
 Monsters gallery.
 
+## Wave 80 — The Colossus · id `colossus`
+
+**Implementation status (2026-06-27): complete.** All 25 frames were generated,
+normalized to transparent 256×256 RGBA PNGs, and integrated from
+`public/assets/enemies/boss/colossus/`.
+
+Colours: body `#37474f`, accent `#90a4ae`, core `#ff8a65`, projectile
+`#b0bec5`. Phase powers are `charge`, `barrage`, `shieldSlam`, and `spiral`;
+weak-point counts are 2 / 3 / 4.
+
+Integrated states:
+
+- Eight directional idle poses: S, N, W, E, SE, SW, NE, NW.
+- Four south-facing walk-cycle frames.
+- Telegraph and release frames for each of the four phase powers.
+- One phase-3 enrage frame.
+- Four one-shot death frames.
+
+The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
+uses the shared boss-art telegraph/release lock for barrage, shield slam, and
+spiral casts, the existing charge windup/release lock for lunges, preserves
+world-space collision size, and uses the south-facing portrait in the Monsters
+gallery.
+
 ## Boss-Wave Background — Hell Arena · `hell-arena.png`
 
 **Implementation status (2026-06-27): complete.** Saved as
