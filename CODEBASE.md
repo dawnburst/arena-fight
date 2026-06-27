@@ -404,14 +404,16 @@ Wave-clear coin bonus: `payWaveClearBonus()` adds `(25 + 10 × wave) × runtime.
 
 ### 6.9 Combo multiplier
 
-- `this.comboMultiplier ∈ [1, CFG.combo.maxMultiplier]` (capped at 8 by default).
+- `this.comboMultiplier ∈ [1, CFG.combo.maxMultiplier]` (capped at 50 by default).
 - On kill (in `killEnemyScoring(x, y)`):
-  - `comboMultiplier = min(comboMultiplier + 1, maxMultiplier)`
+  - `comboMultiplier = min(comboMultiplier + 1, maxMultiplier)` (`comboUp` SFX fires on each step up to the ceiling)
   - `lastKillAt = time.now`
-  - `score += scorePerKillBase * comboMultiplier`
+  - `score += scorePerKillBase * comboMultiplier` (score scales the full way to x50)
   - `dropCoinsForKill(x, y)` spawns coins
+- **Effect-scaling clamp:** kill-burst shards (`spawnKillBurst`) and per-kill coins (`dropCoinsForKill`) scale on `min(comboMultiplier, CFG.combo.effectScaleCap) − 1` (cap 8), so visuals/economy stop growing past x8 while the multiplier and score keep climbing to x50.
 - On player damage (unshielded): `comboMultiplier = 1`.
 - `maybeDecayCombo(time)`: if `comboMultiplier > 1 && time - lastKillAt > runtime.comboResetMs` (default 2500ms, +1000ms with Combo Glove mod), reset to 1.
+- The "Combo Adept" tiered achievement (`src/achievements.js`) rewards x5/x8/x16/x50 — the Diamond tier matches the cap.
 
 ### 6.10 Coins & economy
 
@@ -419,7 +421,7 @@ Physics group: `this.coins`. Each coin is a small yellow circle (`CFG.coin.radiu
 
 Drop on kill — `dropCoinsForKill(x, y)`:
 ```
-base = 1 + (comboMultiplier - 1)   // 1 at x1, 8 at x8
+base = 1 + (min(comboMultiplier, CFG.combo.effectScaleCap) - 1)   // 1 at x1, 8 at x8+ (clamped)
 amount = round(base * runtime.coinDropMult)
 if runtime.luckyChance > 0 and Math.random() < luckyChance:
   amount *= 2
@@ -743,7 +745,8 @@ CFG = {
   },
   combo: {
     resetMs: 2500,
-    maxMultiplier: 8,
+    maxMultiplier: 50,
+    effectScaleCap: 8,   // shards/coins stop scaling past this; score keeps scaling
     scorePerKillBase: 100,
   },
   arena: { width: 800, height: 600 },
@@ -967,7 +970,7 @@ Common knobs:
 - Player feel: `CFG.player.speed`, `CFG.player.fireRateMs`, `CFG.player.dashCooldownMs`.
 - Economy: `CFG.store.coinDropPerKillBase`, `CFG.store.waveClearBase`, `CFG.store.waveClearPerWave`. Item prices in `catalog.js`.
 - Pickup frequency: `CFG.bonus.spawnDelayMinMs/MaxMs`, `CFG.shieldBonus.spawnDelayMinMs/MaxMs`.
-- Combo: `CFG.combo.resetMs`, `CFG.combo.maxMultiplier`, `CFG.combo.scorePerKillBase`.
+- Combo: `CFG.combo.resetMs`, `CFG.combo.maxMultiplier`, `CFG.combo.effectScaleCap`, `CFG.combo.scorePerKillBase`.
 
 ### 12.6 Add a new scene
 
@@ -981,7 +984,7 @@ Common knobs:
 ## 13. Glossary
 
 - **Wave** — a discrete batch of enemies spawned over `spawnIntervalMs` ticks. Wave N has `baseCount + (N-1)×growthPerWave` enemies.
-- **Combo** — multiplier from 1 to 8, incremented per kill, reset on damage or after `runtime.comboResetMs` of no kills. Multiplies score and coin drops.
+- **Combo** — multiplier from 1 to 50, incremented per kill, reset on damage or after `runtime.comboResetMs` of no kills. Multiplies score (full range); coin drops and kill-burst visuals scale only up to `CFG.combo.effectScaleCap` (8).
 - **Green bonus / power-up ladder** — the green circle pickup. Picking it up steps `buffLevel` up one (cap 3). Getting hit steps it down one (and you also lose HP).
 - **Shield (gold star)** — pickup that grants 5 absorbed hits over 20s. Independent of the green bonus.
 - **Buff level** — current rung on the green-bonus ladder, drives fire rate + bullet pattern overrides. 0 = use weapon's own stats.
