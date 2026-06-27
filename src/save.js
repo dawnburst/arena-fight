@@ -4,14 +4,16 @@ const KEY = 'arenaFight.save.v1';
 const BACKUP_KEY = 'arenaFight.save.backup';
 
 // Bump whenever the persisted schema changes and add a matching MIGRATIONS entry.
-const CURRENT_VERSION = 4;
+const CURRENT_VERSION = 5;
 
 const DEFAULTS = () => ({
   version: CURRENT_VERSION,
   wallet: 0,
   ownedWeapons: ['pistol'],
   ownedMods: [],
-  loadout: { weapon: 'pistol', weapons: ['pistol', null], mods: [null, null] },
+  // Character skins: 'default' is free and always owned/equippable.
+  ownedSkins: ['default'],
+  loadout: { weapon: 'pistol', weapons: ['pistol', null], mods: [null, null], skin: 'default' },
   settings: {
     backgroundId: 'meadow',
     musicEnabled: true,
@@ -103,6 +105,16 @@ const MIGRATIONS = {
     }
 
     return { ...s, version: 4, achievements: [...next] };
+  },
+  // v4 -> v5: introduce character skins. Everyone owns and equips 'default'.
+  // (The deep-merge against DEFAULTS also backfills these, but doing it here
+  // keeps the migration explicit and self-contained.)
+  4: (s) => {
+    const owned = Array.isArray(s.ownedSkins) ? s.ownedSkins : [];
+    const ownedSkins = owned.includes('default') ? owned : ['default', ...owned];
+    const loadout = { ...(s.loadout || {}) };
+    if (!loadout.skin) loadout.skin = 'default';
+    return { ...s, version: 5, ownedSkins, loadout };
   },
 };
 
@@ -236,14 +248,39 @@ export const Save = {
       return { ...s, wallet: s.wallet - price, ownedMods: [...s.ownedMods, id] };
     });
   },
-  setLoadout(weapons, mods) {
+  buySkin(id, price) {
+    return this.set((s) => {
+      const owned = s.ownedSkins || ['default'];
+      if (owned.includes(id)) return s;
+      if (s.wallet < price) return s;
+      return { ...s, wallet: s.wallet - price, ownedSkins: [...owned, id] };
+    });
+  },
+  equipSkin(id) {
+    return this.set((s) => {
+      const owned = s.ownedSkins || ['default'];
+      if (!owned.includes(id)) return s;
+      return { ...s, loadout: { ...s.loadout, skin: id } };
+    });
+  },
+  setLoadout(weapons, mods, skin) {
     const arr = Array.isArray(weapons) ? weapons : [weapons, null];
     const primary = arr[0] || 'pistol';
     const secondary = arr[1] || null;
-    return this.set((s) => ({
-      ...s,
-      loadout: { weapon: primary, weapons: [primary, secondary], mods: [...mods] },
-    }));
+    return this.set((s) => {
+      const owned = s.ownedSkins || ['default'];
+      const nextSkin =
+        skin !== undefined && owned.includes(skin) ? skin : s.loadout?.skin || 'default';
+      return {
+        ...s,
+        loadout: {
+          weapon: primary,
+          weapons: [primary, secondary],
+          mods: [...mods],
+          skin: nextSkin,
+        },
+      };
+    });
   },
   setBackground(backgroundId) {
     return this.set((s) => ({
