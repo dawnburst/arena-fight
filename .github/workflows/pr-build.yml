@@ -16,10 +16,10 @@ jobs:
       pull-requests: write
       checks: write # Required for dorny/test-reporter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check for source file changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
