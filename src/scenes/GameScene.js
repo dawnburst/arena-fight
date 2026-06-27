@@ -22,6 +22,7 @@ import { BOSS_SPRITES, ENEMY_SPRITES, RUNE_PROWLER_SPRITES } from '../enemies.js
 import TouchControls from '../input/touchControls.js';
 import { touchActive } from '../input/touchMode.js';
 import { Save } from '../save.js';
+import { DEFAULT_SKIN_ID, getSkin } from '../skins.js';
 import { TUTORIAL_SCRIPT, TutorialController } from '../tutorial.js';
 import { toggleFullscreen } from '../viewport.js';
 import { addTouchButton, coverBackground } from './sceneUtils.js';
@@ -81,11 +82,30 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    // The equipped skin decides which body frames the player uses. The default
+    // frames are always loaded so any skin can fall back to them per-pose.
+    this.equippedSkin = getSkin(Save.get().loadout?.skin);
     for (const direction of PLAYER_DIRECTIONS) {
       for (const pose of PLAYER_POSES) {
-        const key = this.playerFrameKey(direction, pose);
+        const key = this.defaultFrameKey(direction, pose);
         if (!this.textures.exists(key)) {
           this.load.image(key, assetPath(`assets/player/body/${direction}-${pose}.png`));
+        }
+      }
+    }
+    // Load the equipped skin's own frame set only once its art exists
+    // (assetsReady). Placeholder skins reuse the default frames with a tint.
+    const skin = this.equippedSkin;
+    if (skin && skin.id !== DEFAULT_SKIN_ID && skin.assetsReady) {
+      for (const direction of PLAYER_DIRECTIONS) {
+        for (const pose of PLAYER_POSES) {
+          const key = this.skinFrameKey(skin.id, direction, pose);
+          if (!this.textures.exists(key)) {
+            this.load.image(
+              key,
+              assetPath(`assets/player/skins/${skin.id}/${direction}-${pose}.png`),
+            );
+          }
         }
       }
     }
@@ -738,6 +758,10 @@ export default class GameScene extends Phaser.Scene {
     const sprite = this.add.sprite(cx, cy, this.playerFrameKey('south', 'idle'));
     sprite.setScale(PLAYER_BODY_SCALE);
     sprite.setDepth(5);
+    // Placeholder skins (no art yet) recolour the default frames with a tint.
+    // The tint is a sprite property and persists across setTexture() pose swaps.
+    const skin = this.equippedSkin;
+    if (skin && !skin.assetsReady && skin.tint != null) sprite.setTint(skin.tint);
     this.physics.add.existing(sprite);
     sprite.body.setCollideWorldBounds(true);
     sprite.body.setSize(PLAYER_HITBOX.width, PLAYER_HITBOX.height);
@@ -752,8 +776,24 @@ export default class GameScene extends Phaser.Scene {
     this.player.barrel = barrel;
   }
 
-  playerFrameKey(direction, pose) {
+  defaultFrameKey(direction, pose) {
     return `player-${direction}-${pose}`;
+  }
+
+  skinFrameKey(skinId, direction, pose) {
+    return `player-skin-${skinId}-${direction}-${pose}`;
+  }
+
+  // Resolve the texture key for the equipped skin, falling back to the default
+  // frame for any pose whose skin art is missing (or for placeholder skins,
+  // which have no frame set yet and render tinted default frames instead).
+  playerFrameKey(direction, pose) {
+    const skin = this.equippedSkin;
+    if (skin && skin.id !== DEFAULT_SKIN_ID && skin.assetsReady) {
+      const key = this.skinFrameKey(skin.id, direction, pose);
+      if (this.textures.exists(key)) return key;
+    }
+    return this.defaultFrameKey(direction, pose);
   }
 
   createEnemyAnimations() {
