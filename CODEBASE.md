@@ -20,7 +20,7 @@ Recent implementation has moved beyond the original Phase 1 notes below:
 - Sound-effect settings persist in `Save.settings` as `sfxEnabled` and `sfxVolume`.
 - `SettingsScene` controls arena background, music on/off and volume, sound-effect on/off and volume, the touch-controls mode (Auto / On / Off), and the fullscreen toggle (On / Off).
 - Touch/mobile mode persists in `Save.settings` as `touchControls` (`'auto' | 'on' | 'off'`); resolved at boot by `src/input/touchMode.js`.
-- Achievements are tiered (`src/achievements.js`): tiered entries declare ascending `tiers` targets + a `progress(ctx)` evaluator (one unlockable id per tier, `<id>-N`), boolean entries declare `check(ctx)` + `points`. Tier metals carry points (Bronze 10 / Silver 25 / Gold 50 / Diamond 100). `evaluateAchievements(ctx, unlockedIds)` returns newly-passing ids; helpers `tierProgress`, `unlockedPoints`, `bestUnlock`, `playerLevel` drive the UI. `AchievementsScene` (reached via the menu **ACHIEVEMENTS** button / `A`) is a category-tabbed grid of badge tiles — full colour when unlocked, grey-tinted while locked — with a tap-to-open detail popup showing a `current/target` progress bar. Badges are PNGs at `public/assets/achievements/<tierId>.png`; `sceneUtils.addBadge`/`applyBadgeState` render them (with a drawn-medallion fallback when a PNG is missing). `MainMenuScene` adds a "Best" showcase (Best Wave / Best Score / Bosses Defeated, rarest badge, achievement level/points) and a grey→colour badge reveal for new unlocks at game over. `Save.achievements` is still an array of ids; the `v3 → v4` migration (`CURRENT_VERSION = 4`) remaps the old flat ids to tiers (recomputed from lifetime stats). `CFG.achievements.pointsPerLevel` tunes the points→level curve.
+- Achievements are tiered (`src/achievements.js`): tiered entries declare ascending `tiers` targets + a `progress(ctx)` evaluator (one unlockable id per tier, `<id>-N`), boolean entries declare `check(ctx)` + `points`. Tier metals carry points (Bronze 10 / Silver 25 / Gold 50 / Diamond 100). `evaluateAchievements(ctx, unlockedIds)` returns newly-passing ids; helpers `tierProgress`, `unlockedPoints`, `bestUnlock`, `playerLevel` drive the UI. `AchievementsScene` (reached via the menu **ACHIEVEMENTS** button / `A`) is a category-tabbed grid of badge tiles — full colour when unlocked, grey-tinted while locked — with a tap-to-open detail popup showing a `current/target` progress bar. Badges are PNGs at `public/assets/achievements/<tierId>.png`; `sceneUtils.addBadge`/`applyBadgeState` render them (with a drawn-medallion fallback when a PNG is missing). `MainMenuScene` adds a "Best" showcase (Best Wave / Best Score / Bosses Defeated, rarest badge, achievement level/points) and a grey→colour badge reveal for new unlocks at game over. `Save.achievements` is still an array of ids; the `v3 → v4` migration (`CURRENT_VERSION = 5`) remaps the old flat ids to tiers (recomputed from lifetime stats). `CFG.achievements.pointsPerLevel` tunes the points→level curve.
 - Static generated assets live under `public/assets/...`; Phaser code resolves them through `src/assetPath.js` so builds work at `/arena-fight/` on GitHub Pages. Windows `*:Zone.Identifier` sidecars are ignored.
 - The wave-10 Warden and wave-20 Juggernaut each have complete 21-frame 256×256 sprite sets, the wave-30 Hexweaver and wave-40 Bombardier each have 23 frames, and the wave-50 Phantom and wave-60 Overlord each have 25 frames under `public/assets/enemies/boss/`; `BOSS_SPRITES` registers their directional idle, movement, power, enrage, and death frames.
 - `src/viewport.js` owns the responsive scale strategy. **Desktop windowed** stays `Scale.NONE` 800×600 (unchanged); **desktop fullscreen** switches to `Scale.FIT` (4:3 scaled up, centered) and back to 800×600 on exit; **mobile/touch** uses `Scale.FIT` with a fixed logical height (600) and a width set to `round(600 × innerW/innerH)` (clamped 600–1400) so the canvas fills the device with no letterbox bars — the arena simply gets wider. On mobile, window resize/rotate recomputes that width via `game.scale.setGameSize(w, 600)`, which emits Phaser's `RESIZE` event. `GameScene` reflows live on resize (`handleResize` updates `this.arenaW/arenaH`, world bounds, background fit, HUD via `layoutHud()`, and touch-control anchors) with **no scene restart**; menu scenes rebuild via restart-on-resize. Fullscreen defaults off (`Save.settings.fullscreen`) on both desktop and touch; it is opt-in via `F` or the Settings row, and auto-enters on the first Intro tap only when the preference is on. Shared cover-fit background helper: `src/scenes/sceneUtils.js` → `coverBackground(scene, key, existing?)`.
@@ -156,11 +156,12 @@ arena-fight/
     ├── config.js             # All tunable constants (CFG)
     ├── save.js               # localStorage wrapper, defaults, persistence API
     ├── catalog.js            # Weapons + mods, prices, apply functions
+    ├── skins.js              # Character skins catalog (cosmetic body swaps)
     └── scenes/
         ├── GameScene.js      # ~900 lines. Main gameplay scene.
         ├── GameOverScene.js  # Results + S/L/R navigation
-        ├── StoreScene.js     # Browse/buy weapons + mods
-        └── LoadoutScene.js   # Equip weapon + 2 mods before a run
+        ├── StoreScene.js     # Browse/buy weapons + mods + skins
+        └── LoadoutScene.js   # Equip weapons + equipment + skin before a run
 ```
 
 ---
@@ -458,8 +459,8 @@ On death: `endGame()` passes `coinsEarned: this.coinsThisRun` to `GameOverScene`
 
 `StoreScene`:
 - Top: wallet display (`¢ N`).
-- Tabs: WEAPONS / MODS, switched via `Tab` or `←/→`.
-- Items grouped by tier (Common, Uncommon, Rare, Epic, Legendary), color-coded.
+- Tabs: WEAPONS / EQUIPMENT / SKINS, switched via `Tab` or `←/→`.
+- Weapons/equipment grouped by tier (Common, Uncommon, Rare, Epic, Legendary), color-coded.
 - For each item: name, price, badge:
   - `[OWNED]` (green) — already bought
   - `[BUY]` (gold) — affordable, not owned
@@ -469,15 +470,24 @@ On death: `endGame()` passes `coinsEarned: this.coinsThisRun` to `GameOverScene`
 - `R` triggers a reset-save confirmation (`Y` wipes save, `N`/`Esc` cancels).
 - Free items (price 0, i.e., the default Pistol) are hidden from the store listing.
 
+**Skins tab** (character skins, `src/skins.js`): a **flat list sorted cheapest → most expensive** (no tier headers). Each row shows a tinted thumbnail (the default `south-idle` frame recoloured by the skin's placeholder tint), name, price, and a badge:
+- `[EQUIPPED]` (green) — the currently equipped skin
+- `[EQUIP]` (cyan) — owned but not equipped; clicking equips it (`Save.equipSkin`)
+- `[BUY]` (gold) — affordable; buying (`Save.buySkin`) auto-equips it
+- `[NEED ¢X]` (red) — too expensive
+
+The default skin (`default`, "Recruit", price 0) is always owned and is the implicit base look.
+
 ### 6.13 Loadout
 
 `LoadoutScene`:
-- Three slots: `WEAPON`, `MOD 1`, `MOD 2`.
+- Five slots: `WEAPON 1`, `WEAPON 2`, `EQUIPMENT 1`, `EQUIPMENT 2`, `SKIN`.
 - Navigation: `↑/↓` switches between slots. `←/→` cycles choices in the current slot.
 - Weapon slot choices: `save.ownedWeapons` (default has `'pistol'`).
 - Mod slot choices: `[null, ...availableMods]` where `availableMods = save.ownedMods.filter(m => m !== otherSlot.mod)`. Same mod cannot be in both slots.
+- Skin slot choices: owned skins (`save.ownedSkins`, price-ordered); buy more in the Store's Skins tab.
 - Mod slot can be `(empty)` (null).
-- `Enter`: persists via `Save.setLoadout(weaponId, modIds)`, then `scene.start('GameScene')`.
+- `Enter`: persists via `Save.setLoadout(weaponIds, modIds, skinId)`, then `scene.start('GameScene')`.
 - `B`/`Esc`: returns to `GameOverScene` with `passthroughData`.
 
 Display per slot:
@@ -495,7 +505,9 @@ API:
 - `Save.addToWallet(amount)` — convenience.
 - `Save.buyWeapon(id, price)` — guard: already owned, can't afford. Updates wallet + `ownedWeapons`.
 - `Save.buyMod(id, price)` — same for mods.
-- `Save.setLoadout(weapon, mods)` — updates `loadout`.
+- `Save.buySkin(id, price)` — same for skins; updates wallet + `ownedSkins`.
+- `Save.equipSkin(id)` — sets `loadout.skin` (only if the skin is owned).
+- `Save.setLoadout(weapons, mods, skin)` — updates `loadout` (the `skin` arg is applied only if owned; omitting it keeps the current skin).
 - `Save.recordRun({wave, score, coinsEarned})` — adds coins to wallet, updates `bestWave`/`bestScore`/`runsPlayed`/`totalCoinsEarned`.
 - `Save.getCheckpointWave()` / `Save.setCheckpointWave(wave)` / `Save.resetCheckpoint()` — boss-checkpoint accessors (`progress.checkpointWave`). `setCheckpointWave` is monotonic, boss-wave-validated, and capped at `CFG.boss.finalWave`.
 - `Save.reset()` — wipe to defaults.
@@ -804,13 +816,16 @@ Storage key: `arenaFight.save.v1`. JSON value:
 
 ```json
 {
-  "version": 3,
+  "version": 5,
   "wallet": 587,
   "ownedWeapons": ["pistol", "burst", "spread"],
   "ownedMods": ["quick-draw", "steel-plate"],
+  "ownedSkins": ["default", "ninja"],
   "loadout": {
     "weapon": "spread",
-    "mods": ["quick-draw", null]
+    "weapons": ["spread", null],
+    "mods": ["quick-draw", null],
+    "skin": "ninja"
   },
   "stats": {
     "runsPlayed": 12,
@@ -831,11 +846,12 @@ Defaults on first launch (no key present):
 
 ```json
 {
-  "version": 3,
+  "version": 5,
   "wallet": 0,
   "ownedWeapons": ["pistol"],
   "ownedMods": [],
-  "loadout": { "weapon": "pistol", "mods": [null, null] },
+  "ownedSkins": ["default"],
+  "loadout": { "weapon": "pistol", "weapons": ["pistol", null], "mods": [null, null], "skin": "default" },
   "stats": {
     "runsPlayed": 0, "bestWave": 0, "bestScore": 0, "totalCoinsEarned": 0,
     "bestCombo": 0, "totalKills": 0, "bossesDefeated": 0
@@ -866,11 +882,16 @@ monotonic (never decreases), boss-wave-validated, and capped at
 `setCheckpointWave(wave)`, `resetCheckpoint()`. See §6.x boss death and the menu
 CONTINUE/NEW GAME flow (`MainMenuScene`).
 
+Character skins (`src/skins.js`) are cosmetic player-body swaps bought/equipped in
+the Store (SKINS tab) and Loadout (SKIN slot). `ownedSkins` lists owned ids
+(`'default'` always owned) and `loadout.skin` is the equipped id.
+
 Migrations live in `MIGRATIONS` (keyed by source version): `v1 → v2` collapses the
 legacy single-weapon loadout into the two-slot `weapons` array; `v2 → v3` stamps
 the version so the deep-merge backfills the new `progress` block; `v3 → v4` remaps
 the old flat achievement ids onto the tiered scheme (recomputed from lifetime
-stats). `CURRENT_VERSION` is **4**.
+stats); `v4 → v5` backfills character skins (`ownedSkins: ['default']`,
+`loadout.skin: 'default'`). `CURRENT_VERSION` is **5**.
 
 Resilience: corrupt JSON, missing fields, a `version` newer than `CURRENT_VERSION`,
 or a missing migration → fall back to defaults with a `console.warn` (the raw bytes

@@ -109,6 +109,19 @@ The Settings menu lets you choose the arena background and control the looping b
 
 Survive escalating waves of monsters. Each kill builds your score, coins persist in your wallet, and store upgrades help future runs.
 
+## Store, loadout & skins
+
+Spend your coins in the **Store**, which has three tabs:
+
+- **Weapons** and **Equipment** — grouped by tier, bought with coins.
+- **Skins** — cosmetic character looks, listed cheapest → most expensive. Buying
+  a skin equips it automatically; tap an owned skin to re-equip it. The default
+  **Recruit** look is free and always yours.
+
+In the **Loadout** screen you pick up to two weapons, up to two pieces of
+equipment, and your **skin** for the next run. Owned items and your equipped skin
+persist between runs.
+
 ## Achievements
 
 Open the **ACHIEVEMENTS** screen from the main menu (shortcut `A`) to browse a
