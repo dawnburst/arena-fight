@@ -3,9 +3,21 @@ import { assetPath } from '../assetPath.js';
 import { playSfx, preloadSfx } from '../audio.js';
 import { MODS, MODS_BY_ID, TIER_COLORS, WEAPONS, WEAPONS_BY_ID } from '../catalog.js';
 import { Save } from '../save.js';
+import { getSkin, skinsByPrice } from '../skins.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
 
-const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'EQUIPMENT 1', 'EQUIPMENT 2'];
+const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'EQUIPMENT 1', 'EQUIPMENT 2', 'SKIN'];
+const SKIN_SLOT = 4;
+// Slot vertical layout. Tightened from the original 84px pitch so the fifth
+// (SKIN) slot still clears the touch START button at the bottom of the canvas.
+const SLOT_TOP = 108;
+const SLOT_PITCH = 78;
+const slotY = (i) => SLOT_TOP + i * SLOT_PITCH;
+// Placeholder skin thumbnail: the default body's south-idle frame, tinted per
+// skin (shared key with StoreScene).
+const SKIN_THUMB_KEY = 'skin-thumb-base';
+const tierColorNumber = (tier) =>
+  Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier] || TIER_COLORS.common).color;
 // Desktop draws the value at x=255; touch shifts it right to make room for the ◀.
 const DESKTOP_VALUE_X = 255;
 const TOUCH_VALUE_X = 296;
@@ -27,6 +39,9 @@ export default class LoadoutScene extends Phaser.Scene {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
     }
+    if (!this.textures.exists(SKIN_THUMB_KEY)) {
+      this.load.image(SKIN_THUMB_KEY, assetPath('assets/player/body/south-idle.png'));
+    }
     preloadSfx(this);
   }
 
@@ -39,6 +54,7 @@ export default class LoadoutScene extends Phaser.Scene {
       save.loadout.weapons?.[1] ?? null,
     ];
     this.modIds = [save.loadout.mods?.[0] ?? null, save.loadout.mods?.[1] ?? null];
+    this.skinId = save.loadout.skin || 'default';
 
     const style = {
       fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
@@ -58,7 +74,7 @@ export default class LoadoutScene extends Phaser.Scene {
     this.slotDescs = [];
 
     for (let i = 0; i < SLOT_LABELS.length; i++) {
-      const y = 120 + i * 84;
+      const y = slotY(i);
       const label = this.add.text(40, y, SLOT_LABELS[i], {
         ...style,
         fontSize: '16px',
@@ -134,7 +150,7 @@ export default class LoadoutScene extends Phaser.Scene {
     // refresh() to sit right after the (variable-width) value.
     this.slotArrows = [];
     for (let i = 0; i < SLOT_LABELS.length; i++) {
-      const y = 120 + i * 84;
+      const y = slotY(i);
       this.slotValues[i].setX(TOUCH_VALUE_X);
       this.slotDescs[i].setX(TOUCH_VALUE_X).setY(y + TOUCH_DESC_DY);
       // Tap the left part of the row (label/icon/value) to select it.
@@ -169,7 +185,7 @@ export default class LoadoutScene extends Phaser.Scene {
   layoutSlotArrows() {
     if (!this.slotArrows) return;
     for (let i = 0; i < this.slotArrows.length; i++) {
-      const y = 120 + i * 84;
+      const y = slotY(i);
       const value = this.slotValues[i];
       this.slotArrows[i].right.setPosition(value.x + value.width + 12, y - 4);
     }
@@ -201,7 +217,7 @@ export default class LoadoutScene extends Phaser.Scene {
 
   startRun() {
     playSfx(this, 'uiConfirm');
-    Save.setLoadout(this.weaponIds, this.modIds);
+    Save.setLoadout(this.weaponIds, this.modIds, this.skinId);
     // Honor the start wave the menu handed us (checkpoint continue vs new game).
     const startWave = this.scene.settings.data?.startWave || 1;
     this.scene.start('GameScene', { tutorial: false, startWave });
@@ -254,6 +270,15 @@ export default class LoadoutScene extends Phaser.Scene {
       const cur = this.weaponIds[this.slotIndex];
       const idx = Math.max(0, choices.indexOf(cur));
       this.weaponIds[this.slotIndex] = choices[(idx + dir + choices.length) % choices.length];
+    } else if (this.slotIndex === SKIN_SLOT) {
+      // Cycle through owned skins (price order); buy more in the store.
+      const owned = new Set(save.ownedSkins || ['default']);
+      const ids = skinsByPrice()
+        .filter((s) => owned.has(s.id))
+        .map((s) => s.id);
+      if (!ids.length) return;
+      const idx = Math.max(0, ids.indexOf(this.skinId));
+      this.skinId = ids[(idx + dir + ids.length) % ids.length];
     } else {
       const slot = this.slotIndex - 2;
       const taken = this.modIds[1 - slot];
@@ -271,11 +296,22 @@ export default class LoadoutScene extends Phaser.Scene {
     const key = id ? itemIconKey(id) : null;
     if (key && this.textures.exists(key)) {
       icon.setTexture(key).setDisplaySize(44, 44).setVisible(true);
+      icon.clearTint();
       frame.setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier]).color, 1);
     } else {
       icon.setVisible(false);
       frame.setStrokeStyle(2, 0x444444, 1);
     }
+  }
+
+  // The skin slot shows the placeholder thumbnail tinted with the skin's colour
+  // (the default skin renders untinted).
+  setSkinSlotIcon(i, skin) {
+    const { frame, icon } = this.slotIcons[i];
+    icon.setTexture(SKIN_THUMB_KEY).setDisplaySize(44, 44).setVisible(true);
+    if (skin.tint != null) icon.setTint(skin.tint);
+    else icon.clearTint();
+    frame.setStrokeStyle(2, tierColorNumber(skin.tier), 1);
   }
 
   refresh() {
@@ -314,6 +350,12 @@ export default class LoadoutScene extends Phaser.Scene {
       }
       this.setSlotIcon(i + 2, id, mod?.tier);
     }
+
+    const skin = getSkin(this.skinId);
+    this.slotValues[SKIN_SLOT].setText(this.valueText(skin.name));
+    this.slotValues[SKIN_SLOT].setColor(TIER_COLORS[skin.tier] || TIER_COLORS.common);
+    this.slotDescs[SKIN_SLOT].setText(skin.description);
+    this.setSkinSlotIcon(SKIN_SLOT, skin);
 
     this.layoutSlotArrows();
   }

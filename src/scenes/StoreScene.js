@@ -3,6 +3,7 @@ import { assetPath } from '../assetPath.js';
 import { playSfx, preloadSfx } from '../audio.js';
 import { MODS, TIER_COLORS, TIERS, WEAPONS } from '../catalog.js';
 import { Save } from '../save.js';
+import { skinsByPrice } from '../skins.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
 
 const ROW_HEIGHT = 30;
@@ -11,6 +12,9 @@ const ICON_SIZE = 28;
 const LIST_TOP = 92;
 const STORE_ITEMS = [...WEAPONS, ...MODS];
 const itemIconKey = (id) => `store-item-${id}`;
+// Placeholder skin thumbnail: the default body's south-idle frame, tinted per
+// skin in the row (real per-skin art can replace this once it ships).
+const SKIN_THUMB_KEY = 'skin-thumb-base';
 const tierColorNumber = (tier) => Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier]).color;
 
 export default class StoreScene extends Phaser.Scene {
@@ -24,6 +28,9 @@ export default class StoreScene extends Phaser.Scene {
       if (!this.textures.exists(key)) {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
+    }
+    if (!this.textures.exists(SKIN_THUMB_KEY)) {
+      this.load.image(SKIN_THUMB_KEY, assetPath('assets/player/body/south-idle.png'));
     }
     preloadSfx(this);
   }
@@ -51,6 +58,10 @@ export default class StoreScene extends Phaser.Scene {
       .text(180, 60, 'EQUIPMENT', { ...style, fontSize: '16px' })
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.setTab('mods'));
+    this.tabSkins = this.add
+      .text(360, 60, 'SKINS', { ...style, fontSize: '16px' })
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.setTab('skins'));
 
     this.listGroup = this.add.container(0, 0);
 
@@ -201,8 +212,10 @@ export default class StoreScene extends Phaser.Scene {
     this.refresh();
   }
 
-  switchTab() {
-    this.setTab(this.tab === 'weapons' ? 'mods' : 'weapons');
+  switchTab(dir = 1) {
+    const tabs = ['weapons', 'mods', 'skins'];
+    const i = tabs.indexOf(this.tab);
+    this.setTab(tabs[(i + dir + tabs.length) % tabs.length]);
   }
 
   moveSelection(dir) {
@@ -273,7 +286,7 @@ export default class StoreScene extends Phaser.Scene {
     }
     if (event.key === 'Tab' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault?.();
-      this.switchTab();
+      this.switchTab(event.key === 'ArrowLeft' ? -1 : 1);
       return;
     }
     if (event.key === 'ArrowUp') {
@@ -292,7 +305,15 @@ export default class StoreScene extends Phaser.Scene {
 
   tryBuy() {
     const entry = this.entries[this.selectedIndex];
-    if (!entry || entry.owned || entry.locked) {
+    if (!entry) {
+      playSfx(this, 'purchaseFail');
+      return;
+    }
+    if (this.tab === 'skins') {
+      this.trySkinAction(entry);
+      return;
+    }
+    if (entry.owned || entry.locked) {
       playSfx(this, 'purchaseFail');
       return;
     }
@@ -307,32 +328,76 @@ export default class StoreScene extends Phaser.Scene {
     this.refresh();
   }
 
+  // Skins: an owned-but-unequipped skin equips on click/tap; an unowned skin is
+  // bought (and auto-equipped); the equipped skin does nothing.
+  trySkinAction(entry) {
+    if (entry.equipped) {
+      playSfx(this, 'uiMove');
+      return;
+    }
+    if (entry.owned) {
+      Save.equipSkin(entry.id);
+      playSfx(this, 'uiConfirm');
+      this.refresh();
+      return;
+    }
+    const save = Save.get();
+    if (save.wallet < entry.price) {
+      playSfx(this, 'purchaseFail');
+      return;
+    }
+    Save.buySkin(entry.id, entry.price);
+    Save.equipSkin(entry.id);
+    playSfx(this, 'purchase');
+    this.refresh();
+  }
+
   refresh() {
     const save = Save.get();
     this.walletText.setText(`¢ ${save.wallet}`);
     this.tabWeapons.setText(this.tab === 'weapons' ? '[ WEAPONS ]' : '  WEAPONS  ');
     this.tabMods.setText(this.tab === 'mods' ? '[ EQUIPMENT ]' : '  EQUIPMENT  ');
-
-    const source = this.tab === 'weapons' ? WEAPONS : MODS;
-    const ownedSet = new Set(this.tab === 'weapons' ? save.ownedWeapons : save.ownedMods);
-    const legendaryUnlocked = (save.stats?.bestWave ?? 0) >= 25;
+    this.tabSkins.setText(this.tab === 'skins' ? '[ SKINS ]' : '  SKINS  ');
 
     this.entries = [];
-    for (const tier of TIERS) {
-      const items = source.filter(
-        (it) => it.tier === tier && (this.tab === 'weapons' || it.price > 0),
-      );
-      for (const it of items) {
+    if (this.tab === 'skins') {
+      // Skins are a flat list sorted cheapest → most expensive (no tier groups).
+      const ownedSkins = new Set(save.ownedSkins || ['default']);
+      const equippedId = save.loadout?.skin || 'default';
+      for (const skin of skinsByPrice()) {
         this.entries.push({
-          id: it.id,
-          name: it.name,
-          tier: it.tier,
-          price: it.price,
-          description: it.description,
-          owned: ownedSet.has(it.id),
-          locked: it.tier === 'legendary' && !legendaryUnlocked,
-          iconKey: itemIconKey(it.id),
+          id: skin.id,
+          name: skin.name,
+          tier: skin.tier,
+          price: skin.price,
+          description: skin.description,
+          owned: ownedSkins.has(skin.id),
+          equipped: skin.id === equippedId,
+          locked: false,
+          tint: skin.tint,
+          iconKey: SKIN_THUMB_KEY,
         });
+      }
+    } else {
+      const source = this.tab === 'weapons' ? WEAPONS : MODS;
+      const ownedSet = new Set(this.tab === 'weapons' ? save.ownedWeapons : save.ownedMods);
+      const legendaryUnlocked = (save.stats?.bestWave ?? 0) >= 25;
+      for (const tier of TIERS) {
+        const items = source.filter(
+          (it) => it.tier === tier && (this.tab === 'weapons' || it.price > 0),
+        );
+        for (const it of items) {
+          this.entries.push({
+            id: it.id,
+            name: it.name,
+            tier: it.tier,
+            price: it.price,
+            description: it.description,
+            owned: ownedSet.has(it.id),
+            locked: it.tier === 'legendary' && !legendaryUnlocked,
+            iconKey: itemIconKey(it.id),
+          });
+        }
       }
     }
     if (this.selectedIndex >= this.entries.length)
@@ -344,7 +409,8 @@ export default class StoreScene extends Phaser.Scene {
     let lastTier = null;
     for (let i = 0; i < this.entries.length; i++) {
       const e = this.entries[i];
-      if (e.tier !== lastTier) {
+      // Skins render as a flat price-sorted list — no tier-group headers.
+      if (this.tab !== 'skins' && e.tier !== lastTier) {
         const header = this.add.text(20, y, e.tier.toUpperCase(), {
           fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
           fontSize: '14px',
@@ -378,6 +444,8 @@ export default class StoreScene extends Phaser.Scene {
       const icon = this.add
         .image(64, y + ROW_HEIGHT / 2, e.iconKey)
         .setDisplaySize(ICON_SIZE, ICON_SIZE);
+      // Placeholder skins recolour the shared thumbnail with the skin's tint.
+      if (e.tint != null) icon.setTint(e.tint);
       this.listGroup.add(icon);
 
       const nameLine = this.add.text(92, y + 7, e.name, {
@@ -396,7 +464,13 @@ export default class StoreScene extends Phaser.Scene {
 
       let badge;
       let badgeColor = '#888';
-      if (e.owned) {
+      if (this.tab === 'skins' && e.equipped) {
+        badge = '[EQUIPPED]';
+        badgeColor = '#4caf50';
+      } else if (this.tab === 'skins' && e.owned) {
+        badge = '[EQUIP]';
+        badgeColor = '#29b6f6';
+      } else if (e.owned) {
         badge = '[OWNED]';
         badgeColor = '#4caf50';
       } else if (e.locked) {
@@ -426,6 +500,8 @@ export default class StoreScene extends Phaser.Scene {
     if (cur) {
       this.previewFrame.setVisible(true).setStrokeStyle(2, tierColorNumber(cur.tier), 1);
       this.previewIcon.setTexture(cur.iconKey).setVisible(true);
+      if (cur.tint != null) this.previewIcon.setTint(cur.tint);
+      else this.previewIcon.clearTint();
     } else {
       this.previewFrame.setVisible(false);
       this.previewIcon.setVisible(false);
