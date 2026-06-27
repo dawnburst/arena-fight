@@ -1,5 +1,6 @@
 // Shared scene helpers.
 
+import { achievementBadgeKey } from '../achievements.js';
 import { touchActive } from '../input/touchMode.js';
 
 // Touch UI sits above the twin-stick overlay (depth 1000) and the HUD.
@@ -107,4 +108,40 @@ export function coverBackground(scene, key, existing = null) {
     .setPosition(w / 2, h / 2)
     .setScale(scale);
   return image;
+}
+
+// Applies the locked/unlocked visual state to a badge object (image or the
+// fallback container). Unlocked = full colour; locked = grey tint + dim alpha.
+export function applyBadgeState(obj, unlocked) {
+  if (unlocked) {
+    obj.clearTint?.();
+    obj.setAlpha(1);
+    if (obj.list) for (const child of obj.list) child.clearTint?.();
+  } else {
+    obj.setTint?.(0x404040);
+    obj.setAlpha(0.45);
+    if (obj.list) for (const child of obj.list) child.setTint?.(0x404040);
+  }
+  return obj;
+}
+
+// Adds an achievement badge centred at (x, y), sized to `size`. Uses the
+// generated PNG when present; otherwise draws a coloured medallion with the
+// achievement's emoji as a graceful fallback so the gallery always renders.
+// `tier` is a flattened tier object from achievements.js (ACHIEVEMENT_TIERS).
+export function addBadge(scene, x, y, tier, { size = 80, unlocked = true } = {}) {
+  const key = achievementBadgeKey(tier.tierId);
+  let obj;
+  if (scene.textures.exists(key)) {
+    obj = scene.add.image(x, y, key).setDisplaySize(size, size);
+  } else {
+    obj = scene.add.container(x, y);
+    const ring = scene.add.circle(0, 0, size / 2, tier.color ?? 0xffd24a, 1);
+    ring.setStrokeStyle(Math.max(2, size * 0.04), 0x101010, 0.85);
+    const glyph = scene.add
+      .text(0, 0, tier.icon || '★', { fontSize: `${Math.round(size * 0.46)}px` })
+      .setOrigin(0.5);
+    obj.add([ring, glyph]);
+  }
+  return applyBadgeState(obj, unlocked);
 }
