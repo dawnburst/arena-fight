@@ -53,6 +53,12 @@ describe('achievements definitions', () => {
     expect(TIER_BY_ID['wave-climber-4'].target).toBe(100);
     expect(TIER_BY_ID['wave-climber-1'].points).toBeLessThan(TIER_BY_ID['wave-climber-4'].points);
   });
+
+  it('combo Diamond tier matches the x50 combo cap', () => {
+    expect(TIER_BY_ID['combo-4'].target).toBe(50);
+    expect(evaluateAchievements(ctx({ stats: { bestCombo: 50 } }), [])).toContain('combo-4');
+    expect(evaluateAchievements(ctx({ stats: { bestCombo: 49 } }), [])).not.toContain('combo-4');
+  });
 });
 
 describe('evaluateAchievements — tiered', () => {
