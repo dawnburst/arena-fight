@@ -74,7 +74,7 @@ export const ACHIEVEMENTS = [
     name: 'Combo Adept',
     category: 'mastery',
     icon: '🔥',
-    tiers: [5, 8, 16, 30],
+    tiers: [5, 8, 16, 50],
     descriptionFor: (t) => `Reach an x${t} combo.`,
     progress: (ctx) => ctx.stats?.bestCombo || 0,
   },

@@ -85,7 +85,7 @@ const MIGRATIONS = {
     addTiers('slayer', stats.totalKills, [100, 500, 5000, 50000]);
     addTiers('treasure', stats.totalCoinsEarned, [1000, 5000, 50000, 500000]);
     addTiers('boss-hunter', stats.bossesDefeated, [1, 5, 30, 150]);
-    addTiers('combo', stats.bestCombo, [5, 8, 16, 30]);
+    addTiers('combo', stats.bestCombo, [5, 8, 16, 50]);
 
     // Safety net: remap legacy single-shot ids for saves whose cumulative
     // counters predate the stat (so the stat is 0 but the badge was earned).
