@@ -11,7 +11,7 @@
 Recent implementation has moved beyond the original Phase 1 notes below:
 
 - The game now boots through `IntroScene`, using `public/assets/intro/intro.png`, then transitions to `MainMenuScene`.
-- `MainMenuScene` is the only menu flow and also renders game-over details after death.
+- `MainMenuScene` is the only menu flow and also renders game-over details after death. **Boss checkpoints:** when `Save.getCheckpointWave() > 0` it shows **CONTINUE** (resume at `checkpointWave + 1`) and **NEW GAME** (fresh wave-1 run, keeps the checkpoint) instead of a single START/RETRY; the death screen surfaces "You'll continue from Wave N". The start wave is threaded to `GameScene` via `scene.start('GameScene', { startWave })` and through `LoadoutScene`'s START (`GameScene.create` reads `data.startWave`, defaulting to 1).
 - Music is loaded from `public/assets/music/retro_game_music.mp3` (normal soundtrack) and `public/assets/music/boss_battle_music.mp3` (boss soundtrack) through `src/audio.js`.
 - Boss waves swap to the intense boss track: `GameScene.startBossWave()` calls `enterBossMusic(scene)` (cross-fades the normal track out, the boss track in) and every boss-end path resolves back via `exitBossMusic(scene)` — `teardownBossState()` (boss death + the `jumpToWave` cheat), `endGame()` (player death mid-boss), and the scene `SHUTDOWN` handler. The music manager (registry singleton in `src/audio.js`) tracks a `bossMode` flag so `syncMusic`/the music toggle keep the correct track audible and obey `musicEnabled`/`musicVolume`; only one track plays at a time. The Suno generation prompt for the boss track is in `plan_docs/ui_ux_top20_prompts/ui_ux_task16.md`.
 - Boss waves also swap the arena field to a hostile **"hell arena"** background in lockstep with the boss music. `startBossWave()` calls `enterBossBackground()` (cross-fades a `hell-arena.png` overlay in over the player's selected background across `CFG.boss.transitionMs`) and every boss-end path calls `exitBossBackground()` next to `exitBossMusic` — `teardownBossState()`, `endGame()`, and the `SHUTDOWN` handler (immediate, no fade). A `this.bossBackgroundActive` flag mirrors the music `bossMode`; `handleResize()` cover-fits whichever backgrounds are live. The hell background is the `BOSS_BACKGROUND` export in `src/backgrounds.js` (kept out of the Settings picker), loaded in `GameScene.preload()`. While the flag is set, standard player bullets use `CFG.bullet.bossColor` (light) instead of `CFG.bullet.color` so fire stays readable over the dark floor; AoE/boomerang bullets keep their own colour. The generation prompt is in `plan_docs/boss-retro-art-prompts.md`.
@@ -494,6 +494,7 @@ API:
 - `Save.buyMod(id, price)` — same for mods.
 - `Save.setLoadout(weapon, mods)` — updates `loadout`.
 - `Save.recordRun({wave, score, coinsEarned})` — adds coins to wallet, updates `bestWave`/`bestScore`/`runsPlayed`/`totalCoinsEarned`.
+- `Save.getCheckpointWave()` / `Save.setCheckpointWave(wave)` / `Save.resetCheckpoint()` — boss-checkpoint accessors (`progress.checkpointWave`). `setCheckpointWave` is monotonic, boss-wave-validated, and capped at `CFG.boss.finalWave`.
 - `Save.reset()` — wipe to defaults.
 
 Storage key: `arenaFight.save.v1` (version-prefixed for forward compat).
@@ -571,7 +572,7 @@ Large, multi-phase bosses appear on every boss wave (`CFG.boss.everyNWaves`, def
 - **Powers (`updateBoss` → `castBossPower`):** the boss casts whichever powers its variant lists for the current phase, each on its own scaled cooldown (`bossPowerCooldown`). Power library (`CFG.boss.powers`): `summon` (wave-gated adds — see below), `barrage` (radial spread), `spiral` (rotating arms), `aimedVolley` (fan aimed at the player), `charge` (windup → lunge → `bossSlam` shockwave), `nova` (telegraphed AoE ring), `beamSweep`, `mirrorClones`, `gravityWell`, `dotField`, `missiles`, and `shieldSlam` (re-raise a broken shield).
 - **Wave-gated summons:** `bossSummonPool(wave)` returns only enemy types whose `appearFromWave` is **strictly below** the boss's wave, so a wave-20 boss can summon wave-1…19 enemies but nothing from wave 20+. A wave-10 boss can only summon swarmers.
 - **Contact:** `onPlayerHitEnemy` never destroys the boss — it only damages the player.
-- **Death:** `damageEnemy → killBoss → onEnemyKilled('boss')` pays the scaled coin reward (`payBossReward`), plays generated death frames when available plus the code-drawn burst, clears remaining adds (`clearBossAdds` if `clearAddsOnBossDeath`), and tears down boss state/HUD (`teardownBossState`). `jumpToWave` also calls `teardownBossState`.
+- **Death:** `damageEnemy → killBoss → onEnemyKilled('boss')` pays the scaled coin reward (`payBossReward`), plays generated death frames when available plus the code-drawn burst, clears remaining adds (`clearBossAdds` if `clearAddsOnBossDeath`), **records the boss checkpoint** (`Save.setCheckpointWave(this.wave)` — done here, not in `teardownBossState`, so only a genuine kill advances it), and tears down boss state/HUD (`teardownBossState`). `jumpToWave` also calls `teardownBossState` (but not `setCheckpointWave`).
 
 The boss is **not** in `ENEMY_TYPE_ORDER`, so `pickEnemyType()` never spawns it during normal waves; it is only created by `startBossWave()`. The bestiary uses real south-facing Warden, Juggernaut, Hexweaver, Bombardier, Phantom, and Overlord portraits.
 
@@ -799,7 +800,7 @@ Storage key: `arenaFight.save.v1`. JSON value:
 
 ```json
 {
-  "version": 1,
+  "version": 3,
   "wallet": 587,
   "ownedWeapons": ["pistol", "burst", "spread"],
   "ownedMods": ["quick-draw", "steel-plate"],
@@ -817,6 +818,7 @@ Storage key: `arenaFight.save.v1`. JSON value:
     "bossesDefeated": 6
   },
   "achievements": ["first-blood", "wave-10", "boss-slayer"],
+  "progress": { "checkpointWave": 20 },
   "tutorialSeen": true
 }
 ```
@@ -825,7 +827,7 @@ Defaults on first launch (no key present):
 
 ```json
 {
-  "version": 1,
+  "version": 3,
   "wallet": 0,
   "ownedWeapons": ["pistol"],
   "ownedMods": [],
@@ -835,6 +837,7 @@ Defaults on first launch (no key present):
     "bestCombo": 0, "totalKills": 0, "bossesDefeated": 0
   },
   "achievements": [],
+  "progress": { "checkpointWave": 0 },
   "tutorialSeen": false
 }
 ```
@@ -850,7 +853,24 @@ breakdown passed in the game-over payload (`summary`, `newAchievements`), which
 from the menu's **TUTORIAL** action; there is no auto-launch). See
 §6.20 (Onboarding). Helpers: `markTutorialSeen()`, `resetTutorial()`.
 
-Resilience: corrupt JSON, missing fields, unknown `version` → fall back to defaults with a `console.warn`. All known fields (including the new stats/achievements and `tutorialSeen`) are deep-merged against defaults, so older v1 saves upgrade without a wipe.
+`progress.checkpointWave` is the **boss-checkpoint** field: the highest boss wave
+the player has cleared (0 = none). The next run can **CONTINUE** at
+`checkpointWave + 1` instead of wave 1. It is set on a confirmed boss defeat
+(`GameScene.onEnemyKilled('boss')` → `Save.setCheckpointWave(this.wave)`),
+monotonic (never decreases), boss-wave-validated, and capped at
+`CFG.boss.finalWave` (100). Accessors: `getCheckpointWave()`,
+`setCheckpointWave(wave)`, `resetCheckpoint()`. See §6.x boss death and the menu
+CONTINUE/NEW GAME flow (`MainMenuScene`).
+
+Migrations live in `MIGRATIONS` (keyed by source version): `v1 → v2` collapses the
+legacy single-weapon loadout into the two-slot `weapons` array; `v2 → v3` stamps
+the version so the deep-merge backfills the new `progress` block. `CURRENT_VERSION`
+is **3**.
+
+Resilience: corrupt JSON, missing fields, a `version` newer than `CURRENT_VERSION`,
+or a missing migration → fall back to defaults with a `console.warn` (the raw bytes
+are backed up to `arenaFight.save.backup` before a migration runs). All known fields
+are deep-merged against defaults, so older saves upgrade without a wipe.
 
 ---
 
@@ -861,7 +881,8 @@ Resilience: corrupt JSON, missing fields, unknown `version` → fall back to def
 - `GameScene` → `GameOverScene`: `{ score, wave, coinsEarned }`
 - `GameOverScene` ↔ `StoreScene`: `passthroughData = { score, wave, coinsEarned, persisted: true }`
 - `GameOverScene` → `LoadoutScene`: same `passthroughData`
-- `LoadoutScene` → `GameScene`: no data (loadout is in save)
+- `LoadoutScene` → `GameScene`: `{ tutorial: false, startWave }` (loadout itself is in save; `startWave` carries the checkpoint-continue vs new-game intent handed in by the menu)
+- `MainMenuScene` → `GameScene`: `{ tutorial, startWave }` (CONTINUE passes `checkpointWave + 1`; START/NEW GAME pass `1`)
 - `LoadoutScene` → `GameOverScene` (Back): `passthroughData`
 - `StoreScene` → `GameOverScene` (Back): same
 
@@ -879,7 +900,7 @@ Resilience: corrupt JSON, missing fields, unknown `version` → fall back to def
 - ~~**No tutorial.**~~ Resolved: an interactive, scripted step-by-step tutorial launched from the menu **TUTORIAL** action (you can't die). See §6.20.
 - **Beam weapon is fake.** It's a very high fire rate with longer-lived bullets. A true hitscan beam would require dedicated rendering code.
 - **Boomerang doesn't hit enemies on the return path** if it gets too fast or off-screen — its body is small. Mostly works in practice.
-- **No save migrations.** A schema bump (e.g., `v1` → `v2`) currently means wipe; need a migrator before any breaking schema change.
+- ~~**No save migrations.**~~ Resolved: `src/save.js` has a versioned `MIGRATIONS` pipeline (`CURRENT_VERSION` 3) plus a deep-merge backfill, so schema bumps upgrade in place instead of wiping.
 - **Cheat key is global.** Pressing backtick during pause or shield-anim works fine, but during the game-over scene there's no equivalent shortcut.
 - **Touch settings apply on reload.** Scale mode, multitouch pointer count, and the orientation lock are boot-time decisions; changing the touch-controls mode in Settings takes effect on the next reload (the row is labelled accordingly).
 - **The store catalog is hard-coded** in `catalog.js`. No external content / no DLC concept.

@@ -12,13 +12,13 @@ Important files:
 
 - `src/main.js` registers Phaser scenes.
 - `src/scenes/IntroScene.js` shows the first-load intro.
-- `src/scenes/MainMenuScene.js` owns the main menu and game-over details.
+- `src/scenes/MainMenuScene.js` owns the main menu and game-over details. When a boss checkpoint exists (`Save.getCheckpointWave() > 0`) it shows **CONTINUE** (resume at `checkpointWave + 1`) and **NEW GAME** (fresh wave-1 run, keeps the checkpoint) and surfaces the checkpoint on the death screen.
 - `src/scenes/GameScene.js` owns gameplay, including the boss fights that replace every `CFG.boss.everyNWaves`th wave (default 10) — large, 3-phase, shielded bosses with orbiting weak points that summon their own minions. Each boss wave uses a different archetype from `CFG.boss.variants` (distinct colours/powers, difficulty scaling with the wave; final boss at wave 100), and bosses only summon enemy types from earlier waves. See `plan_docs/plan-boss.md` for the design and `plan_docs/boss-image-prompts.md` for per-wave sprite prompts. Boss waves also cross-fade the field to a hostile **"hell arena"** background (the `BOSS_BACKGROUND` export in `src/backgrounds.js`, kept out of the Settings picker) in lockstep with the boss music — `enterBossBackground()`/`exitBossBackground()` sit beside every `enterBossMusic`/`exitBossMusic` call — and switch standard player bullets to `CFG.bullet.bossColor` for readability over the dark floor; prompt in `plan_docs/boss-retro-art-prompts.md`.
 - `src/scenes/StoreScene.js`, `LoadoutScene.js`, `SettingsScene.js`, and `MonstersScene.js` own secondary screens.
 - `src/config.js` contains gameplay tuning.
 - `src/catalog.js` contains weapons and mods.
 - `src/enemies.js` contains enemy sprite metadata and monster-menu copy.
-- `src/save.js` contains localStorage persistence.
+- `src/save.js` contains localStorage persistence (versioned migrations, `CURRENT_VERSION` 3). Boss checkpoints live in `progress.checkpointWave` (accessors `getCheckpointWave` / `setCheckpointWave` / `resetCheckpoint`); `setCheckpointWave` is monotonic, boss-wave-validated, and capped at `CFG.boss.finalWave`. Recorded on confirmed boss defeat in `GameScene`.
 - `src/audio.js` owns shared background music loading, setting synchronization, and gameplay sound-effect helpers.
 
 Read `CODEBASE.md` for a broad map, but verify against source before changing behavior because implementation may move faster than the documentation.

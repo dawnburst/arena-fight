@@ -120,6 +120,15 @@ also transforms for the fight: the field cross-fades to a scorched **Hell Arena*
 background and your standard bullets glow a bright color so they stay readable
 over the dark floor, both reverting once the boss falls.
 
+Each boss you beat becomes a permanent **checkpoint**. After clearing a boss
+wave you can **CONTINUE** from the wave right after it on a later run instead of
+restarting from wave 1 — beat the wave-10 boss to unlock a wave-11 start, the
+wave-20 boss to advance to wave 21, and so on (up to the final boss at wave 100).
+The checkpoint survives death and persists across sessions, and your wallet,
+weapons, and loadout carry over as usual. The main menu shows **CONTINUE** (resume
+from your checkpoint) alongside **NEW GAME** (a fresh wave-1 run, which keeps your
+checkpoint), and the game-over screen reminds you where you'll continue from.
+
 Every boss shares the same core rules: an energy shield blocks body hits and
 regenerates each phase, while small weak points orbiting its body always take
 damage (and take extra) — so you can snipe the weak points to bypass the shield,
