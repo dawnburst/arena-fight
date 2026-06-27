@@ -43,6 +43,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  tempest: {
+    key: 'boss-tempest-idle-s',
+    path: assetPath('assets/enemies/boss/tempest/tempest_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -160,6 +167,7 @@ export const BOSS_SPRITES = {
   bombardier: bossFrames('bombardier', ['aimedVolley', 'barrage', 'charge']),
   phantom: bossFrames('phantom', ['barrage', 'nova', 'charge', 'dotField']),
   overlord: bossFrames('overlord', ['missiles', 'barrage', 'charge', 'nova']),
+  tempest: bossFrames('tempest', ['spiral', 'aimedVolley', 'charge', 'nova']),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -409,5 +417,20 @@ export const ENEMY_BESTIARY = [
       'Launches homing missiles, fires radial barrages, rams in a telegraphed charge, and overcharges into a nova in the final phase.',
     counter:
       'Shoot down missiles, move through barrage gaps, sidestep the charge, and stay outside the nova warning.',
+  },
+  {
+    id: 'boss-tempest',
+    name: 'The Tempest',
+    sprite: 'tempest',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 70',
+    movement: 'Tracks you from the top as a storm-armored cyclone body with four weak points.',
+    power:
+      'Layers spiral shot patterns, aimed cyan volleys, a telegraphed charge, and a final-phase nova behind a regenerating shield.',
+    counter:
+      'Keep moving through spiral gaps, cross the aimed fan before it releases, and sidestep the charge before punishing the weak points.',
   },
 ];
