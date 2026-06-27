@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { installOrientationLock } from './input/orientationLock.js';
 import { touchActive } from './input/touchMode.js';
+import AchievementsScene from './scenes/AchievementsScene.js';
 import GameScene from './scenes/GameScene.js';
 import IntroScene from './scenes/IntroScene.js';
 import LoadoutScene from './scenes/LoadoutScene.js';
@@ -45,6 +46,7 @@ const config = {
     LoadoutScene,
     SettingsScene,
     MonstersScene,
+    AchievementsScene,
   ],
 };
 
