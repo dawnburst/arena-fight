@@ -202,7 +202,9 @@ export default class LoadoutScene extends Phaser.Scene {
   startRun() {
     playSfx(this, 'uiConfirm');
     Save.setLoadout(this.weaponIds, this.modIds);
-    this.scene.start('GameScene', { tutorial: false });
+    // Honor the start wave the menu handed us (checkpoint continue vs new game).
+    const startWave = this.scene.settings.data?.startWave || 1;
+    this.scene.start('GameScene', { tutorial: false, startWave });
   }
 
   shutdown() {
