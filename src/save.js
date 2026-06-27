@@ -1,8 +1,10 @@
+import { CFG } from './config.js';
+
 const KEY = 'arenaFight.save.v1';
 const BACKUP_KEY = 'arenaFight.save.backup';
 
 // Bump whenever the persisted schema changes and add a matching MIGRATIONS entry.
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 const DEFAULTS = () => ({
   version: CURRENT_VERSION,
@@ -29,6 +31,12 @@ const DEFAULTS = () => ({
     bossesDefeated: 0,
   },
   achievements: [],
+  // Run-continuation progress. A checkpoint is the highest boss wave the player
+  // has cleared; the next run can start at checkpointWave + 1 instead of wave 1.
+  // Monotonic — see setCheckpointWave().
+  progress: {
+    checkpointWave: 0, // highest boss wave cleared (0 = none)
+  },
   // Onboarding: records that the interactive tutorial has been started. The
   // tutorial is launched only from the menu's TUTORIAL button (no auto-launch).
   tutorialSeen: false,
@@ -49,6 +57,10 @@ const MIGRATIONS = {
     const weapons = [weaponsArr[0] || 'pistol', weaponsArr[1] || null];
     return { ...s, version: 2, loadout: { ...loadout, weapons, weapon: weapons[0] } };
   },
+  // v2 -> v3: introduce the `progress` block (boss checkpoints). The
+  // deep-merge against DEFAULTS backfills `progress.checkpointWave`, so this is
+  // a version-stamp-only step.
+  2: (s) => ({ ...s, version: 3 }),
 };
 
 function isPlainObject(value) {
@@ -260,6 +272,29 @@ export const Save = {
         totalKills: (s.stats.totalKills || 0) + kills,
         bossesDefeated: (s.stats.bossesDefeated || 0) + bosses,
       },
+    }));
+  },
+  // Highest boss wave cleared (0 = none). Continue starts at this + 1.
+  getCheckpointWave() {
+    return this.get().progress?.checkpointWave || 0;
+  },
+  // Record a cleared boss wave. Monotonic (never decreases) and only accepts a
+  // genuine boss wave, capped at the final boss so the post-100 climb stays a
+  // fresh endurance run. Ignores non-boss / lower / invalid waves.
+  setCheckpointWave(wave) {
+    const every = CFG.boss.everyNWaves;
+    if (!Number.isInteger(wave) || every <= 0 || wave % every !== 0) return this.get();
+    const capped = Math.min(wave, CFG.boss.finalWave);
+    return this.set((s) => {
+      const current = s.progress?.checkpointWave || 0;
+      if (capped <= current) return s;
+      return { ...s, progress: { ...(s.progress || {}), checkpointWave: capped } };
+    });
+  },
+  resetCheckpoint() {
+    return this.set((s) => ({
+      ...s,
+      progress: { ...(s.progress || {}), checkpointWave: 0 },
     }));
   },
   unlockAchievements(ids) {

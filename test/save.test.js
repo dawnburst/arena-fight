@@ -202,7 +202,7 @@ describe('save', () => {
     localStorage.setItem('arenaFight.save.v1', JSON.stringify({ version: 999, wallet: 500 }));
     Save._clearCache();
     const state = Save.get();
-    expect(state.version).toBe(2);
+    expect(state.version).toBe(3);
     expect(state.wallet).toBe(0);
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
@@ -258,7 +258,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(2);
+      expect(state.version).toBe(3);
       expect(state.wallet).toBe(320);
       expect(state.ownedWeapons).toEqual(['pistol', 'shotgun']);
       expect(state.ownedMods).toEqual(['quick-draw']);
@@ -274,7 +274,7 @@ describe('save', () => {
       Save._clearCache();
       Save.get();
       const persisted = JSON.parse(localStorage.getItem('arenaFight.save.v1'));
-      expect(persisted.version).toBe(2);
+      expect(persisted.version).toBe(3);
       expect(persisted.wallet).toBe(99);
       expect(persisted.loadout.weapons).toEqual(['shotgun', null]);
     });
@@ -294,7 +294,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(2);
+      expect(state.version).toBe(3);
       expect(state.wallet).toBe(42);
       expect(state.loadout.weapons).toEqual(['burst', null]);
     });
@@ -318,10 +318,67 @@ describe('save', () => {
       localStorage.setItem('arenaFight.save.v1', JSON.stringify([1, 2, 3]));
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(2);
+      expect(state.version).toBe(3);
       expect(state.wallet).toBe(0);
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
+    });
+
+    it('backfills progress.checkpointWave when migrating a v2 save', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({
+          version: 2,
+          wallet: 50,
+          loadout: { weapon: 'pistol', weapons: ['pistol', null] },
+        }),
+      );
+      Save._clearCache();
+      const state = Save.get();
+      expect(state.version).toBe(3);
+      expect(state.wallet).toBe(50);
+      expect(state.progress.checkpointWave).toBe(0);
+    });
+  });
+
+  describe('boss checkpoints', () => {
+    it('defaults to no checkpoint', () => {
+      expect(Save.getCheckpointWave()).toBe(0);
+    });
+
+    it('records a cleared boss wave', () => {
+      Save.setCheckpointWave(10);
+      expect(Save.getCheckpointWave()).toBe(10);
+    });
+
+    it('advances monotonically and never moves backward', () => {
+      Save.setCheckpointWave(20);
+      expect(Save.getCheckpointWave()).toBe(20);
+      // Re-clearing an earlier boss (e.g. after a low start) must not regress it.
+      Save.setCheckpointWave(10);
+      expect(Save.getCheckpointWave()).toBe(20);
+    });
+
+    it('ignores non-boss waves', () => {
+      Save.setCheckpointWave(13);
+      expect(Save.getCheckpointWave()).toBe(0);
+    });
+
+    it('ignores invalid input', () => {
+      Save.setCheckpointWave(Number.NaN);
+      Save.setCheckpointWave(-10);
+      expect(Save.getCheckpointWave()).toBe(0);
+    });
+
+    it('caps the checkpoint at the final boss wave', () => {
+      Save.setCheckpointWave(110);
+      expect(Save.getCheckpointWave()).toBe(100);
+    });
+
+    it('resetCheckpoint clears it back to 0', () => {
+      Save.setCheckpointWave(30);
+      Save.resetCheckpoint();
+      expect(Save.getCheckpointWave()).toBe(0);
     });
   });
 });
