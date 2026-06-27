@@ -500,7 +500,10 @@ export const CFG = {
   },
   combo: {
     resetMs: 2500,
-    maxMultiplier: 8,
+    maxMultiplier: 50, // hard ceiling on the streak; score keeps scaling up to this
+    // Effects (kill-burst shards, per-kill coins) stop scaling past this combo so
+    // they stay performant/balanced while the multiplier itself can climb to 50.
+    effectScaleCap: 8,
     scorePerKillBase: 100,
   },
   // "Bullet time" — a dominant slow-motion of the whole arena on the climactic boss

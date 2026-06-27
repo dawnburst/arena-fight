@@ -3720,7 +3720,9 @@ export default class GameScene extends Phaser.Scene {
   spawnKillBurst(x, y, type) {
     const k = CFG.kill;
     const color = k.shardColors[type] ?? k.defaultColor;
-    const step = this.comboMultiplier - 1;
+    // Visual scaling is clamped at CFG.combo.effectScaleCap so shard count/size
+    // stop growing past x8 even though the multiplier itself can reach x50.
+    const step = Math.min(this.comboMultiplier, CFG.combo.effectScaleCap) - 1;
     const count = k.burstBaseCount + k.burstPerCombo * step;
     const size = k.shardSize + k.shardSizePerCombo * step;
     for (let i = 0; i < count; i++) {
@@ -3770,7 +3772,10 @@ export default class GameScene extends Phaser.Scene {
     // the boss itself drops one big collectible coin instead (see payBossReward).
     // Tutorial spawns its own coins for the coin step, so kills drop none.
     if (this.bossActive || this.demo || this.tutorial) return;
-    const base = CFG.store.coinDropPerKillBase + (this.comboMultiplier - 1);
+    // Per-kill coins scale with the combo but are clamped at effectScaleCap so the
+    // economy stays balanced while the multiplier can still climb to x50 for score.
+    const comboBonus = Math.min(this.comboMultiplier, CFG.combo.effectScaleCap) - 1;
+    const base = CFG.store.coinDropPerKillBase + comboBonus;
     let amount = Math.max(1, Math.round(base * this.runtime.coinDropMult));
     if (this.runtime.luckyChance > 0 && Math.random() < this.runtime.luckyChance) {
       amount *= 2;
