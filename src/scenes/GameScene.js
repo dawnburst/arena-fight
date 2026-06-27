@@ -11,6 +11,7 @@ import {
 } from '../audio.js';
 import {
   ARENA_BACKGROUNDS,
+  BOSS_BACKGROUND,
   backgroundKey,
   backgroundPath,
   resolveBackground,
@@ -91,7 +92,7 @@ export default class GameScene extends Phaser.Scene {
     if (!this.textures.exists('player-rifle')) {
       this.load.image('player-rifle', assetPath('assets/player/rifle.png'));
     }
-    for (const background of ARENA_BACKGROUNDS) {
+    for (const background of [...ARENA_BACKGROUNDS, BOSS_BACKGROUND]) {
       const key = backgroundKey(background.id);
       if (!this.textures.exists(key)) {
         this.load.image(key, backgroundPath(background));
@@ -152,7 +153,12 @@ export default class GameScene extends Phaser.Scene {
 
     const save = Save.get();
     const selectedBackground = resolveBackground(save.settings?.backgroundId);
-    this.bgImage = coverBackground(this, backgroundKey(selectedBackground.id)).setDepth(-20);
+    // The player's chosen background stays the base layer at all times; boss waves
+    // cross-fade a hell-arena overlay on top (see enter/exitBossBackground).
+    this.selectedBackgroundKey = backgroundKey(selectedBackground.id);
+    this.bgImage = coverBackground(this, this.selectedBackgroundKey).setDepth(-20);
+    this.bossBgImage = null;
+    this.bossBackgroundActive = false;
     const weaponIds = save.loadout?.weapons || [save.loadout?.weapon || 'pistol', null];
     this.weapons = [
       getWeapon(weaponIds[0] || 'pistol'),
@@ -294,6 +300,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.boss) this.cancelBossAction(this.boss);
       // Belt-and-suspenders: never let the boss track leak into a menu scene.
       exitBossMusic(this);
+      this.exitBossBackground(true);
       this.touch?.destroy();
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
       this.input.setDefaultCursor('default');
@@ -1130,6 +1137,7 @@ export default class GameScene extends Phaser.Scene {
     this.arenaH = this.scale.height;
     this.physics.world.setBounds(0, 0, this.arenaW, this.arenaH);
     if (this.bgImage) coverBackground(this, this.bgImage.texture.key, this.bgImage);
+    if (this.bossBgImage) coverBackground(this, this.bossBgImage.texture.key, this.bossBgImage);
     this.layoutHud();
     this.touch?.layout();
   }
@@ -1888,7 +1896,55 @@ export default class GameScene extends Phaser.Scene {
     // Swap to the intense boss soundtrack as the telegraph begins, so the music
     // ramps with the warning rather than after the boss materializes.
     enterBossMusic(this);
+    // Swap the field to the hostile hell arena in lockstep with the boss music.
+    this.enterBossBackground();
     this.showBossShadow(tier);
+  }
+
+  // Cross-fades the dark "hell arena" overlay in over the player's selected
+  // background when a boss wave begins. The base background (this.bgImage) stays
+  // underneath, so reverting is just fading this overlay back out. Idempotent and
+  // re-entrant: entering while already active simply keeps the overlay shown.
+  enterBossBackground() {
+    this.bossBackgroundActive = true;
+    const key = backgroundKey(BOSS_BACKGROUND.id);
+    if (!this.bossBgImage) {
+      this.bossBgImage = coverBackground(this, key).setDepth(-19).setAlpha(0);
+    } else {
+      coverBackground(this, key, this.bossBgImage).setVisible(true);
+    }
+    this.tweens.killTweensOf(this.bossBgImage);
+    this.tweens.add({
+      targets: this.bossBgImage,
+      alpha: 1,
+      duration: CFG.boss.transitionMs,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  // Reverts to the player's selected background when the boss ends (death,
+  // jumpToWave, player death mid-boss, or scene shutdown). Idempotent: safe to
+  // call when no boss background is active. `immediate` skips the fade for
+  // teardown paths where the scene is going away.
+  exitBossBackground(immediate = false) {
+    this.bossBackgroundActive = false;
+    if (!this.bossBgImage) return;
+    this.tweens.killTweensOf(this.bossBgImage);
+    if (immediate) {
+      this.bossBgImage.destroy();
+      this.bossBgImage = null;
+      return;
+    }
+    this.tweens.add({
+      targets: this.bossBgImage,
+      alpha: 0,
+      duration: CFG.boss.transitionMs,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.bossBgImage?.destroy();
+        this.bossBgImage = null;
+      },
+    });
   }
 
   // Telegraph the boss with a harmless shadow at its spawn spot, giving the
@@ -2921,6 +2977,8 @@ export default class GameScene extends Phaser.Scene {
   teardownBossState() {
     // Resolve back to normal music on every boss-end path (boss death, jumpToWave).
     exitBossMusic(this);
+    // Cross-fade the field back to the player's selected background in lockstep.
+    this.exitBossBackground();
     this.clearBossShadow();
     this.clearBossEffects();
     this.boss = null;
@@ -3937,6 +3995,7 @@ export default class GameScene extends Phaser.Scene {
     this.cancelSlowMo();
     // Player can die mid-boss; stop the boss track so it doesn't ride into the menu.
     exitBossMusic(this);
+    this.exitBossBackground();
     if (this.boss) this.cancelBossAction(this.boss);
     playSfx(this, 'lose');
     this.player.sprite.setTexture(this.playerFrameKey(this.player.facing, 'death'));
