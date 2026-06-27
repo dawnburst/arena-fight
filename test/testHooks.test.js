@@ -46,6 +46,6 @@ describe('testHooks', () => {
     // GameScene is not active, so live state is null.
     expect(window.__arena.state).toBeNull();
     // The save snapshot is a defaulted object read through Save.
-    expect(window.__arena.save).toMatchObject({ version: 4, wallet: 0 });
+    expect(window.__arena.save).toMatchObject({ version: 5, wallet: 0 });
   });
 });

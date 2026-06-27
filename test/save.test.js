@@ -202,7 +202,7 @@ describe('save', () => {
     localStorage.setItem('arenaFight.save.v1', JSON.stringify({ version: 999, wallet: 500 }));
     Save._clearCache();
     const state = Save.get();
-    expect(state.version).toBe(4);
+    expect(state.version).toBe(5);
     expect(state.wallet).toBe(0);
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
@@ -244,6 +244,49 @@ describe('save', () => {
     expect(Save.get().tutorialSeen).toBe(true);
   });
 
+  describe('skins', () => {
+    it('defaults to owning and equipping only the default skin', () => {
+      const state = Save.get();
+      expect(state.ownedSkins).toEqual(['default']);
+      expect(state.loadout.skin).toBe('default');
+    });
+
+    it('buySkin works if affordable and not owned', () => {
+      Save.addToWallet(1000);
+      const state = Save.buySkin('ninja', 600);
+      expect(state.wallet).toBe(400);
+      expect(state.ownedSkins).toContain('ninja');
+    });
+
+    it('buySkin fails if already owned', () => {
+      Save.addToWallet(1000);
+      Save.buySkin('ninja', 600);
+      const state = Save.buySkin('ninja', 600);
+      expect(state.wallet).toBe(400); // unchanged
+    });
+
+    it('buySkin fails if unaffordable', () => {
+      const state = Save.buySkin('ninja', 600);
+      expect(state.wallet).toBe(0);
+      expect(state.ownedSkins).not.toContain('ninja');
+    });
+
+    it('equipSkin only equips an owned skin', () => {
+      expect(Save.equipSkin('ninja').loadout.skin).toBe('default'); // not owned
+      Save.addToWallet(1000);
+      Save.buySkin('ninja', 600);
+      expect(Save.equipSkin('ninja').loadout.skin).toBe('ninja');
+    });
+
+    it('setLoadout persists an owned skin and ignores an unowned one', () => {
+      Save.addToWallet(1000);
+      Save.buySkin('ninja', 600);
+      expect(Save.setLoadout(['pistol', null], [null, null], 'ninja').loadout.skin).toBe('ninja');
+      // An unowned skin id is ignored, keeping the previous selection.
+      expect(Save.setLoadout(['pistol', null], [null, null], 'robot').loadout.skin).toBe('ninja');
+    });
+  });
+
   describe('schema migration', () => {
     it('migrates a v1 single-weapon save to the current schema, preserving data', () => {
       localStorage.setItem(
@@ -258,7 +301,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(4);
+      expect(state.version).toBe(5);
       expect(state.wallet).toBe(320);
       expect(state.ownedWeapons).toEqual(['pistol', 'shotgun']);
       expect(state.ownedMods).toEqual(['quick-draw']);
@@ -274,7 +317,7 @@ describe('save', () => {
       Save._clearCache();
       Save.get();
       const persisted = JSON.parse(localStorage.getItem('arenaFight.save.v1'));
-      expect(persisted.version).toBe(4);
+      expect(persisted.version).toBe(5);
       expect(persisted.wallet).toBe(99);
       expect(persisted.loadout.weapons).toEqual(['shotgun', null]);
     });
@@ -294,7 +337,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(4);
+      expect(state.version).toBe(5);
       expect(state.wallet).toBe(42);
       expect(state.loadout.weapons).toEqual(['burst', null]);
     });
@@ -318,7 +361,7 @@ describe('save', () => {
       localStorage.setItem('arenaFight.save.v1', JSON.stringify([1, 2, 3]));
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(4);
+      expect(state.version).toBe(5);
       expect(state.wallet).toBe(0);
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
@@ -335,7 +378,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(4);
+      expect(state.version).toBe(5);
       expect(state.wallet).toBe(50);
       expect(state.progress.checkpointWave).toBe(0);
     });
@@ -353,7 +396,7 @@ describe('save', () => {
       );
       Save._clearCache();
       const state = Save.get();
-      expect(state.version).toBe(4);
+      expect(state.version).toBe(5);
       const owned = new Set(state.achievements);
       // Preserved boolean id.
       expect(owned.has('first-blood')).toBe(true);
@@ -373,6 +416,22 @@ describe('save', () => {
       // Old flat ids are gone.
       expect(owned.has('wave-50')).toBe(false);
       expect(owned.has('boss-slayer')).toBe(false);
+    });
+
+    it('v4 → v5: backfills skins (ownedSkins + loadout.skin)', () => {
+      localStorage.setItem(
+        'arenaFight.save.v1',
+        JSON.stringify({
+          version: 4,
+          wallet: 50,
+          loadout: { weapon: 'pistol', weapons: ['pistol', null], mods: [null, null] },
+        }),
+      );
+      Save._clearCache();
+      const state = Save.get();
+      expect(state.version).toBe(5);
+      expect(state.ownedSkins).toEqual(['default']);
+      expect(state.loadout.skin).toBe('default');
     });
   });
 
