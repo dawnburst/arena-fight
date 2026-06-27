@@ -1,4 +1,8 @@
 export const CFG = {
+  // Achievement showcase: total earned achievement points divide into "levels".
+  achievements: {
+    pointsPerLevel: 100,
+  },
   player: {
     speed: 220,
     hp: 3,
