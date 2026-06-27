@@ -465,6 +465,7 @@ export const CFG = {
         ],
       },
       {
+        id: 'voidcaller',
         name: 'The Voidcaller',
         body: 0x4a0072,
         accent: 0xce93d8,

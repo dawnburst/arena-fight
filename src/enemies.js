@@ -57,6 +57,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  voidcaller: {
+    key: 'boss-voidcaller-idle-s',
+    path: assetPath('assets/enemies/boss/voidcaller/voidcaller_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -176,6 +183,7 @@ export const BOSS_SPRITES = {
   overlord: bossFrames('overlord', ['missiles', 'barrage', 'charge', 'nova']),
   tempest: bossFrames('tempest', ['spiral', 'aimedVolley', 'charge', 'nova']),
   colossus: bossFrames('colossus', ['charge', 'barrage', 'shieldSlam', 'spiral']),
+  voidcaller: bossFrames('voidcaller', ['spiral', 'summon', 'nova', 'aimedVolley', 'charge']),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -455,5 +463,21 @@ export const ENEMY_BESTIARY = [
       'Alternates crushing charges, radial barrages, shield re-raises, and spiraling cold-gray fire through three phases.',
     counter:
       'Break or bypass the shield with weak-point shots, sidestep each charge, and use the shield-slam window to reposition.',
+  },
+  {
+    id: 'boss-voidcaller',
+    name: 'The Voidcaller',
+    sprite: 'voidcaller',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 90',
+    movement:
+      'Tracks you near the top as tendrils and orbiting weak points twist through three shielded phases.',
+    power:
+      'Combines spiral void bolts, summoned adds, nova blasts, aimed lance volleys, and a late-phase blink charge.',
+    counter:
+      'Keep room for the nova, cut through summoned pressure, cross the aimed fan, and sidestep the charge while hitting weak points.',
   },
 ];
