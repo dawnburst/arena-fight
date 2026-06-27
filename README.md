@@ -115,7 +115,10 @@ Every 10th wave is a boss fight. Each boss wave brings a different giant
 shielded boss with its own colours and moves — from **The Warden** at wave 10 up
 to the final boss, **The Annihilator**, at wave 100 — and they get tougher the
 deeper you go. A boss summons its own minions instead of a normal wave, and can
-only summon monster types that have already appeared in earlier waves.
+only summon monster types that have already appeared in earlier waves. The arena
+also transforms for the fight: the field cross-fades to a scorched **Hell Arena**
+background and your standard bullets glow a bright color so they stay readable
+over the dark floor, both reverting once the boss falls.
 
 Every boss shares the same core rules: an energy shield blocks body hits and
 regenerates each phase, while small weak points orbiting its body always take

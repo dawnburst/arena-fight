@@ -91,3 +91,39 @@ locks missile, barrage, and nova attack art through the real release, uses the
 charge telegraph/release frames across the existing windup and lunge states,
 preserves world-space collision size, and uses the south-facing portrait in the
 Monsters gallery.
+
+## Boss-Wave Background — Hell Arena · `hell-arena.png`
+
+**Implementation status (2026-06-27): complete.** Saved as
+`public/assets/backgrounds/hell-arena.png`, resized to **800×600** to match the
+three selectable arena backgrounds. Loaded in `GameScene.preload()` and
+cross-faded in/out on boss waves via `enterBossBackground()` /
+`exitBossBackground()` (see `CODEBASE.md`). Exported as `BOSS_BACKGROUND` in
+`src/backgrounds.js`, kept out of the player-selectable list.
+
+### Image-to-image generation prompt (Gemini / image generator)
+
+**Source image to upload:** `public/assets/backgrounds/moss-ruins.png` — the
+darkest of the three current arena options, so its stone/ruin layout converts
+most naturally into a scorched hell arena while keeping the familiar composition.
+The intent is a **transform**, not a from-scratch image.
+
+> Transform this top-down arena floor texture into a "hell arena" version while
+> keeping the exact same overhead camera angle, layout, composition, and the
+> position of the stone tiles, cracked patches, and paths from the original
+> image. Reskin the materials: turn the moss and grass into scorched black
+> obsidian and charred volcanic rock, turn the cracks between the stones into
+> glowing molten lava veins (bright orange-red, emissive), and replace the old
+> tiles with cracked basalt slabs. Add faint drifting embers and a low red/orange
+> ambient glow rising from the lava cracks, with darker scorched edges toward the
+> corners (subtle vignette). Keep it a seamless, evenly-lit playfield: no
+> characters, no props, no text, no UI, no large bright hotspots that would
+> distract from gameplay sprites on top. Dark, ominous, high-contrast, retro
+> game art style consistent with a top-down arena shooter. Output a flat
+> top-down ground texture filling the whole frame.
+
+Tuning notes: request 4:3 (~800×600 or larger); keep the floor dark and even so
+gameplay sprites/bullets stay readable; lower transformation strength if the
+layout drifts. Convert the output to an exact 800×600 PNG before saving, e.g.
+`magick generated.png -resize 800x600! public/assets/backgrounds/hell-arena.png`
+(use `-resize 800x600^ -gravity center -extent 800x600` for non-4:3 sources).
