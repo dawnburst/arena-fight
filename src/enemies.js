@@ -64,6 +64,13 @@ export const ENEMY_SPRITES = {
     frameHeight: 256,
     frames: 1,
   },
+  annihilator: {
+    key: 'boss-annihilator-idle-s',
+    path: assetPath('assets/enemies/boss/annihilator/annihilator_idle_s.png'),
+    frameWidth: 256,
+    frameHeight: 256,
+    frames: 1,
+  },
   monster: {
     key: 'enemy-monster-walk',
     path: assetPath('assets/enemies/monster/walk.png'),
@@ -184,6 +191,15 @@ export const BOSS_SPRITES = {
   tempest: bossFrames('tempest', ['spiral', 'aimedVolley', 'charge', 'nova']),
   colossus: bossFrames('colossus', ['charge', 'barrage', 'shieldSlam', 'spiral']),
   voidcaller: bossFrames('voidcaller', ['spiral', 'summon', 'nova', 'aimedVolley', 'charge']),
+  annihilator: bossFrames('annihilator', [
+    'barrage',
+    'spiral',
+    'aimedVolley',
+    'charge',
+    'summon',
+    'nova',
+    'shieldSlam',
+  ]),
 };
 
 const runeProwlerFrame = (direction) => ({
@@ -479,5 +495,21 @@ export const ENEMY_BESTIARY = [
       'Combines spiral void bolts, summoned adds, nova blasts, aimed lance volleys, and a late-phase blink charge.',
     counter:
       'Keep room for the nova, cut through summoned pressure, cross the aimed fan, and sidestep the charge while hitting weak points.',
+  },
+  {
+    id: 'boss-annihilator',
+    name: 'The Annihilator',
+    sprite: 'annihilator',
+    frame: 0,
+    tint: null,
+    galleryScale: 0.27,
+    detailScale: 0.78,
+    firstWave: 'Wave 100',
+    movement:
+      'Tracks you from the top as the final boss, chaining every major boss attack behind four orbiting weak points.',
+    power:
+      'Combines radial storms, spirals, aimed lance volleys, charges, summons, nova blasts, and shield slams in its final phase.',
+    counter:
+      'Use weak-point hits to cut through the shield, keep escape space for nova and charge, and clear summoned pressure before the arena closes in.',
   },
 ];
