@@ -479,6 +479,7 @@ export const CFG = {
         ],
       },
       {
+        id: 'annihilator',
         name: 'The Annihilator',
         body: 0x311b92,
         accent: 0xffd740,
