@@ -3,7 +3,7 @@ import { assetPath } from '../assetPath.js';
 import { playSfx, preloadSfx } from '../audio.js';
 import { MODS, TIER_COLORS, TIERS, WEAPONS } from '../catalog.js';
 import { Save } from '../save.js';
-import { skinsByPrice } from '../skins.js';
+import { skinsByPrice, skinThumb } from '../skins.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
 
 const ROW_HEIGHT = 30;
@@ -12,9 +12,6 @@ const ICON_SIZE = 28;
 const LIST_TOP = 92;
 const STORE_ITEMS = [...WEAPONS, ...MODS];
 const itemIconKey = (id) => `store-item-${id}`;
-// Placeholder skin thumbnail: the default body's south-idle frame, tinted per
-// skin in the row (real per-skin art can replace this once it ships).
-const SKIN_THUMB_KEY = 'skin-thumb-base';
 const tierColorNumber = (tier) => Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier]).color;
 
 export default class StoreScene extends Phaser.Scene {
@@ -29,8 +26,13 @@ export default class StoreScene extends Phaser.Scene {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
     }
-    if (!this.textures.exists(SKIN_THUMB_KEY)) {
-      this.load.image(SKIN_THUMB_KEY, assetPath('assets/player/body/south-idle.png'));
+    // Skin thumbnails: the shared base frame plus each shipped skin's own
+    // south-idle frame (skinThumb resolves which applies per skin).
+    for (const skin of [{ id: 'default', assetsReady: true }, ...skinsByPrice()]) {
+      const { key, path } = skinThumb(skin);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, assetPath(path));
+      }
     }
     preloadSfx(this);
   }
@@ -365,6 +367,7 @@ export default class StoreScene extends Phaser.Scene {
       const ownedSkins = new Set(save.ownedSkins || ['default']);
       const equippedId = save.loadout?.skin || 'default';
       for (const skin of skinsByPrice()) {
+        const thumb = skinThumb(skin);
         this.entries.push({
           id: skin.id,
           name: skin.name,
@@ -374,8 +377,8 @@ export default class StoreScene extends Phaser.Scene {
           owned: ownedSkins.has(skin.id),
           equipped: skin.id === equippedId,
           locked: false,
-          tint: skin.tint,
-          iconKey: SKIN_THUMB_KEY,
+          tint: thumb.tint,
+          iconKey: thumb.key,
         });
       }
     } else {

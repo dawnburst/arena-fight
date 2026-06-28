@@ -111,3 +111,19 @@ export function skinsByPrice() {
 export function skinTierColor(skin) {
   return TIER_COLORS[skin?.tier] || TIER_COLORS.common;
 }
+
+// Shared store/loadout thumbnail descriptor for a skin. Skins with shipped art
+// use their own south-idle frame; the default skin and any not-yet-arted skin
+// reuse the base body frame (recoloured with `tint` as a placeholder).
+export const SKIN_THUMB_BASE_KEY = 'skin-thumb-base';
+const SKIN_THUMB_BASE_PATH = 'assets/player/body/south-idle.png';
+
+export function skinThumb(skin) {
+  const hasArt = skin?.assetsReady && skin.id !== DEFAULT_SKIN_ID;
+  return {
+    key: hasArt ? `skin-thumb-${skin.id}` : SKIN_THUMB_BASE_KEY,
+    path: hasArt ? `assets/player/skins/${skin.id}/south-idle.png` : SKIN_THUMB_BASE_PATH,
+    // Tint only the placeholder (base-frame) thumbnails; real art renders as-is.
+    tint: hasArt ? null : (skin?.tint ?? null),
+  };
+}

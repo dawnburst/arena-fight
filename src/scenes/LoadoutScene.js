@@ -3,7 +3,7 @@ import { assetPath } from '../assetPath.js';
 import { playSfx, preloadSfx } from '../audio.js';
 import { MODS, MODS_BY_ID, TIER_COLORS, WEAPONS, WEAPONS_BY_ID } from '../catalog.js';
 import { Save } from '../save.js';
-import { getSkin, skinsByPrice } from '../skins.js';
+import { getSkin, skinsByPrice, skinThumb } from '../skins.js';
 import { addTouchButton, isTouchMode } from './sceneUtils.js';
 
 const SLOT_LABELS = ['WEAPON 1', 'WEAPON 2', 'EQUIPMENT 1', 'EQUIPMENT 2', 'SKIN'];
@@ -13,9 +13,6 @@ const SKIN_SLOT = 4;
 const SLOT_TOP = 108;
 const SLOT_PITCH = 78;
 const slotY = (i) => SLOT_TOP + i * SLOT_PITCH;
-// Placeholder skin thumbnail: the default body's south-idle frame, tinted per
-// skin (shared key with StoreScene).
-const SKIN_THUMB_KEY = 'skin-thumb-base';
 const tierColorNumber = (tier) =>
   Phaser.Display.Color.HexStringToColor(TIER_COLORS[tier] || TIER_COLORS.common).color;
 // Desktop draws the value at x=255; touch shifts it right to make room for the ◀.
@@ -39,8 +36,13 @@ export default class LoadoutScene extends Phaser.Scene {
         this.load.image(key, assetPath(`assets/items/${item.id}.png`));
       }
     }
-    if (!this.textures.exists(SKIN_THUMB_KEY)) {
-      this.load.image(SKIN_THUMB_KEY, assetPath('assets/player/body/south-idle.png'));
+    // Skin thumbnails: the shared base frame plus each shipped skin's own
+    // south-idle frame (skinThumb resolves which applies per skin).
+    for (const skin of [{ id: 'default', assetsReady: true }, ...skinsByPrice()]) {
+      const { key, path } = skinThumb(skin);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, assetPath(path));
+      }
     }
     preloadSfx(this);
   }
@@ -304,12 +306,13 @@ export default class LoadoutScene extends Phaser.Scene {
     }
   }
 
-  // The skin slot shows the placeholder thumbnail tinted with the skin's colour
-  // (the default skin renders untinted).
+  // The skin slot shows the skin's own thumbnail (its south-idle frame); skins
+  // without shipped art fall back to the tinted base body frame.
   setSkinSlotIcon(i, skin) {
     const { frame, icon } = this.slotIcons[i];
-    icon.setTexture(SKIN_THUMB_KEY).setDisplaySize(44, 44).setVisible(true);
-    if (skin.tint != null) icon.setTint(skin.tint);
+    const thumb = skinThumb(skin);
+    icon.setTexture(thumb.key).setDisplaySize(44, 44).setVisible(true);
+    if (thumb.tint != null) icon.setTint(thumb.tint);
     else icon.clearTint();
     frame.setStrokeStyle(2, tierColorNumber(skin.tier), 1);
   }
