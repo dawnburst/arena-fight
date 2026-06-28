@@ -470,7 +470,7 @@ On death: `endGame()` passes `coinsEarned: this.coinsThisRun` to `GameOverScene`
 - `R` triggers a reset-save confirmation (`Y` wipes save, `N`/`Esc` cancels).
 - Free items (price 0, i.e., the default Pistol) are hidden from the store listing.
 
-**Skins tab** (character skins, `src/skins.js`): a **flat list sorted cheapest → most expensive** (no tier headers). Each row shows a tinted thumbnail (the default `south-idle` frame recoloured by the skin's placeholder tint), name, price, and a badge:
+**Skins tab** (character skins, `src/skins.js`): a **flat list sorted cheapest → most expensive** (no tier headers). Each row shows the skin's own `south-idle` thumbnail (resolved by `skinThumb()`; placeholder skins without shipped art fall back to the tinted default frame), name, price, and a badge:
 - `[EQUIPPED]` (green) — the currently equipped skin
 - `[EQUIP]` (cyan) — owned but not equipped; clicking equips it (`Save.equipSkin`)
 - `[BUY]` (gold) — affordable; buying (`Save.buySkin`) auto-equips it
