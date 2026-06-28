@@ -171,9 +171,10 @@ ground-slams, area-denial blasts, shield re-raises), with different bosses
 favouring different moves. Beating one pays a large coin bonus that scales with
 the boss number. The Warden, wave-20 Juggernaut, wave-30 Hexweaver, wave-40
 Bombardier, wave-50 Phantom, wave-60 Overlord, wave-70 Tempest, wave-80
-Colossus, and wave-90 Voidcaller use complete retro pixel-art animation sets for
-movement, attacks, their enraged final phases, and defeat; other bosses
-currently retain the colour-coded fallback body.
+Colossus, wave-90 Voidcaller, and the wave-100 final boss Annihilator use
+complete retro pixel-art animation sets for movement, attacks, their enraged
+final phases, and defeat; other bosses currently retain the colour-coded
+fallback body.
 
 The wave-30 Hexweaver uses a complete retro sprite set in gameplay and the
 Monsters gallery: directional hover poses, spell telegraphs/releases, phase-3

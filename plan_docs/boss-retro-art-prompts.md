@@ -164,6 +164,30 @@ aimed-volley casts, the existing charge windup/release lock for blink lunges,
 preserves world-space collision size, and uses the south-facing portrait in the
 Monsters gallery.
 
+## Wave 100 — The Annihilator · id `annihilator`
+
+**Implementation status (2026-06-28): complete.** All 31 frames were generated,
+normalized to transparent 256×256 RGBA PNGs, and integrated from
+`public/assets/enemies/boss/annihilator/`.
+
+Colours: body `#311b92`, accent `#ffd740`, core `#ff1744`, projectile
+`#ffea00`. Phase powers are `barrage`, `spiral`, `aimedVolley`, `charge`,
+`summon`, `nova`, and `shieldSlam`; weak-point counts are 3 / 4 / 4.
+
+Integrated states:
+
+- Eight directional idle poses: S, N, W, E, SE, SW, NE, NW.
+- Four south-facing walk-cycle frames.
+- Telegraph and release frames for each of the seven phase powers.
+- One phase-3 enrage frame.
+- Four one-shot death frames.
+
+The shield dome and orbiting weak points remain code-drawn overlays. Gameplay
+locks barrage, spiral, aimed-volley, summon, nova, and shield-slam attack art
+through the shared telegraph/release path, uses charge frames across the existing
+windup and lunge states, preserves world-space collision size, and uses the
+south-facing portrait in the Monsters gallery.
+
 ## Boss-Wave Background — Hell Arena · `hell-arena.png`
 
 **Implementation status (2026-06-27): complete.** Saved as
