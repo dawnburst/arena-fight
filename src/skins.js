@@ -2,12 +2,12 @@
 // (8 directions × 6 poses) plus a store/owned/equipped record. It reuses the
 // existing player sprite + store + save machinery.
 //
-// Asset state: until real art is generated, every non-default skin is a
-// *placeholder* rendered as the default body frames tinted with the skin's
-// `tint` colour (no extra PNGs). When the art for a skin lands under
-// `public/assets/player/skins/<id>/<dir>-<pose>.png`, flip that skin's
-// `assetsReady` to `true` and the game will load and use those frames instead
-// (falling back to the default frame for any pose that is still missing).
+// Asset state: every skin now ships a full set of frames under
+// `public/assets/player/skins/<id>/<dir>-<pose>.png`, so each skin is marked
+// `assetsReady: true` and the game loads and uses those frames (falling back to
+// the default frame for any pose whose art is missing). The `tint` colour is
+// retained only as the legacy placeholder look for any future skin added before
+// its art lands (set that skin's `assetsReady` to `false` until then).
 //
 // See `plan_docs/skin-image-prompts.md` for the per-skin generation prompts,
 // target paths, and image sizes.
@@ -37,7 +37,7 @@ export const SKINS = [
     price: 600,
     description: 'Silent and sharp — black-clad with a red scarf.',
     tint: 0x5a6172,
-    assetsReady: false,
+    assetsReady: true,
   },
   {
     id: 'girl',
@@ -46,7 +46,7 @@ export const SKINS = [
     price: 900,
     description: 'Confident ranger in a green tactical outfit.',
     tint: 0x66bb6a,
-    assetsReady: false,
+    assetsReady: true,
   },
   {
     id: 'panda',
@@ -55,7 +55,7 @@ export const SKINS = [
     price: 1500,
     description: 'Adorably dangerous black-and-white warrior.',
     tint: 0xd6d6d6,
-    assetsReady: false,
+    assetsReady: true,
   },
   {
     id: 'robot',
@@ -64,7 +64,7 @@ export const SKINS = [
     price: 2500,
     description: 'Chrome and circuits with glowing blue accents.',
     tint: 0x90caf9,
-    assetsReady: false,
+    assetsReady: true,
   },
   {
     id: 'knight',
@@ -73,7 +73,7 @@ export const SKINS = [
     price: 4000,
     description: 'Silver-armored knight with a plumed helmet.',
     tint: 0xb0bec5,
-    assetsReady: false,
+    assetsReady: true,
   },
   {
     id: 'pirate',
@@ -82,7 +82,7 @@ export const SKINS = [
     price: 6000,
     description: 'Swashbuckler in a tricorn hat and red coat.',
     tint: 0xe57373,
-    assetsReady: false,
+    assetsReady: true,
   },
   {
     id: 'astronaut',
@@ -91,7 +91,7 @@ export const SKINS = [
     price: 9000,
     description: 'White spacesuit with a reflective visor.',
     tint: 0xeceff1,
-    assetsReady: false,
+    assetsReady: true,
   },
 ];
 
