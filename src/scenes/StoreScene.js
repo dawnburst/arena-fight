@@ -67,6 +67,27 @@ export default class StoreScene extends Phaser.Scene {
 
     this.listGroup = this.add.container(0, 0);
 
+    // Large character preview shown only in the Skins tab (centered below the
+    // 8-row list, which ends ~y=332; clears the bottom panel at y=522).
+    const previewCx = Math.round(this.scale.width / 2);
+    const previewCy = 400;
+    this.skinPreviewBg = this.add
+      .rectangle(previewCx, previewCy, 130, 130, 0x0a0a14, 1)
+      .setStrokeStyle(2, 0x444444, 1)
+      .setVisible(false);
+    this.skinPreviewImg = this.add
+      .image(previewCx, previewCy, itemIconKey(STORE_ITEMS[0].id))
+      .setDisplaySize(120, 120)
+      .setVisible(false);
+    this.skinPreviewLabel = this.add
+      .text(previewCx, previewCy + 68, '', {
+        fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+        fontSize: '13px',
+        color: '#aaaaaa',
+      })
+      .setOrigin(0.5, 0)
+      .setVisible(false);
+
     this.previewFrame = this.add
       .rectangle(50, this.scale.height - 54, 54, 54, 0x101010, 1)
       .setStrokeStyle(2, 0x666666, 1);
@@ -500,14 +521,33 @@ export default class StoreScene extends Phaser.Scene {
     let desc = cur ? cur.description : '';
     if (cur?.locked) desc += '  — Locked: reach wave 25 to unlock legendary items.';
     this.descText.setText(desc);
+
+    const isSkins = this.tab === 'skins';
     if (cur) {
-      this.previewFrame.setVisible(true).setStrokeStyle(2, tierColorNumber(cur.tier), 1);
-      this.previewIcon.setTexture(cur.iconKey).setVisible(true);
+      this.previewFrame.setVisible(!isSkins).setStrokeStyle(2, tierColorNumber(cur.tier), 1);
+      this.previewIcon.setTexture(cur.iconKey).setVisible(!isSkins);
       if (cur.tint != null) this.previewIcon.setTint(cur.tint);
       else this.previewIcon.clearTint();
     } else {
       this.previewFrame.setVisible(false);
       this.previewIcon.setVisible(false);
+    }
+
+    // Large skin character preview — shows the selected skin's neutral south-idle
+    // pose prominently below the list when the Skins tab is active.
+    if (isSkins && cur) {
+      this.skinPreviewBg.setVisible(true).setStrokeStyle(2, tierColorNumber(cur.tier), 1);
+      this.skinPreviewImg.setTexture(cur.iconKey).setDisplaySize(120, 120).setVisible(true);
+      if (cur.tint != null) this.skinPreviewImg.setTint(cur.tint);
+      else this.skinPreviewImg.clearTint();
+      this.skinPreviewLabel
+        .setText(cur.name)
+        .setStyle({ color: TIER_COLORS[cur.tier] || '#ffffff' })
+        .setVisible(true);
+    } else {
+      this.skinPreviewBg.setVisible(false);
+      this.skinPreviewImg.setVisible(false);
+      this.skinPreviewLabel.setVisible(false);
     }
   }
 }
