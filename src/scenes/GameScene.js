@@ -144,7 +144,10 @@ export default class GameScene extends Phaser.Scene {
       ...(save.loadout?.weapons || [save.loadout?.weapon]),
       ...(save.loadout?.mods || []),
     ].filter(Boolean);
-    for (const id of loadoutIds) {
+    // Also preload every giftable mod icon (gifts grant unequipped mods from
+    // MODS), so the gift HUD icon shows instead of the emoji fallback.
+    const iconIds = new Set([...loadoutIds, ...MODS.map((m) => m.id)]);
+    for (const id of iconIds) {
       const def = [...WEAPONS, ...MODS].find((it) => it.id === id);
       if (!def) continue;
       const key = loadoutIconKey(id);
