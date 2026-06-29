@@ -75,6 +75,7 @@ const ENEMY_TYPE_ORDER = [
 const CHEATS_ENABLED = import.meta.env.DEV;
 // Shares the Store/Loadout icon key scheme so item textures are reused once loaded.
 const loadoutIconKey = (id) => `store-item-${id}`;
+const weaponHeldKey = (id) => `weapon-held-${id}`;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -111,6 +112,14 @@ export default class GameScene extends Phaser.Scene {
     }
     if (!this.textures.exists('player-rifle')) {
       this.load.image('player-rifle', assetPath('assets/player/rifle.png'));
+    }
+    const weaponLoadout = Save.get().loadout || {};
+    const equippedWeaponIds = weaponLoadout.weapons || [weaponLoadout.weapon || 'pistol'];
+    for (const id of equippedWeaponIds.filter(Boolean)) {
+      const key = weaponHeldKey(id);
+      if (!this.textures.exists(key)) {
+        this.load.image(key, assetPath(`assets/player/weapons/${id}.png`));
+      }
     }
     for (const background of [...ARENA_BACKGROUNDS, BOSS_BACKGROUND]) {
       const key = backgroundKey(background.id);
@@ -777,6 +786,12 @@ export default class GameScene extends Phaser.Scene {
 
     this.player.sprite = sprite;
     this.player.barrel = barrel;
+    this.setBarrelTexture(this.weaponDef);
+  }
+
+  setBarrelTexture(weaponDef) {
+    const key = weaponHeldKey(weaponDef?.id);
+    this.player.barrel.setTexture(this.textures.exists(key) ? key : 'player-rifle');
   }
 
   defaultFrameKey(direction, pose) {
@@ -1592,6 +1607,7 @@ export default class GameScene extends Phaser.Scene {
     this.activeWeaponIndex = this.activeWeaponIndex === 0 ? 1 : 0;
     this.weaponDef = this.weapons[this.activeWeaponIndex];
     this.updateLoadoutIconHighlight();
+    this.setBarrelTexture(this.weaponDef);
     this.burstShotsRemaining = 0;
     this.player.nextFireAt = time + CFG.player.weaponSwapDelayMs;
     this.showFloatingText(
