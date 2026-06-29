@@ -959,8 +959,18 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setVisible(false);
 
+    const GIFT_ICON_SIZE = 28;
+    this.giftIconSize = GIFT_ICON_SIZE;
+    this.giftIcon = this.add
+      .image(10, 64, '__DEFAULT')
+      .setOrigin(0, 0)
+      .setDisplaySize(GIFT_ICON_SIZE, GIFT_ICON_SIZE)
+      .setScrollFactor(0)
+      .setDepth(16)
+      .setVisible(false);
+
     this.giftHud = this.add
-      .text(10, 66, '', {
+      .text(44, 66, '', {
         ...style,
         fontSize: '14px',
         color: '#ff80ab',
@@ -1150,7 +1160,8 @@ export default class GameScene extends Phaser.Scene {
     this.dashCdText?.setPosition(w / 2, h - 18);
     this.hudWeapon?.setPosition(10, h - 8);
     this.shieldHud?.setPosition(10, 48);
-    this.giftHud?.setPosition(10, 66);
+    this.giftIcon?.setPosition(10, 64);
+    this.giftHud?.setPosition(44, 66);
     this.layoutLoadoutIcons();
     this.tutPanel?.setPosition(w / 2, h / 2);
     this.tutTitle?.setPosition(w / 2, h / 2 - 80);
@@ -4813,6 +4824,15 @@ export default class GameScene extends Phaser.Scene {
       this.phoenixCharges += 1;
       this.tempPhoenixActive = true;
     }
+    const iconKey = loadoutIconKey(mod.id);
+    if (this.textures.exists(iconKey)) {
+      this.giftIcon
+        .setTexture(iconKey)
+        .setDisplaySize(this.giftIconSize, this.giftIconSize)
+        .setVisible(true);
+    } else {
+      this.giftIcon.setVisible(false);
+    }
     this.giftHud.setVisible(true);
     this.showFloatingText(
       this.player.sprite.x,
@@ -4829,6 +4849,7 @@ export default class GameScene extends Phaser.Scene {
     this.tempModEndsAt = 0;
     this.computeRuntime();
     this.player.hp = Math.min(this.player.hp, this.runtime.maxHp);
+    this.giftIcon.setVisible(false);
     this.giftHud.setVisible(false);
   }
 
@@ -5132,7 +5153,9 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.tempMod) {
       const secs = Math.max(0, (this.tempModEndsAt - time) / 1000).toFixed(1);
-      this.giftHud.setText(`\u{1F381} ${this.tempMod.name}  ${secs}s`);
+      this.giftHud.setText(
+        `${this.giftIcon.visible ? '' : '\u{1F381} '}${this.tempMod.name}  ${secs}s`,
+      );
     }
   }
 
