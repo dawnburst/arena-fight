@@ -395,13 +395,27 @@ export default class MainMenuScene extends Phaser.Scene {
     // canvas (x = 520 on the desktop 800-wide canvas — identical there).
     const x = this.scale.width - 280;
     const width = 220;
-    // Fit the column on the fixed 600px-tall canvas: with 6+ actions, tighten
-    // the row height/gap and raise the top so the bottom row and the help line
-    // below it never clip off-screen.
-    const compact = this.actions.length > 5;
-    const y = compact ? 150 : 170;
-    const height = compact ? 46 : 54;
-    const gap = compact ? 12 : 16;
+    // Fit the column on the fixed 600px-tall canvas: as the action count grows,
+    // tighten the row height/gap and raise the top so the bottom row and the
+    // help line below it never clip off-screen. With 8 actions (CONTINUE shown)
+    // the previous compact tier ran the SETTINGS row off the bottom edge.
+    const count = this.actions.length;
+    let y;
+    let height;
+    let gap;
+    if (count > 7) {
+      y = 80;
+      height = 44;
+      gap = 10;
+    } else if (count > 5) {
+      y = 150;
+      height = 46;
+      gap = 12;
+    } else {
+      y = 170;
+      height = 54;
+      gap = 16;
+    }
     this.menuRow = { width, height };
 
     this.actionViews = this.actions.map((action, index) => {
