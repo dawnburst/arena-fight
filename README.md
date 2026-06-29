@@ -122,6 +122,10 @@ In the **Loadout** screen you pick up to two weapons, up to two pieces of
 equipment, and your **skin** for the next run. Owned items and your equipped skin
 persist between runs.
 
+In the arena, the weapon held by your character now matches the active weapon.
+Swapping weapons changes the visible held sprite immediately; any weapon missing
+dedicated held art falls back to the original rifle overlay.
+
 ## Achievements
 
 Open the **ACHIEVEMENTS** screen from the main menu (shortcut `A`) to browse a
