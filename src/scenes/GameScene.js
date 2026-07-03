@@ -357,6 +357,7 @@ export default class GameScene extends Phaser.Scene {
     this.createEnemyAnimations();
     this.createBoomerangTexture();
     this.createHeartTextures();
+    this.createShieldIconTexture();
     this.initKillBurst();
     this.createHUD();
 
@@ -890,6 +891,27 @@ export default class GameScene extends Phaser.Scene {
     g.destroy();
   }
 
+  // White heater-shield texture for the shield-timer HUD icon. Drawn white so the
+  // HUD can tint it to CFG.shieldBonus.color; using a real polygon (instead of an
+  // emoji) keeps the icon identical across platforms and fonts.
+  createShieldIconTexture() {
+    if (this.textures.exists('shield-icon')) return;
+    // Classic heater-shield outline in a 24x28 box: flat top, sides curving to a
+    // point at the bottom.
+    const points = [
+      { x: 3, y: 3 },
+      { x: 21, y: 3 },
+      { x: 21, y: 13 },
+      { x: 12, y: 26 },
+      { x: 3, y: 13 },
+    ];
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 1);
+    g.fillPoints(points, true);
+    g.generateTexture('shield-icon', 24, 28);
+    g.destroy();
+  }
+
   onPointerDown() {
     // A tap dismisses the tutorial explanation panel (works on touch too).
     if (this.tutorial && this.tutorialAwaitingAck) {
@@ -965,8 +987,19 @@ export default class GameScene extends Phaser.Scene {
       .setOrigin(0, 1);
 
     // Left column under HP/score: keeps top-center clear for the boss HP bar.
+    // A drawn shield icon sits left of the countdown text (a real texture reads
+    // consistently across platforms where an emoji glyph would not).
+    this.shieldIcon = this.add
+      .image(10, 48, 'shield-icon')
+      .setOrigin(0, 0)
+      .setDisplaySize(14, 16)
+      .setTint(CFG.shieldBonus.color)
+      .setScrollFactor(0)
+      .setDepth(16)
+      .setVisible(false);
+
     this.shieldHud = this.add
-      .text(10, 48, '', {
+      .text(30, 48, '', {
         ...style,
         fontSize: '14px',
         color: '#ffd54f',
@@ -1174,7 +1207,8 @@ export default class GameScene extends Phaser.Scene {
     this.layoutPauseMenu();
     this.dashCdText?.setPosition(w / 2, h - 18);
     this.hudWeapon?.setPosition(10, h - 8);
-    this.shieldHud?.setPosition(10, 48);
+    this.shieldIcon?.setPosition(10, 48);
+    this.shieldHud?.setPosition(30, 48);
     this.giftIcon?.setPosition(10, 64);
     this.giftHud?.setPosition(44, 66);
     this.layoutLoadoutIcons();
@@ -4659,6 +4693,7 @@ export default class GameScene extends Phaser.Scene {
     this.shieldRing = this.add.circle(this.player.sprite.x, this.player.sprite.y, ringRadius);
     this.shieldRing.setStrokeStyle(CFG.shieldBonus.ringWidth, CFG.shieldBonus.ringColor, 0.9);
     this.shieldRing.setFillStyle();
+    this.shieldIcon.setVisible(true);
     this.shieldHud.setVisible(true);
 
     this.tweens.add({
@@ -4700,6 +4735,7 @@ export default class GameScene extends Phaser.Scene {
         onComplete: () => ring.destroy(),
       });
     }
+    this.shieldIcon.setVisible(false);
     this.shieldHud.setVisible(false);
   }
 
@@ -5163,7 +5199,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.shieldActive) {
       const secs = Math.max(0, (this.shieldEndsAt - time) / 1000).toFixed(1);
       this.shieldHud.setText(
-        `\u{1F6E1} SHIELD  hits: ${this.shieldHitsRemaining}/${CFG.shieldBonus.maxHits}  ${secs}s`,
+        `SHIELD  hits: ${this.shieldHitsRemaining}/${CFG.shieldBonus.maxHits}  ${secs}s`,
       );
     }
 
