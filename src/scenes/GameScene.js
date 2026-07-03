@@ -76,6 +76,8 @@ const CHEATS_ENABLED = import.meta.env.DEV;
 // Shares the Store/Loadout icon key scheme so item textures are reused once loaded.
 const loadoutIconKey = (id) => `store-item-${id}`;
 const weaponHeldKey = (id) => `weapon-held-${id}`;
+const OVERLORD_MISSILE_KEY = 'boss-overlord-missile';
+const OVERLORD_MISSILE_PATH = assetPath('assets/enemies/boss/overlord/overlord_missile.png');
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -145,6 +147,9 @@ export default class GameScene extends Phaser.Scene {
     }
     for (const sprite of Object.values(RUNE_PROWLER_SPRITES)) {
       if (!this.textures.exists(sprite.key)) this.load.image(sprite.key, sprite.path);
+    }
+    if (!this.textures.exists(OVERLORD_MISSILE_KEY)) {
+      this.load.image(OVERLORD_MISSILE_KEY, OVERLORD_MISSILE_PATH);
     }
     // HUD loadout icons: reuse the store/loadout icon key scheme so textures are
     // shared once loaded.
@@ -2882,12 +2887,12 @@ export default class GameScene extends Phaser.Scene {
     const p = CFG.boss.powers.missiles;
     const x = boss.x + Math.cos(angle) * (CFG.boss.hitRadius + 8);
     const y = boss.y + Math.sin(angle) * (CFG.boss.hitRadius + 8);
-    const missile = this.add.circle(x, y, p.radius, boss.variant.core);
-    missile.setStrokeStyle(2, 0xffffff, 0.9).setDepth(4);
+    const missile = this.add.image(x, y, OVERLORD_MISSILE_KEY).setDepth(4);
+    missile.rotation = angle;
     this.physics.add.existing(missile);
     this.enemies.add(missile);
     missile.body.setCircle(p.radius);
-    missile.body.setOffset(-p.radius, -p.radius);
+    missile.body.setOffset(missile.width / 2 - p.radius, missile.height / 2 - p.radius);
     missile.type = 'missile';
     missile.hp = 1;
     missile.maxHp = 1;
