@@ -1190,6 +1190,21 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // Positions the top-left column (score + shield icon/countdown + gift
+  // icon/countdown). Normally it sits at the very top (y=28), but the full-width
+  // boss HP bar occupies that band during boss waves, so while the boss bar is
+  // visible we drop the column below the boss name label to keep both readable.
+  // Called from layoutHud and whenever the boss bar is shown/hidden.
+  layoutLeftHud() {
+    const yBase = this.bossBarBg?.visible ? CFG.boss.bar.nameY + 16 : 28;
+    // Score shares the HP-pip left edge (shifted right on touch to clear MENU).
+    this.hudScore?.setPosition(this.hpPipsX ?? 10, yBase);
+    this.shieldIcon?.setPosition(10, yBase + 20);
+    this.shieldHud?.setPosition(30, yBase + 20);
+    this.giftIcon?.setPosition(10, yBase + 36);
+    this.giftHud?.setPosition(44, yBase + 38);
+  }
+
   // Repositions every center/right/bottom-anchored HUD element from the live
   // arena size. Left-anchored items (HP/score at x=10) never move. Called once at
   // the end of createHUD and again from handleResize so the HUD reflows on a
@@ -1207,10 +1222,7 @@ export default class GameScene extends Phaser.Scene {
     this.layoutPauseMenu();
     this.dashCdText?.setPosition(w / 2, h - 18);
     this.hudWeapon?.setPosition(10, h - 8);
-    this.shieldIcon?.setPosition(10, 48);
-    this.shieldHud?.setPosition(30, 48);
-    this.giftIcon?.setPosition(10, 64);
-    this.giftHud?.setPosition(44, 66);
+    this.layoutLeftHud();
     this.layoutLoadoutIcons();
     this.tutPanel?.setPosition(w / 2, h / 2);
     this.tutTitle?.setPosition(w / 2, h / 2 - 80);
@@ -3065,6 +3077,8 @@ export default class GameScene extends Phaser.Scene {
     this.bossShieldFill.setVisible(true);
     this.bossName.setVisible(true);
     this.bossPips.setVisible(true);
+    // Drop the score/shield/gift column below the boss bar so it stays readable.
+    this.layoutLeftHud();
     this.updateBossBar(boss);
   }
 
@@ -3084,6 +3098,8 @@ export default class GameScene extends Phaser.Scene {
     this.bossShieldFill.setVisible(false);
     this.bossName.setVisible(false);
     this.bossPips.setVisible(false);
+    // Restore the score/shield/gift column to its normal top-left position.
+    this.layoutLeftHud();
   }
 
   teardownBossState() {
